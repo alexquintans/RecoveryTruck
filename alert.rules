@@ -1,0 +1,102 @@
+groups:
+  - name: totem_alerts
+    rules:
+      # Alerta para alta taxa de erros
+      - alert: HighErrorRate
+        expr: rate(totem_payment_processed_total{status="failed"}[5m]) / rate(totem_payment_processed_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High payment error rate"
+          description: "Payment error rate is above 10% for the last 5 minutes"
+
+      # Alerta para tempo de espera alto
+      - alert: HighWaitTime
+        expr: histogram_quantile(0.95, rate(totem_ticket_wait_time_seconds_bucket[5m])) > 1800
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High ticket wait time"
+          description: "95th percentile of ticket wait time is above 30 minutes"
+
+      # Alerta para fila muito longa
+      - alert: LongQueue
+        expr: totem_queue_length > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Long service queue"
+          description: "Queue length is above 10 tickets for more than 5 minutes"
+
+      # Alerta para tempo de processamento de pagamento alto
+      - alert: HighPaymentProcessingTime
+        expr: histogram_quantile(0.95, rate(totem_payment_processing_time_seconds_bucket[5m])) > 60
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High payment processing time"
+          description: "95th percentile of payment processing time is above 60 seconds"
+
+      # Alerta para baixa taxa de conclusão
+      - alert: LowCompletionRate
+        expr: rate(totem_ticket_completed_total[5m]) / rate(totem_ticket_created_total[5m]) < 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low ticket completion rate"
+          description: "Less than 50% of tickets are being completed"
+
+      # Alerta para falha na API
+      - alert: APIDown
+        expr: up{job="totem-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API is down"
+          description: "The Totem API has been down for more than 1 minute"
+
+      # Alerta para alta latência da API
+      - alert: HighAPILatency
+        expr: rate(http_request_duration_seconds_sum[5m]) / rate(http_request_duration_seconds_count[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API latency"
+          description: "API request latency is above 1 second"
+
+      # Alerta para alta taxa de requisições
+      - alert: HighRequestRate
+        expr: rate(http_requests_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High request rate"
+          description: "Request rate is above 100 requests per second"
+
+      # Alerta para uso alto de memória
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is above 90%"
+
+      # Alerta para uso alto de CPU
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is above 80%" 

@@ -1,0 +1,50 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: totem
+      POSTGRES_PASSWORD: totem123
+      POSTGRES_DB: totem
+    ports:
+      - '5432:5432'
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  api:
+    build: ../../apps/api
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ../../apps/api:/app
+    environment:
+      - DATABASE_URL=postgresql://totem:totem123@db:5432/totem
+    ports:
+      - '8000:8000'
+    depends_on:
+      - db
+
+  totem:
+    build: ../../apps/totem
+    volumes:
+      - ../../apps/totem:/app
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    ports:
+      - '3000:3000'
+    depends_on:
+      - api
+
+  operador:
+    build: ../../apps/operador
+    volumes:
+      - ../../apps/operador:/app
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    ports:
+      - '3001:3000'
+    depends_on:
+      - api
+
+volumes:
+  db_data: 

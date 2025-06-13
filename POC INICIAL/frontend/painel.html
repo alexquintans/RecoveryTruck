@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Chamada</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #181c24;
+            --secondary-color: #00d8ff;
+            --accent-color: #ffe066;
+            --text-color: #FFFFFF;
+            --glass-bg: rgba(30, 30, 30, 0.6);
+            --glass-border: rgba(255,255,255,0.08);
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--primary-color) 0%, #232a34 100%);
+            min-height: 100vh;
+            margin: 0;
+            color: var(--text-color);
+        }
+
+        .container-fluid {
+            padding: 2rem 0;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0;
+            background: linear-gradient(45deg, var(--secondary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+        }
+        .header-icon {
+            font-size: 2.2rem;
+            color: var(--secondary-color);
+        }
+
+        .ticket-container {
+            background: var(--glass-bg);
+            border-radius: 32px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.10);
+            backdrop-filter: blur(8px);
+            border: 1.5px solid var(--glass-border);
+            padding: 3rem 2rem;
+            max-width: 500px;
+            margin: 2rem auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .ticket-display {
+            font-family: 'Poppins', sans-serif;
+            font-size: 8rem;
+            color: var(--secondary-color);
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            animation: none;
+        }
+        .ticket-icon {
+            font-size: 5rem;
+            color: var(--accent-color);
+            opacity: 0.95;
+            filter: none;
+        }
+
+        .service-name {
+            color: var(--accent-color);
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin: 1.5rem 0 0.5rem 0;
+            text-shadow: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+        }
+        .service-icon {
+            font-size: 2.2rem;
+            color: var(--accent-color);
+            opacity: 0.9;
+        }
+
+        .next-ticket {
+            color: #b2becd;
+            font-size: 1.5rem;
+            margin-top: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+        }
+        .next-number {
+            color: var(--secondary-color);
+            font-weight: 700;
+            font-size: 2rem;
+            text-shadow: none;
+        }
+        .next-icon {
+            font-size: 1.5rem;
+            color: var(--secondary-color);
+            opacity: 0.7;
+        }
+
+        .waiting-message {
+            text-align: center;
+            font-size: 1.2rem;
+            color: #b2becd;
+            opacity: 0.9;
+            margin-top: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.7rem;
+        }
+        .system-icon {
+            font-size: 1.1rem;
+            color: var(--secondary-color);
+            animation: spin 1.2s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsividade */
+        @media (max-width: 700px) {
+            .ticket-container {
+                padding: 1.5rem 0.5rem;
+                max-width: 98vw;
+            }
+            .ticket-display {
+                font-size: 3.5rem;
+            }
+            .service-name {
+                font-size: 1.3rem;
+            }
+            .next-ticket {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="header">
+            <h1>
+                <i class="fas fa-tv header-icon"></i>
+                Painel de Chamada
+            </h1>
+        </div>
+
+        <div class="ticket-container fade-in">
+            <div class="ticket-display">
+                <i class="fas fa-ticket-alt ticket-icon"></i>
+                <span id="current-ticket">---</span>
+            </div>
+            <div class="service-name">
+                <i class="fas fa-concierge-bell service-icon"></i>
+                <span id="current-service">Aguardando...</span>
+            </div>
+            <div class="next-ticket">
+                <i class="fas fa-arrow-right next-icon"></i>
+                Próximo: <span class="next-number" id="next-ticket">---</span>
+            </div>
+        </div>
+
+        <div class="waiting-message" id="waiting-message">
+            <i class="fas fa-circle-notch system-icon"></i>
+            Sistema Ativo
+        </div>
+    </div>
+
+    <script>
+        const ws = new WebSocket('ws://localhost:8000/ws');
+        let tickets = [];
+        const serviceNames = {
+            'banheira_gelo': 'Banheira de Gelo',
+            'bota_compressao': 'Bota de Compressão'
+        };
+
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            if (data.type === 'ticket_update') {
+                fetchTickets();
+            }
+        };
+
+        async function fetchTickets() {
+            try {
+                const response = await fetch('http://localhost:8000/tickets');
+                tickets = await response.json();
+                updateDisplay();
+            } catch (error) {
+                console.error('Erro ao buscar tickets:', error);
+            }
+        }
+
+        function updateDisplay() {
+            // Prioridade: in_progress > waiting
+            const inProgress = tickets.filter(t => t.status === 'in_progress');
+            const waiting = tickets.filter(t => t.status === 'waiting');
+
+            let current = null;
+            let next = null;
+
+            if (inProgress.length > 0) {
+                current = inProgress[0];
+                next = waiting[0] || null;
+            } else if (waiting.length > 0) {
+                current = waiting[0];
+                next = waiting[1] || null;
+            }
+
+            if (current) {
+                document.getElementById('current-ticket').textContent = 
+                    current.id.toString().padStart(3, '0');
+                document.getElementById('current-service').textContent = 
+                    serviceNames[current.service_id] || current.service_id;
+            } else {
+                document.getElementById('current-ticket').textContent = '---';
+                document.getElementById('current-service').textContent = 'Aguardando...';
+            }
+
+            if (next) {
+                document.getElementById('next-ticket').textContent = 
+                    next.id.toString().padStart(3, '0');
+            } else {
+                document.getElementById('next-ticket').textContent = '---';
+            }
+        }
+
+        // Atualiza a cada 5 segundos
+        setInterval(fetchTickets, 5000);
+        fetchTickets();
+    </script>
+</body>
+</html> 

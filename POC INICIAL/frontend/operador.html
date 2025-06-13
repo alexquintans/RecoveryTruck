@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel do Operador</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2C3E50;
+            --secondary-color: #3498DB;
+            --accent-color: #2ECC71;
+            --danger-color: #E74C3C;
+            --warning-color: #F1C40F;
+            --text-color: #2C3E50;
+            --light-bg: #ECF0F1;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--light-bg);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            padding: 2rem;
+        }
+
+        .section-title {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .setup-section {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .device-counter {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .counter-btn {
+            background: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .counter-btn:hover {
+            background: #2980b9;
+        }
+
+        .counter-value {
+            font-size: 2rem;
+            font-weight: 600;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .queue-section {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .service-queue {
+            margin-bottom: 2rem;
+        }
+
+        .queue-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+
+        .queue-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .queue-item {
+            background: var(--light-bg);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .queue-item.waiting {
+            border-left: 4px solid var(--warning-color);
+        }
+
+        .queue-item.in-progress {
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .queue-item.completed {
+            border-left: 4px solid var(--secondary-color);
+        }
+
+        .ticket-number {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .ticket-status {
+            font-size: 0.9rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 5px;
+            background: var(--light-bg);
+        }
+
+        .ticket-status.waiting {
+            color: var(--warning-color);
+        }
+
+        .ticket-status.in-progress {
+            color: var(--accent-color);
+        }
+
+        .ticket-status.completed {
+            color: var(--secondary-color);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-action {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            font-weight: 500;
+        }
+
+        .btn-start {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .btn-start:hover {
+            background: #27AE60;
+        }
+
+        .btn-end {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .btn-end:hover {
+            background: #c0392b;
+        }
+
+        .report-section {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .report-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-card {
+            background: var(--light-bg);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-color);
+            opacity: 0.8;
+        }
+
+        .btn-export {
+            background: var(--secondary-color);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-export:hover {
+            background: #2980b9;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <h1 class="section-title">Painel do Operador</h1>
+
+        <!-- Seção de Configuração -->
+        <div class="setup-section fade-in">
+            <h2 class="mb-4">Configuração Inicial</h2>
+            <div class="row">
+                <div class="col-md-6">
+                    <h3 class="h5 mb-3">Banheira de Gelo</h3>
+                    <div class="device-counter">
+                        <button class="counter-btn" onclick="decrementDevices('banheira_gelo')">-</button>
+                        <span class="counter-value" id="banheira-gelo-count">0</span>
+                        <button class="counter-btn" onclick="incrementDevices('banheira_gelo')">+</button>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h3 class="h5 mb-3">Bota de Compressão</h3>
+                    <div class="device-counter">
+                        <button class="counter-btn" onclick="decrementDevices('bota_compressao')">-</button>
+                        <span class="counter-value" id="bota-compressao-count">0</span>
+                        <button class="counter-btn" onclick="incrementDevices('bota_compressao')">+</button>
+                    </div>
+                </div>
+            </div>
+            <div class="text-center mt-4">
+                <button class="btn btn-action btn-start" onclick="startOperation()">
+                    <i class="fas fa-play"></i> Iniciar Operação
+                </button>
+            </div>
+        </div>
+
+        <!-- Seção de Filas -->
+        <div class="queue-section fade-in" style="display: none;">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="service-queue">
+                        <h3 class="queue-title">Banheira de Gelo</h3>
+                        <ul class="queue-list" id="banheira-gelo-queue"></ul>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="service-queue">
+                        <h3 class="queue-title">Bota de Compressão</h3>
+                        <ul class="queue-list" id="bota-compressao-queue"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Seção de Relatório -->
+        <div class="report-section fade-in" style="display: none;">
+            <h2 class="mb-4">Relatório Diário</h2>
+            <div class="report-stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="total-tickets">0</div>
+                    <div class="stat-label">Total de Atendimentos</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="completed-services">0</div>
+                    <div class="stat-label">Serviços Concluídos</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="total-revenue">R$ 0,00</div>
+                    <div class="stat-label">Faturamento</div>
+                </div>
+            </div>
+            <div class="text-center mt-4">
+                <button class="btn-export" onclick="exportReport()">
+                    <i class="fas fa-download"></i> Exportar Relatório
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let devices = {
+            banheira_gelo: 0,
+            bota_compressao: 0
+        };
+
+        let operationStarted = false;
+        const ws = new WebSocket('ws://localhost:8000/ws');
+
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            if (data.type === 'ticket_update') {
+                updateQueues();
+            }
+        };
+
+        function incrementDevices(service) {
+            devices[service]++;
+            updateDeviceCount(service);
+        }
+
+        function decrementDevices(service) {
+            if (devices[service] > 0) {
+                devices[service]--;
+                updateDeviceCount(service);
+            }
+        }
+
+        function updateDeviceCount(service) {
+            const element = document.getElementById(`${service.replace('_', '-')}-count`);
+            if (element) {
+                element.textContent = devices[service];
+            }
+        }
+
+        function startOperation() {
+            if (devices.banheira_gelo === 0 && devices.bota_compressao === 0) {
+                alert('Configure pelo menos um dispositivo antes de iniciar a operação.');
+                return;
+            }
+
+            operationStarted = true;
+            document.querySelector('.setup-section').style.display = 'none';
+            document.querySelector('.queue-section').style.display = 'block';
+            document.querySelector('.report-section').style.display = 'block';
+            
+            updateQueues();
+            updateReport();
+        }
+
+        async function updateQueues() {
+            try {
+                const response = await fetch('http://localhost:8000/tickets');
+                const tickets = await response.json();
+                
+                // Limpa as filas
+                document.getElementById('banheira-gelo-queue').innerHTML = '';
+                document.getElementById('bota-compressao-queue').innerHTML = '';
+                
+                // Filtra e ordena os tickets por serviço
+                const banheiraTickets = tickets
+                    .filter(t => t.service_id === 'banheira_gelo')
+                    .sort((a, b) => a.id - b.id);
+                
+                const botaTickets = tickets
+                    .filter(t => t.service_id === 'bota_compressao')
+                    .sort((a, b) => a.id - b.id);
+                
+                // Atualiza as filas
+                updateQueueList('banheira-gelo-queue', banheiraTickets);
+                updateQueueList('bota-compressao-queue', botaTickets);
+            } catch (error) {
+                console.error('Erro ao atualizar filas:', error);
+            }
+        }
+
+        function updateQueueList(queueId, tickets) {
+            const queueElement = document.getElementById(queueId);
+            tickets.forEach(ticket => {
+                const li = document.createElement('li');
+                li.className = `queue-item ${ticket.status}`;
+                
+                const ticketInfo = document.createElement('div');
+                ticketInfo.innerHTML = `
+                    <span class="ticket-number">#${ticket.id.toString().padStart(3, '0')}</span>
+                    <span class="ticket-status ${ticket.status}">${getStatusText(ticket.status)}</span>
+                `;
+                
+                const actions = document.createElement('div');
+                actions.className = 'action-buttons';
+                
+                if (ticket.status === 'waiting') {
+                    actions.innerHTML = `
+                        <button class="btn-action btn-start" onclick="startService(${ticket.id})">
+                            <i class="fas fa-play"></i> Iniciar
+                        </button>
+                    `;
+                } else if (ticket.status === 'in_progress') {
+                    actions.innerHTML = `
+                        <button class="btn-action btn-end" onclick="endService(${ticket.id})">
+                            <i class="fas fa-stop"></i> Finalizar
+                        </button>
+                    `;
+                }
+                
+                li.appendChild(ticketInfo);
+                li.appendChild(actions);
+                queueElement.appendChild(li);
+            });
+        }
+
+        function getStatusText(status) {
+            const statusMap = {
+                'waiting': 'Aguardando',
+                'in_progress': 'Em Atendimento',
+                'completed': 'Concluído'
+            };
+            return statusMap[status] || status;
+        }
+
+        async function startService(ticketId) {
+            try {
+                await fetch(`http://localhost:8000/tickets/${ticketId}/start`, {
+                    method: 'POST'
+                });
+                updateQueues();
+            } catch (error) {
+                console.error('Erro ao iniciar serviço:', error);
+                alert('Erro ao iniciar serviço. Tente novamente.');
+            }
+        }
+
+        async function endService(ticketId) {
+            try {
+                await fetch(`http://localhost:8000/tickets/${ticketId}/end`, {
+                    method: 'POST'
+                });
+                updateQueues();
+                updateReport();
+            } catch (error) {
+                console.error('Erro ao finalizar serviço:', error);
+                alert('Erro ao finalizar serviço. Tente novamente.');
+            }
+        }
+
+        async function updateReport() {
+            try {
+                const response = await fetch('http://localhost:8000/report');
+                const report = await response.json();
+                
+                document.getElementById('total-tickets').textContent = report.total_tickets;
+                document.getElementById('completed-services').textContent = report.completed_services;
+                document.getElementById('total-revenue').textContent = 
+                    `R$ ${report.revenue.toFixed(2)}`;
+            } catch (error) {
+                console.error('Erro ao atualizar relatório:', error);
+            }
+        }
+
+        function exportReport() {
+            // Implementar exportação do relatório
+            alert('Funcionalidade de exportação será implementada em breve.');
+        }
+    </script>
+</body>
+</html> 

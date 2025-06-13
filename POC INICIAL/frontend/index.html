@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Totem de Autoatendimento</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2C3E50;
+            --secondary-color: #3498DB;
+            --accent-color: #2ECC71;
+            --danger-color: #E74C3C;
+            --warning-color: #F1C40F;
+            --text-color: #2C3E50;
+            --light-bg: #ECF0F1;
+            --price-bg: rgba(52, 152, 219, 0.1);
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            min-height: 100vh;
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            padding: 2rem;
+        }
+
+        .section-title {
+            color: white;
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .service-card {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .service-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .service-icon {
+            font-size: 3rem;
+            color: var(--secondary-color);
+            margin-bottom: 1rem;
+        }
+
+        .service-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+
+        .price-container {
+            background: var(--price-bg);
+            padding: 1rem;
+            border-radius: 10px;
+            margin-top: 1rem;
+        }
+
+        .price-label {
+            font-size: 0.9rem;
+            color: var(--text-color);
+            opacity: 0.8;
+        }
+
+        .service-price {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--secondary-color);
+        }
+
+        .terms-section, .payment-section, .error-section {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+            margin-top: 2rem;
+            display: none;
+        }
+
+        .terms-content {
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 1rem;
+            border: 1px solid #eee;
+            border-radius: 10px;
+            margin: 1rem 0;
+            text-align: left;
+        }
+
+        .signature-pad {
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            margin: 1rem 0;
+            cursor: crosshair;
+        }
+
+        .payment-methods {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .payment-method {
+            background: var(--light-bg);
+            border-radius: 10px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .payment-method:hover {
+            background: var(--secondary-color);
+            color: white;
+        }
+
+        .payment-method.selected {
+            background: var(--secondary-color);
+            color: white;
+        }
+
+        .ticket-display {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin: 2rem 0;
+        }
+
+        .btn-action {
+            background: var(--accent-color);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            margin: 0.5rem;
+        }
+
+        .btn-action:hover {
+            background: #27AE60;
+        }
+
+        .btn-secondary {
+            background: var(--secondary-color);
+        }
+
+        .btn-secondary:hover {
+            background: #2980b9;
+        }
+
+        .btn-danger {
+            background: var(--danger-color);
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .success-section {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+            margin-top: 2rem;
+            display: none;
+        }
+
+        .success-icon {
+            font-size: 4rem;
+            color: var(--success-color);
+            margin-bottom: 1rem;
+        }
+
+        .error-icon {
+            font-size: 4rem;
+            color: var(--danger-color);
+            margin-bottom: 1rem;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .row.equal-height {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 2rem;
+        }
+
+        .col-md-4 {
+            flex: 1;
+            min-width: 300px;
+            max-width: 400px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <h1 class="section-title">Escolha seu Serviço</h1>
+        
+        <!-- Seleção de Serviço -->
+        <div id="service-selection" class="row equal-height fade-in">
+            <div class="col-md-4 d-flex justify-content-center">
+                <div class="service-card" onclick="selectService('banheira_gelo')">
+                    <div class="service-icon">
+                        <i class="fas fa-snowflake"></i>
+                    </div>
+                    <h3 class="service-title">Banheira de Gelo</h3>
+                    <div class="price-container">
+                        <div class="price-label">Valor do Serviço</div>
+                        <div class="service-price">R$ 50,00</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 d-flex justify-content-center">
+                <div class="service-card" onclick="selectService('bota_compressao')">
+                    <div class="service-icon">
+                        <i class="fas fa-shoe-prints"></i>
+                    </div>
+                    <h3 class="service-title">Bota de Compressão</h3>
+                    <div class="price-container">
+                        <div class="price-label">Valor do Serviço</div>
+                        <div class="service-price">R$ 30,00</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Termo de Consentimento -->
+        <div id="terms-section" class="terms-section">
+            <h2 class="mb-4">Termo de Consentimento</h2>
+            <div class="terms-content">
+                <p>Eu, abaixo assinado, declaro estar ciente e de acordo com os seguintes termos:</p>
+                <ol>
+                    <li>Estou ciente que o serviço escolhido tem duração de 10 minutos.</li>
+                    <li>Concordo em fornecer meus dados pessoais para fins de registro e segurança.</li>
+                    <li>Estou ciente que o pagamento é realizado no momento do atendimento.</li>
+                    <li>Entendo que devo aguardar minha senha ser chamada no painel.</li>
+                    <li>Concordo em seguir as instruções do operador durante o atendimento.</li>
+                </ol>
+                <p>Ao assinar este termo, declaro estar de acordo com todas as condições acima.</p>
+            </div>
+            <div class="signature-pad" id="signature-pad-container">
+                <canvas id="signature-canvas" width="500" height="120" style="width:100%;max-width:500px;height:120px;"></canvas>
+            </div>
+            <div class="mt-3">
+                <button class="btn btn-action" onclick="clearSignature()">
+                    <i class="fas fa-eraser"></i> Limpar Assinatura
+                </button>
+            </div>
+            <div class="mt-4">
+                <button class="btn btn-action" onclick="acceptTerms()">
+                    <i class="fas fa-check"></i> Aceitar e Continuar
+                </button>
+            </div>
+        </div>
+
+        <!-- Seleção de Forma de Pagamento -->
+        <div id="payment-section" class="payment-section">
+            <h2 class="mb-4">Selecione a Forma de Pagamento</h2>
+            <div class="payment-methods">
+                <div class="payment-method" onclick="selectPaymentMethod('credit')">
+                    <i class="fas fa-credit-card fa-2x mb-2"></i>
+                    <h4>Cartão de Crédito</h4>
+                </div>
+                <div class="payment-method" onclick="selectPaymentMethod('debit')">
+                    <i class="fas fa-credit-card fa-2x mb-2"></i>
+                    <h4>Cartão de Débito</h4>
+                </div>
+                <div class="payment-method" onclick="selectPaymentMethod('pix')">
+                    <i class="fas fa-qrcode fa-2x mb-2"></i>
+                    <h4>PIX</h4>
+                </div>
+            </div>
+            <div class="ticket-display">
+                Senha: <span id="ticket-number"></span>
+            </div>
+            <button class="btn btn-action" onclick="processPayment()">
+                <i class="fas fa-credit-card"></i>
+                Confirmar Pagamento
+            </button>
+        </div>
+
+        <!-- Seção de Erro -->
+        <div id="error-section" class="error-section">
+            <div class="error-icon">
+                <i class="fas fa-times-circle"></i>
+            </div>
+            <h2 class="text-danger mb-4">Erro no Pagamento</h2>
+            <p class="mb-4">Não foi possível processar o pagamento. Por favor, tente novamente ou escolha outra forma de pagamento.</p>
+            <div>
+                <button class="btn btn-action btn-secondary" onclick="retryPayment()">
+                    <i class="fas fa-redo"></i> Tentar Novamente
+                </button>
+                <button class="btn btn-action btn-danger" onclick="changePaymentMethod()">
+                    <i class="fas fa-exchange-alt"></i> Mudar Forma de Pagamento
+                </button>
+            </div>
+        </div>
+
+        <!-- Seção de Sucesso -->
+        <div id="success-section" class="success-section">
+            <div class="success-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <h2 class="text-success mb-4">Pagamento Confirmado!</h2>
+            <div class="ticket-display">
+                Sua senha: <span id="success-ticket-number"></span>
+            </div>
+            <p class="mt-4">Aguarde ser chamado no painel.</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <script>
+        let currentTicket = null;
+        let selectedPaymentMethod = null;
+        let signaturePad = null;
+        const ws = new WebSocket('ws://localhost:8000/ws');
+
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            if (data.type === 'ticket_paid' && data.ticket_id === currentTicket?.id) {
+                showSuccess();
+            }
+        };
+
+        // Inicializa o canvas de assinatura
+        window.onload = function() {
+            const canvas = document.getElementById('signature-canvas');
+            signaturePad = new SignaturePad(canvas, {
+                backgroundColor: 'rgb(255, 255, 255)'
+            });
+        };
+
+        function clearSignature() {
+            signaturePad.clear();
+        }
+
+        async function selectService(serviceId) {
+            try {
+                const response = await fetch(`http://localhost:8000/tickets?service_id=${serviceId}`, {
+                    method: 'POST'
+                });
+                currentTicket = await response.json();
+                
+                // Mostra seção de termos
+                document.getElementById('service-selection').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('service-selection').style.display = 'none';
+                    document.getElementById('terms-section').style.display = 'block';
+                    document.getElementById('terms-section').style.opacity = '0';
+                    setTimeout(() => {
+                        document.getElementById('terms-section').style.opacity = '1';
+                    }, 50);
+                }, 300);
+            } catch (error) {
+                console.error('Erro ao criar ticket:', error);
+                alert('Erro ao criar ticket. Tente novamente.');
+            }
+        }
+
+        async function acceptTerms() {
+            if (signaturePad.isEmpty()) {
+                alert('Por favor, assine o termo de consentimento.');
+                return;
+            }
+            // Envia assinatura para o backend
+            try {
+                const response = await fetch(`http://localhost:8000/tickets/${currentTicket.id}/accept-terms`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        signature_data: signaturePad.toDataURL()
+                    })
+                });
+                if (!response.ok) {
+                    throw new Error('Erro ao aceitar os termos');
+                }
+                // Mostra seção de pagamento
+                document.getElementById('terms-section').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('terms-section').style.display = 'none';
+                    document.getElementById('payment-section').style.display = 'block';
+                    document.getElementById('payment-section').style.opacity = '0';
+                    setTimeout(() => {
+                        document.getElementById('payment-section').style.opacity = '1';
+                    }, 50);
+                }, 300);
+                document.getElementById('ticket-number').textContent = 
+                    currentTicket.id.toString().padStart(3, '0');
+            } catch (error) {
+                alert('Erro ao aceitar os termos. Tente novamente.');
+            }
+        }
+
+        function selectPaymentMethod(method) {
+            selectedPaymentMethod = method;
+            // Remove seleção anterior
+            document.querySelectorAll('.payment-method').forEach(el => {
+                el.classList.remove('selected');
+            });
+            // Adiciona seleção atual
+            event.currentTarget.classList.add('selected');
+        }
+
+        async function processPayment() {
+            if (!selectedPaymentMethod) {
+                alert('Por favor, selecione uma forma de pagamento.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://localhost:8000/tickets/${currentTicket.id}/pay`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        payment_method: selectedPaymentMethod
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.status === 'waiting') {
+                    showSuccess();
+                } else {
+                    showError();
+                }
+            } catch (error) {
+                console.error('Erro ao processar pagamento:', error);
+                showError();
+            }
+        }
+
+        function showError() {
+            document.getElementById('payment-section').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('payment-section').style.display = 'none';
+                document.getElementById('error-section').style.display = 'block';
+                document.getElementById('error-section').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('error-section').style.opacity = '1';
+                }, 50);
+            }, 300);
+        }
+
+        function retryPayment() {
+            document.getElementById('error-section').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('error-section').style.display = 'none';
+                document.getElementById('payment-section').style.display = 'block';
+                document.getElementById('payment-section').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('payment-section').style.opacity = '1';
+                }, 50);
+            }, 300);
+        }
+
+        function changePaymentMethod() {
+            selectedPaymentMethod = null;
+            document.querySelectorAll('.payment-method').forEach(el => {
+                el.classList.remove('selected');
+            });
+            retryPayment();
+        }
+
+        function showSuccess() {
+            document.getElementById('payment-section').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('payment-section').style.display = 'none';
+                document.getElementById('success-section').style.display = 'block';
+                document.getElementById('success-section').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('success-section').style.opacity = '1';
+                }, 50);
+            }, 300);
+            
+            document.getElementById('success-ticket-number').textContent = 
+                currentTicket.id.toString().padStart(3, '0');
+        }
+    </script>
+</body>
+</html> 
