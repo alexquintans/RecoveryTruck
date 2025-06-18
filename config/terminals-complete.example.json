@@ -1,0 +1,327 @@
+{
+  "// 🏭 CONFIGURAÇÃO COMPLETA DE TERMINAIS": "Todos os terminais implementados com PIX",
+  "// 📋 TERMINAIS DISPONÍVEIS": "mock, stone, sicredi, pagseguro, mercadopago, safrapay, pagbank",
+  "// 🆕 PIX SUPORTADO": "stone, sicredi, pagseguro, mercadopago, pagbank",
+  "// 🔧 MODALIDADES ESPECÍFICAS": "Configurações detalhadas por método de pagamento",
+  
+  "mock_terminal": {
+    "type": "mock",
+    "connection_type": "mock",
+    "timeout": 30,
+    "retry_attempts": 3,
+    "description": "🧪 Terminal Mock - Para testes e desenvolvimento"
+  },
+  
+  "stone_terminal_complete": {
+    "type": "stone",
+    "connection_type": "serial",
+    "port": "COM1",
+    "baudrate": 9600,
+    "timeout": 30,
+    "retry_attempts": 3,
+    "stone": {
+      "merchant_id": "STONE_MERCHANT_ID",
+      "terminal_id": "STONE_TERMINAL_ID",
+      "pix": {
+        "pix_key": "STONE_PIX_KEY",
+        "merchant_name": "Estabelecimento Stone",
+        "merchant_city": "São Paulo",
+        "timeout": 300
+      }
+    },
+    "payment_method_configs": {
+      "credit_card": {
+        "max_installments": 12,
+        "min_amount_for_installments": 50.0,
+        "brands_accepted": ["visa", "mastercard", "elo", "amex"],
+        "allow_contactless": true,
+        "require_signature_above": 50.0
+      },
+      "debit_card": {
+        "require_password": true,
+        "max_amount": 5000.0,
+        "allow_contactless": true,
+        "contactless_limit": 200.0
+      },
+      "pix": {
+        "require_cpf_validation": true,
+        "expiration_minutes": 30,
+        "allow_change": false,
+        "min_amount": 0.01,
+        "max_amount": 50000.0,
+        "auto_confirm": true,
+        "qr_code_format": "base64"
+      },
+      "contactless": {
+        "max_amount": 200.0,
+        "require_pin_above": 50.0,
+        "supported_technologies": ["nfc", "rfid"]
+      }
+    },
+    "description": "💎 Stone Terminal - Integração completa com hardware Stone + PIX + Configurações Específicas"
+  },
+  
+  "sicredi_terminal_complete": {
+    "type": "sicredi",
+    "connection_type": "serial",
+    "port": "COM1",
+    "baudrate": 9600,
+    "timeout": 30,
+    "retry_attempts": 3,
+    "sicredi": {
+      "merchant_id": "123456789012345",
+      "terminal_id": "RECOVERY1",
+      "pos_id": "001",
+      "pix": {
+        "pix_key": "SICREDI_PIX_KEY",
+        "merchant_name": "Estabelecimento Sicredi",
+        "merchant_city": "Porto Alegre",
+        "timeout": 300
+      }
+    },
+    "payment_method_configs": {
+      "credit_card": {
+        "max_installments": 10,
+        "min_amount_for_installments": 30.0,
+        "brands_accepted": ["visa", "mastercard", "elo"],
+        "allow_contactless": true,
+        "require_signature_above": 100.0
+      },
+      "debit_card": {
+        "require_password": true,
+        "max_amount": 3000.0,
+        "allow_contactless": true,
+        "contactless_limit": 150.0
+      },
+      "pix": {
+        "require_cpf_validation": true,
+        "expiration_minutes": 15,
+        "allow_change": false,
+        "min_amount": 1.0,
+        "max_amount": 25000.0,
+        "auto_confirm": true,
+        "qr_code_format": "base64"
+      },
+      "contactless": {
+        "max_amount": 150.0,
+        "require_pin_above": 30.0,
+        "supported_technologies": ["nfc"]
+      },
+      "voucher": {
+        "types_accepted": ["meal", "food"],
+        "require_cpf": true,
+        "max_amount": 500.0,
+        "validate_balance": true
+      }
+    },
+    "description": "🏦 Sicredi Terminal - Integração nativa com maquininhas Sicredi + PIX + Vouchers Configurados"
+  },
+  
+  "pagseguro_terminal_complete": {
+    "type": "pagseguro",
+    "connection_type": "serial",
+    "port": "COM1",
+    "baudrate": 115200,
+    "timeout": 30,
+    "retry_attempts": 3,
+    "pagseguro": {
+      "merchant_id": "PAGSEGURO_MERCHANT_ID",
+      "terminal_id": "PAGSEGURO_TERMINAL_ID",
+      "api_key": "PAGSEGURO_API_KEY"
+    },
+    "payment_method_configs": {
+      "credit_card": {
+        "max_installments": 18,
+        "min_amount_for_installments": 20.0,
+        "brands_accepted": ["visa", "mastercard", "elo", "amex", "hipercard"],
+        "allow_contactless": true,
+        "require_signature_above": 30.0
+      },
+      "debit_card": {
+        "require_password": true,
+        "max_amount": 10000.0,
+        "allow_contactless": true,
+        "contactless_limit": 300.0
+      },
+      "pix": {
+        "require_cpf_validation": false,
+        "expiration_minutes": 60,
+        "allow_change": true,
+        "min_amount": 0.01,
+        "max_amount": 100000.0,
+        "auto_confirm": true,
+        "qr_code_format": "base64"
+      },
+      "contactless": {
+        "max_amount": 300.0,
+        "require_pin_above": 100.0,
+        "supported_technologies": ["nfc", "rfid"]
+      },
+      "voucher": {
+        "types_accepted": ["meal", "food", "fuel"],
+        "require_cpf": false,
+        "max_amount": 2000.0,
+        "validate_balance": true
+      },
+      "boleto": {
+        "days_to_expire": 5,
+        "fine_percentage": 2.5,
+        "interest_per_day": 0.05,
+        "min_amount": 10.0,
+        "max_amount": 50000.0,
+        "allow_discount": true
+      }
+    },
+    "description": "💳 PagSeguro Terminal - Suporte completo incluindo PIX + Boleto + Todas as Modalidades"
+  },
+  
+  "mercadopago_terminal": {
+    "type": "mercadopago",
+    "connection_type": "usb",
+    "vendor_id": "0x0B05",
+    "product_id": "0x4500",
+    "timeout": 30,
+    "retry_attempts": 3,
+    "mercadopago": {
+      "access_token": "MERCADOPAGO_ACCESS_TOKEN",
+      "user_id": "MERCADOPAGO_USER_ID",
+      "pos_id": "MERCADOPAGO_POS_ID",
+      "store_id": "MERCADOPAGO_STORE_ID"
+    },
+    "description": "🏪 MercadoPago Terminal - Point com PIX avançado"
+  },
+  
+  "safrapay_terminal": {
+    "type": "safrapay",
+    "connection_type": "serial",
+    "port": "COM1",
+    "baudrate": 9600,
+    "timeout": 30,
+    "retry_attempts": 3,
+    "safrapay": {
+      "merchant_id": "SAFRAPAY_MERCHANT_ID",
+      "terminal_id": "SAFRAPAY_TERMINAL_ID",
+      "establishment_code": "SAFRAPAY_ESTABLISHMENT_CODE",
+      "api_key": "SAFRAPAY_API_KEY"
+    },
+    "description": "💰 SafraPay Terminal - Especializado em vouchers"
+  },
+  
+  "pagbank_terminal": {
+    "type": "pagbank",
+    "connection_type": "usb",
+    "vendor_id": "0x1234",
+    "product_id": "0x5678",
+    "timeout": 30,
+    "retry_attempts": 3,
+    "pagbank": {
+      "merchant_id": "PAGBANK_MERCHANT_ID",
+      "terminal_id": "PAGBANK_TERMINAL_ID",
+      "establishment_id": "PAGBANK_ESTABLISHMENT_ID",
+      "access_token": "PAGBANK_ACCESS_TOKEN"
+    },
+    "description": "🏦 PagBank Terminal - Moderninha com PIX otimizado"
+  },
+  
+  "// 🔧 CONFIGURAÇÕES AVANÇADAS": {
+    "connection_types": {
+      "serial": "Conexão via porta serial/USB (COM1, /dev/ttyUSB0)",
+      "tcp": "Conexão via rede TCP/IP",
+      "bluetooth": "Conexão via Bluetooth",
+      "usb": "Conexão USB direta com PyUSB",
+      "mock": "Conexão simulada para testes"
+    },
+    
+    "payment_methods": {
+      "credit_card": "Cartão de crédito",
+      "debit_card": "Cartão de débito",
+      "pix": "PIX (disponível em Stone, Sicredi, PagSeguro, MercadoPago, PagBank)",
+      "contactless": "Pagamento por aproximação",
+      "voucher": "Voucher alimentação/refeição",
+      "boleto": "Boleto bancário"
+    },
+    
+    "baudrates": {
+      "stone": 9600,
+      "sicredi": 9600,
+      "pagseguro": 115200,
+      "safrapay": 9600,
+      "others": "Varia por terminal"
+    },
+    
+    "pix_configuration": {
+      "pix_key": "Chave PIX do estabelecimento (CPF, CNPJ, email, telefone ou chave aleatória)",
+      "merchant_name": "Nome do estabelecimento que aparecerá no PIX",
+      "merchant_city": "Cidade do estabelecimento",
+      "timeout": "Tempo limite para pagamento PIX em segundos (padrão: 300 = 5 minutos)"
+    },
+    
+    "payment_method_specific_configs": {
+      "credit_card": {
+        "max_installments": "Número máximo de parcelas permitidas",
+        "min_amount_for_installments": "Valor mínimo para permitir parcelamento",
+        "brands_accepted": "Lista de bandeiras aceitas",
+        "allow_contactless": "Permite pagamento por aproximação",
+        "require_signature_above": "Valor acima do qual exige assinatura"
+      },
+      "debit_card": {
+        "require_password": "Exige senha para débito",
+        "max_amount": "Valor máximo para débito",
+        "allow_contactless": "Permite débito por aproximação",
+        "contactless_limit": "Limite para débito contactless"
+      },
+      "pix": {
+        "require_cpf_validation": "Exige validação de CPF",
+        "expiration_minutes": "Tempo de expiração do PIX em minutos",
+        "allow_change": "Permite troco no PIX",
+        "min_amount": "Valor mínimo para PIX",
+        "max_amount": "Valor máximo para PIX",
+        "auto_confirm": "Confirmação automática",
+        "qr_code_format": "Formato do QR Code"
+      },
+      "contactless": {
+        "max_amount": "Valor máximo para aproximação",
+        "require_pin_above": "Valor acima do qual exige PIN",
+        "supported_technologies": "Tecnologias suportadas"
+      },
+      "voucher": {
+        "types_accepted": "Tipos de voucher aceitos",
+        "require_cpf": "Exige CPF para voucher",
+        "max_amount": "Valor máximo para voucher",
+        "validate_balance": "Valida saldo do voucher"
+      },
+      "boleto": {
+        "days_to_expire": "Dias para vencimento",
+        "fine_percentage": "Percentual de multa",
+        "interest_per_day": "Juros por dia de atraso",
+        "min_amount": "Valor mínimo para boleto",
+        "max_amount": "Valor máximo para boleto",
+        "allow_discount": "Permite desconto"
+      }
+    }
+  },
+  
+  "// 🚀 CONFIGURAÇÃO RÁPIDA": {
+    "development": "Use mock_terminal para desenvolvimento",
+    "production": "Configure o terminal específico do seu cliente",
+    "testing": "Use mock_terminal com cenários determinísticos",
+    "pix_setup": "Configure pix_key nos terminais Stone e Sicredi para habilitar PIX",
+    "payment_configs": "Use payment_method_configs para configurar modalidades específicas"
+  },
+  
+  "// 📝 VARIÁVEIS DE AMBIENTE": {
+    "TERMINAL_TYPE": "Tipo do terminal (mock, stone, sicredi, etc.)",
+    "TERMINAL_CONNECTION": "Tipo de conexão (serial, tcp, bluetooth, usb)",
+    "TERMINAL_PORT": "Porta de conexão (COM1, /dev/ttyUSB0, etc.)",
+    "TERMINAL_BAUDRATE": "Taxa de transmissão (9600, 115200, etc.)",
+    "TERMINAL_TIMEOUT": "Timeout em segundos (padrão: 30)",
+    "TERMINAL_RETRY_ATTEMPTS": "Tentativas de reconexão (padrão: 3)",
+    "PIX_KEY": "Chave PIX do estabelecimento",
+    "PIX_MERCHANT_NAME": "Nome do estabelecimento para PIX",
+    "PIX_MERCHANT_CITY": "Cidade do estabelecimento para PIX",
+    "PIX_TIMEOUT": "Timeout PIX em segundos (padrão: 300)",
+    "CREDIT_CARD_MAX_INSTALLMENTS": "Máximo de parcelas para cartão",
+    "PIX_REQUIRE_CPF": "Exigir CPF para PIX (true/false)",
+    "VOUCHER_TYPES": "Tipos de voucher aceitos (meal,food,fuel)"
+  }
+} 

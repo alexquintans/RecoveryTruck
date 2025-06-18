@@ -1,0 +1,339 @@
+{
+  "sicredi_terminal_configurations": {
+    "development": {
+      "type": "sicredi",
+      "connection_type": "serial",
+      "port": "COM1",
+      "baudrate": 9600,
+      "timeout": 30,
+      "retry_attempts": 3,
+      "sicredi": {
+        "merchant_id": "000000000000001",
+        "terminal_id": "SICR0001",
+        "pos_id": "001"
+      }
+    },
+    "production_serial": {
+      "type": "sicredi",
+      "connection_type": "serial",
+      "port": "/dev/ttyUSB0",
+      "baudrate": 9600,
+      "bytesize": 8,
+      "parity": "N",
+      "stopbits": 1,
+      "timeout": 30,
+      "retry_attempts": 3,
+      "sicredi": {
+        "merchant_id": "123456789012345",
+        "terminal_id": "RECOVERY1",
+        "pos_id": "001"
+      }
+    },
+    "production_tcp": {
+      "type": "sicredi",
+      "connection_type": "tcp",
+      "host": "192.168.1.100",
+      "tcp_port": 8080,
+      "timeout": 30,
+      "retry_attempts": 3,
+      "sicredi": {
+        "merchant_id": "123456789012345",
+        "terminal_id": "RECOVERY1",
+        "pos_id": "001"
+      }
+    },
+    "production_bluetooth": {
+      "type": "sicredi",
+      "connection_type": "bluetooth",
+      "bluetooth_address": "00:11:22:33:44:55",
+      "bluetooth_port": 1,
+      "timeout": 30,
+      "retry_attempts": 3,
+      "sicredi": {
+        "merchant_id": "123456789012345",
+        "terminal_id": "RECOVERY1",
+        "pos_id": "001"
+      }
+    }
+  },
+  "environment_variables": {
+    "TERMINAL_TYPE": "sicredi",
+    "TERMINAL_CONNECTION": "serial",
+    "TERMINAL_PORT": "COM1",
+    "TERMINAL_BAUDRATE": "9600",
+    "TERMINAL_TIMEOUT": "30",
+    "SICREDI_MERCHANT_ID": "123456789012345",
+    "SICREDI_TERMINAL_ID": "RECOVERY1",
+    "SICREDI_POS_ID": "001"
+  },
+  "api_configuration_examples": {
+    "configure_sicredi_serial": {
+      "method": "POST",
+      "url": "/terminals/configure",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer YOUR_TOKEN"
+      },
+      "body": {
+        "type": "sicredi",
+        "connection_type": "serial",
+        "port": "COM1",
+        "baudrate": 9600,
+        "timeout": 30,
+        "sicredi": {
+          "merchant_id": "123456789012345",
+          "terminal_id": "RECOVERY1",
+          "pos_id": "001"
+        }
+      }
+    },
+    "configure_sicredi_tcp": {
+      "method": "POST",
+      "url": "/terminals/configure",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer YOUR_TOKEN"
+      },
+      "body": {
+        "type": "sicredi",
+        "connection_type": "tcp",
+        "host": "192.168.1.100",
+        "tcp_port": 8080,
+        "timeout": 30,
+        "sicredi": {
+          "merchant_id": "123456789012345",
+          "terminal_id": "RECOVERY1",
+          "pos_id": "001"
+        }
+      }
+    }
+  },
+  "transaction_examples": {
+    "credit_card_installments": {
+      "method": "POST",
+      "url": "/terminals/transaction",
+      "body": {
+        "amount": 50.00,
+        "payment_method": "credit_card",
+        "installments": 3,
+        "description": "Banheira de Gelo - 45min",
+        "customer_name": "João Silva",
+        "customer_document": "12345678901"
+      }
+    },
+    "debit_card": {
+      "method": "POST",
+      "url": "/terminals/transaction",
+      "body": {
+        "amount": 25.50,
+        "payment_method": "debit_card",
+        "installments": 1,
+        "description": "Bota de Compressão - 30min",
+        "customer_name": "Maria Santos"
+      }
+    },
+    "contactless": {
+      "method": "POST",
+      "url": "/terminals/transaction",
+      "body": {
+        "amount": 15.00,
+        "payment_method": "contactless",
+        "installments": 1,
+        "description": "Serviço Express"
+      }
+    }
+  },
+  "sicredi_specific_features": {
+    "supported_payment_methods": [
+      "credit_card",
+      "debit_card", 
+      "contactless",
+      "voucher"
+    ],
+    "card_types": {
+      "01": "Débito",
+      "02": "Crédito à vista",
+      "03": "Crédito parcelado loja",
+      "04": "Crédito parcelado administradora"
+    },
+    "response_codes": {
+      "00": "Transação aprovada",
+      "01": "Transação negada",
+      "02": "Cartão inválido",
+      "03": "Senha incorreta",
+      "04": "Cartão vencido",
+      "05": "Saldo insuficiente",
+      "06": "Transação cancelada pelo usuário",
+      "07": "Erro de comunicação",
+      "08": "Timeout",
+      "09": "Terminal ocupado",
+      "10": "Erro interno do terminal"
+    },
+    "communication_protocol": {
+      "format": "STX + HEADER + DATA + LRC + ETX",
+      "stx": "0x02",
+      "etx": "0x03",
+      "lrc": "Longitudinal Redundancy Check",
+      "baudrate": 9600,
+      "data_bits": 8,
+      "parity": "None",
+      "stop_bits": 1
+    }
+  },
+  "docker_compose_examples": {
+    "sicredi_serial": {
+      "services": {
+        "api": {
+          "environment": [
+            "TERMINAL_TYPE=sicredi",
+            "TERMINAL_CONNECTION=serial",
+            "TERMINAL_PORT=/dev/ttyUSB0",
+            "TERMINAL_BAUDRATE=9600",
+            "SICREDI_MERCHANT_ID=123456789012345",
+            "SICREDI_TERMINAL_ID=RECOVERY1",
+            "SICREDI_POS_ID=001"
+          ],
+          "devices": [
+            "/dev/ttyUSB0:/dev/ttyUSB0"
+          ],
+          "privileged": true
+        }
+      }
+    },
+    "sicredi_tcp": {
+      "services": {
+        "api": {
+          "environment": [
+            "TERMINAL_TYPE=sicredi",
+            "TERMINAL_CONNECTION=tcp",
+            "TERMINAL_HOST=192.168.1.100",
+            "TERMINAL_TCP_PORT=8080",
+            "SICREDI_MERCHANT_ID=123456789012345",
+            "SICREDI_TERMINAL_ID=RECOVERY1"
+          ]
+        }
+      }
+    }
+  },
+  "troubleshooting": {
+    "common_issues": {
+      "connection_failed": {
+        "symptoms": ["Terminal not connecting", "Communication timeout"],
+        "solutions": [
+          "Verificar cabo serial conectado",
+          "Verificar porta correta (COM1, /dev/ttyUSB0)",
+          "Verificar baudrate 9600 (padrão Sicredi)",
+          "Verificar se terminal está ligado",
+          "Testar com outro cabo serial"
+        ]
+      },
+      "invalid_merchant_id": {
+        "symptoms": ["Initialization rejected", "Authentication failed"],
+        "solutions": [
+          "Verificar merchant_id correto (15 dígitos)",
+          "Verificar terminal_id correto (8 caracteres)",
+          "Contatar Sicredi para validar credenciais",
+          "Verificar se terminal está habilitado"
+        ]
+      },
+      "transaction_declined": {
+        "symptoms": ["All transactions declined", "Error code 01"],
+        "solutions": [
+          "Verificar se cartão está válido",
+          "Verificar saldo/limite do cartão",
+          "Tentar com outro cartão",
+          "Verificar se terminal está online"
+        ]
+      },
+      "lrc_error": {
+        "symptoms": ["Communication error", "Invalid response"],
+        "solutions": [
+          "Verificar integridade do cabo",
+          "Verificar interferência elétrica",
+          "Tentar reduzir baudrate",
+          "Verificar aterramento do equipamento"
+        ]
+      }
+    },
+    "diagnostic_commands": {
+      "test_serial_connection": {
+        "linux": "sudo minicom -D /dev/ttyUSB0 -b 9600",
+        "windows": "mode COM1: BAUD=9600 PARITY=n DATA=8 STOP=1",
+        "description": "Testa conexão serial básica"
+      },
+      "check_terminal_response": {
+        "command": "echo -e '\\x02\\x30\\x30\\x30\\x03' > /dev/ttyUSB0",
+        "description": "Envia comando básico para terminal"
+      }
+    }
+  },
+  "integration_steps": {
+    "step_1": {
+      "title": "Configurar Hardware",
+      "description": "Conectar terminal Sicredi via cabo serial/USB",
+      "actions": [
+        "Conectar cabo serial do terminal ao computador",
+        "Verificar se terminal está ligado",
+        "Identificar porta serial (COM1, /dev/ttyUSB0)",
+        "Testar comunicação básica"
+      ]
+    },
+    "step_2": {
+      "title": "Configurar Credenciais",
+      "description": "Obter credenciais do Sicredi",
+      "actions": [
+        "Solicitar merchant_id ao Sicredi",
+        "Definir terminal_id único",
+        "Configurar pos_id (geralmente 001)",
+        "Testar credenciais com Sicredi"
+      ]
+    },
+    "step_3": {
+      "title": "Configurar Sistema",
+      "description": "Configurar terminal no sistema RecoveryTruck",
+      "actions": [
+        "Usar endpoint POST /terminals/configure",
+        "Definir type: 'sicredi'",
+        "Configurar connection_type e porta",
+        "Adicionar credenciais Sicredi"
+      ]
+    },
+    "step_4": {
+      "title": "Testar Integração",
+      "description": "Realizar transações de teste",
+      "actions": [
+        "Verificar status: GET /terminals/status",
+        "Fazer transação teste: POST /terminals/transaction",
+        "Verificar comprovante: POST /terminals/transaction/{id}/print",
+        "Testar cancelamento se necessário"
+      ]
+    }
+  },
+  "production_checklist": {
+    "hardware": [
+      "✓ Terminal Sicredi conectado e funcionando",
+      "✓ Cabo serial/USB de qualidade",
+      "✓ Fonte de alimentação estável",
+      "✓ Aterramento adequado"
+    ],
+    "software": [
+      "✓ Driver serial instalado",
+      "✓ Permissões de acesso à porta serial",
+      "✓ Configuração de firewall (se TCP)",
+      "✓ Logs habilitados para debug"
+    ],
+    "credentials": [
+      "✓ Merchant ID válido do Sicredi",
+      "✓ Terminal ID único configurado",
+      "✓ POS ID definido",
+      "✓ Terminal habilitado pelo Sicredi"
+    ],
+    "testing": [
+      "✓ Transação de débito testada",
+      "✓ Transação de crédito à vista testada",
+      "✓ Transação parcelada testada",
+      "✓ Cancelamento testado",
+      "✓ Impressão de comprovante testada"
+    ]
+  }
+} 

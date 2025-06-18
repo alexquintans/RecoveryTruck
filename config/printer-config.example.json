@@ -1,0 +1,290 @@
+{
+  "printer_configurations": {
+    "thermal_usb": {
+      "description": "Impressora térmica USB (mais comum em PDVs)",
+      "config": {
+        "printer": {
+          "enabled": true,
+          "name": "Thermal Printer USB",
+          "type": "thermal",
+          "connection": "windows_driver",
+          "paper_width": 80,
+          "chars_per_line": 48,
+          "encoding": "cp850",
+          "cut_paper": true,
+          "beep": true,
+          "open_drawer": false
+        }
+      }
+    },
+    
+    "thermal_serial": {
+      "description": "Impressora térmica serial (COM port)",
+      "config": {
+        "printer": {
+          "enabled": true,
+          "name": "Thermal Printer Serial",
+          "type": "thermal",
+          "connection": "serial",
+          "port": "COM1",
+          "baudrate": 9600,
+          "paper_width": 80,
+          "chars_per_line": 48,
+          "encoding": "cp850",
+          "cut_paper": true,
+          "beep": false,
+          "open_drawer": true
+        }
+      }
+    },
+    
+    "thermal_network": {
+      "description": "Impressora térmica de rede (TCP/IP)",
+      "config": {
+        "printer": {
+          "enabled": true,
+          "name": "Thermal Printer Network",
+          "type": "thermal",
+          "connection": "network",
+          "ip_address": "192.168.1.100",
+          "tcp_port": 9100,
+          "paper_width": 80,
+          "chars_per_line": 48,
+          "encoding": "cp850",
+          "cut_paper": true,
+          "beep": false
+        }
+      }
+    },
+    
+    "laser_printer": {
+      "description": "Impressora laser/jato de tinta padrão",
+      "config": {
+        "printer": {
+          "enabled": true,
+          "name": "HP LaserJet",
+          "type": "laser",
+          "connection": "windows_driver",
+          "paper_width": 210,
+          "chars_per_line": 80,
+          "encoding": "utf-8",
+          "cut_paper": false,
+          "beep": false
+        }
+      }
+    },
+    
+    "virtual_printer": {
+      "description": "Impressora virtual (salva em arquivo)",
+      "config": {
+        "printer": {
+          "enabled": true,
+          "name": "Virtual Printer",
+          "type": "virtual",
+          "connection": "file",
+          "paper_width": 80,
+          "chars_per_line": 48,
+          "encoding": "utf-8",
+          "cut_paper": false,
+          "beep": false
+        }
+      }
+    },
+    
+    "disabled_printer": {
+      "description": "Impressão desabilitada",
+      "config": {
+        "printer": {
+          "enabled": false
+        }
+      }
+    }
+  },
+  
+  "adapter_examples": {
+    "sicredi_with_thermal": {
+      "api_url": "https://api.sicredi.com.br/v1",
+      "api_key": "sk_live_xxxxxxxxxxxxx",
+      "merchant_id": "merchant_sicredi_123",
+      "merchant_name": "RecoveryTruck Sicredi",
+      "merchant_cnpj": "12345678901234",
+      "merchant_address": "Rua das Flores, 123 - São Paulo/SP",
+      "printer": {
+        "enabled": true,
+        "name": "Sicredi Thermal",
+        "type": "thermal",
+        "connection": "serial",
+        "port": "COM1",
+        "baudrate": 9600,
+        "paper_width": 80,
+        "chars_per_line": 48,
+        "encoding": "cp850",
+        "cut_paper": true,
+        "beep": true,
+        "open_drawer": true
+      }
+    },
+    
+    "stone_with_network": {
+      "api_url": "https://api.stone.com.br/v1",
+      "api_key": "sk_live_xxxxxxxxxxxxx",
+      "merchant_id": "merchant_stone_456",
+      "merchant_name": "RecoveryTruck Stone",
+      "merchant_cnpj": "12345678901234",
+      "merchant_address": "Av. Paulista, 1000 - São Paulo/SP",
+      "printer": {
+        "enabled": true,
+        "name": "Stone Network Printer",
+        "type": "thermal",
+        "connection": "network",
+        "ip_address": "192.168.1.100",
+        "tcp_port": 9100,
+        "paper_width": 80,
+        "chars_per_line": 48,
+        "encoding": "cp850",
+        "cut_paper": true,
+        "beep": false
+      }
+    },
+    
+    "pagseguro_with_usb": {
+      "api_url": "https://api.pagseguro.com/v1",
+      "api_key": "sk_live_xxxxxxxxxxxxx",
+      "merchant_id": "merchant_pagseguro_789",
+      "merchant_name": "RecoveryTruck PagSeguro",
+      "merchant_cnpj": "12345678901234",
+      "printer": {
+        "enabled": true,
+        "name": "PagSeguro USB Printer",
+        "type": "thermal",
+        "connection": "windows_driver",
+        "paper_width": 80,
+        "chars_per_line": 48,
+        "encoding": "cp850",
+        "cut_paper": true,
+        "beep": true
+      }
+    },
+    
+    "development_virtual": {
+      "api_url": "https://sandbox-api.stone.com.br/v1",
+      "api_key": "sk_test_xxxxxxxxxxxxx",
+      "merchant_id": "merchant_test_123",
+      "merchant_name": "RecoveryTruck Development",
+      "merchant_cnpj": "11111111111111",
+      "printer": {
+        "enabled": true,
+        "name": "Development Virtual",
+        "type": "virtual",
+        "connection": "file",
+        "paper_width": 80,
+        "chars_per_line": 48,
+        "encoding": "utf-8",
+        "cut_paper": false,
+        "beep": false
+      }
+    }
+  },
+  
+  "installation_guide": {
+    "windows": {
+      "thermal_printers": [
+        "1. Instalar driver da impressora térmica",
+        "2. Configurar porta COM ou USB",
+        "3. Testar impressão no Windows",
+        "4. Configurar no sistema usando 'windows_driver'"
+      ],
+      "network_printers": [
+        "1. Configurar IP fixo na impressora",
+        "2. Testar conectividade (ping)",
+        "3. Verificar porta TCP (geralmente 9100)",
+        "4. Configurar no sistema usando 'network'"
+      ]
+    },
+    
+    "linux": {
+      "thermal_printers": [
+        "1. sudo apt-get install cups",
+        "2. Configurar impressora no CUPS",
+        "3. Testar com lp comando",
+        "4. Configurar no sistema usando 'cups'"
+      ],
+      "serial_printers": [
+        "1. Verificar porta: ls /dev/ttyUSB*",
+        "2. Dar permissão: sudo chmod 666 /dev/ttyUSB0",
+        "3. Instalar pyserial: pip install pyserial",
+        "4. Configurar no sistema usando 'serial'"
+      ]
+    },
+    
+    "dependencies": {
+      "windows": [
+        "pip install pywin32  # Para impressão Windows",
+        "pip install pyserial  # Para impressão serial"
+      ],
+      "linux": [
+        "pip install pycups  # Para impressão CUPS",
+        "pip install pyserial  # Para impressão serial"
+      ],
+      "optional": [
+        "pip install pillow  # Para processamento de imagens",
+        "pip install qrcode  # Para geração de QR codes"
+      ]
+    }
+  },
+  
+  "troubleshooting": {
+    "common_issues": {
+      "printer_not_found": {
+        "description": "Impressora não encontrada",
+        "solutions": [
+          "Verificar se a impressora está ligada",
+          "Verificar conexão USB/Serial/Rede",
+          "Verificar se o driver está instalado",
+          "Testar impressão fora do sistema"
+        ]
+      },
+      
+      "encoding_issues": {
+        "description": "Caracteres especiais não imprimem corretamente",
+        "solutions": [
+          "Alterar encoding para 'cp850' (padrão Brasil)",
+          "Testar com 'utf-8' para impressoras modernas",
+          "Verificar configuração da impressora"
+        ]
+      },
+      
+      "paper_cutting": {
+        "description": "Papel não corta automaticamente",
+        "solutions": [
+          "Verificar se impressora suporta corte",
+          "Configurar 'cut_paper': true",
+          "Verificar comandos ESC/POS da impressora"
+        ]
+      },
+      
+      "network_timeout": {
+        "description": "Timeout na impressão via rede",
+        "solutions": [
+          "Verificar conectividade de rede",
+          "Aumentar timeout de conexão",
+          "Verificar firewall",
+          "Testar com telnet IP 9100"
+        ]
+      }
+    },
+    
+    "testing": {
+      "test_commands": [
+        "# Testar impressora Windows",
+        "python -c \"import win32print; print(win32print.GetDefaultPrinter())\"",
+        "",
+        "# Testar porta serial",
+        "python -c \"import serial; s=serial.Serial('COM1'); s.write(b'Test'); s.close()\"",
+        "",
+        "# Testar conectividade rede",
+        "telnet 192.168.1.100 9100"
+      ]
+    }
+  }
+} 

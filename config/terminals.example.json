@@ -1,0 +1,391 @@
+{
+  "terminals": {
+    "development": {
+      "default": {
+        "terminal": {
+          "type": "mock",
+          "simulate_delays": false,
+          "failure_rate": 0.0,
+          "connection_delay": 0.5,
+          "transaction_delay": 2.0,
+          "serial_number": "DEV001",
+          "model": "MockTerminal Dev",
+          "firmware_version": "1.0.0-dev"
+        }
+      }
+    },
+    "testing": {
+      "test_tenant_1": {
+        "terminal": {
+          "type": "mock",
+          "simulate_delays": true,
+          "failure_rate": 0.1,
+          "connection_delay": 1.0,
+          "transaction_delay": 3.0,
+          "serial_number": "TEST001"
+        }
+      },
+      "test_tenant_2": {
+        "terminal": {
+          "type": "mock",
+          "simulate_delays": false,
+          "failure_rate": 0.0,
+          "serial_number": "TEST002"
+        }
+      }
+    },
+    "production": {
+      "recovery_truck_sp": {
+        "terminal": {
+          "type": "stone",
+          "connection_type": "serial",
+          "port": "COM1",
+          "baudrate": 115200,
+          "timeout": 30,
+          "retry_attempts": 3,
+          "stone": {
+            "merchant_id": "123456789",
+            "terminal_id": "STONE_SP_001"
+          }
+        }
+      },
+      "recovery_truck_rj": {
+        "terminal": {
+          "type": "stone",
+          "connection_type": "tcp",
+          "host": "192.168.1.100",
+          "tcp_port": 8080,
+          "timeout": 30,
+          "stone": {
+            "merchant_id": "987654321",
+            "terminal_id": "STONE_RJ_001"
+          }
+        }
+      },
+      "recovery_truck_mg": {
+        "terminal": {
+          "type": "stone",
+          "connection_type": "bluetooth",
+          "bluetooth_address": "00:11:22:33:44:55",
+          "bluetooth_port": 1,
+          "timeout": 30,
+          "stone": {
+            "merchant_id": "456789123",
+            "terminal_id": "STONE_MG_001"
+          }
+        }
+      }
+    }
+  },
+  "environment_variables": {
+    "description": "Configurações via variáveis de ambiente",
+    "variables": {
+      "TERMINAL_TYPE": {
+        "description": "Tipo do terminal (mock, stone, sicredi)",
+        "default": "mock",
+        "examples": ["mock", "stone", "sicredi"]
+      },
+      "TERMINAL_CONNECTION": {
+        "description": "Tipo de conexão (serial, tcp, bluetooth, usb)",
+        "default": "serial",
+        "examples": ["serial", "tcp", "bluetooth", "usb"]
+      },
+      "TERMINAL_PORT": {
+        "description": "Porta serial",
+        "default": "COM1",
+        "examples": ["COM1", "COM2", "/dev/ttyUSB0", "/dev/ttyACM0"]
+      },
+      "TERMINAL_BAUDRATE": {
+        "description": "Taxa de transmissão serial",
+        "default": "115200",
+        "examples": ["9600", "19200", "38400", "57600", "115200"]
+      },
+      "TERMINAL_TIMEOUT": {
+        "description": "Timeout em segundos",
+        "default": "30",
+        "examples": ["15", "30", "60"]
+      },
+      "TERMINAL_HOST": {
+        "description": "Host TCP/IP",
+        "default": "192.168.1.100",
+        "examples": ["192.168.1.100", "10.0.0.50", "terminal.local"]
+      },
+      "TERMINAL_TCP_PORT": {
+        "description": "Porta TCP",
+        "default": "8080",
+        "examples": ["8080", "9100", "23"]
+      },
+      "TERMINAL_BLUETOOTH_ADDRESS": {
+        "description": "Endereço MAC Bluetooth",
+        "default": "00:11:22:33:44:55",
+        "examples": ["00:11:22:33:44:55", "AA:BB:CC:DD:EE:FF"]
+      },
+      "STONE_MERCHANT_ID": {
+        "description": "ID do lojista Stone",
+        "default": "123456789",
+        "examples": ["123456789", "987654321"]
+      },
+      "STONE_TERMINAL_ID": {
+        "description": "ID do terminal Stone",
+        "default": "TERM001",
+        "examples": ["TERM001", "STONE_SP_001", "RECOVERY_001"]
+      },
+      "TERMINAL_SIMULATE_DELAYS": {
+        "description": "Simular delays no mock (true/false)",
+        "default": "true",
+        "examples": ["true", "false"]
+      },
+      "TERMINAL_FAILURE_RATE": {
+        "description": "Taxa de falha do mock (0.0 a 1.0)",
+        "default": "0.1",
+        "examples": ["0.0", "0.1", "0.2", "0.5"]
+      }
+    }
+  },
+  "docker_compose_examples": {
+    "development": {
+      "services": {
+        "api": {
+          "environment": [
+            "TERMINAL_TYPE=mock",
+            "TERMINAL_SIMULATE_DELAYS=false",
+            "TERMINAL_FAILURE_RATE=0.0"
+          ]
+        }
+      }
+    },
+    "production_serial": {
+      "services": {
+        "api": {
+          "environment": [
+            "TERMINAL_TYPE=stone",
+            "TERMINAL_CONNECTION=serial",
+            "TERMINAL_PORT=/dev/ttyUSB0",
+            "TERMINAL_BAUDRATE=115200",
+            "STONE_MERCHANT_ID=123456789",
+            "STONE_TERMINAL_ID=RECOVERY_001"
+          ],
+          "devices": [
+            "/dev/ttyUSB0:/dev/ttyUSB0"
+          ],
+          "privileged": true
+        }
+      }
+    },
+    "production_tcp": {
+      "services": {
+        "api": {
+          "environment": [
+            "TERMINAL_TYPE=stone",
+            "TERMINAL_CONNECTION=tcp",
+            "TERMINAL_HOST=192.168.1.100",
+            "TERMINAL_TCP_PORT=8080",
+            "STONE_MERCHANT_ID=123456789",
+            "STONE_TERMINAL_ID=RECOVERY_001"
+          ]
+        }
+      }
+    },
+    "production_bluetooth": {
+      "services": {
+        "api": {
+          "environment": [
+            "TERMINAL_TYPE=stone",
+            "TERMINAL_CONNECTION=bluetooth",
+            "TERMINAL_BLUETOOTH_ADDRESS=00:11:22:33:44:55",
+            "STONE_MERCHANT_ID=123456789",
+            "STONE_TERMINAL_ID=RECOVERY_001"
+          ],
+          "privileged": true
+        }
+      }
+    }
+  },
+  "api_examples": {
+    "configure_mock_terminal": {
+      "method": "POST",
+      "url": "/terminals/configure",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer YOUR_TOKEN"
+      },
+      "body": {
+        "type": "mock",
+        "simulate_delays": false,
+        "failure_rate": 0.0
+      }
+    },
+    "configure_stone_serial": {
+      "method": "POST",
+      "url": "/terminals/configure",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer YOUR_TOKEN"
+      },
+      "body": {
+        "type": "stone",
+        "connection_type": "serial",
+        "port": "COM1",
+        "baudrate": 115200,
+        "timeout": 30,
+        "stone": {
+          "merchant_id": "123456789",
+          "terminal_id": "RECOVERY_001"
+        }
+      }
+    },
+    "configure_stone_tcp": {
+      "method": "POST",
+      "url": "/terminals/configure",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer YOUR_TOKEN"
+      },
+      "body": {
+        "type": "stone",
+        "connection_type": "tcp",
+        "host": "192.168.1.100",
+        "tcp_port": 8080,
+        "timeout": 30,
+        "stone": {
+          "merchant_id": "123456789",
+          "terminal_id": "RECOVERY_001"
+        }
+      }
+    },
+    "start_transaction": {
+      "method": "POST",
+      "url": "/terminals/transaction",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer YOUR_TOKEN"
+      },
+      "body": {
+        "amount": 25.50,
+        "payment_method": "credit_card",
+        "installments": 1,
+        "description": "Banheira de Gelo - 30min",
+        "customer_name": "João Silva",
+        "customer_document": "12345678901"
+      }
+    },
+    "get_transaction_status": {
+      "method": "GET",
+      "url": "/terminals/transaction/{transaction_id}",
+      "headers": {
+        "Authorization": "Bearer YOUR_TOKEN"
+      }
+    },
+    "cancel_transaction": {
+      "method": "POST",
+      "url": "/terminals/transaction/{transaction_id}/cancel",
+      "headers": {
+        "Authorization": "Bearer YOUR_TOKEN"
+      }
+    },
+    "print_receipt": {
+      "method": "POST",
+      "url": "/terminals/transaction/{transaction_id}/print?receipt_type=customer",
+      "headers": {
+        "Authorization": "Bearer YOUR_TOKEN"
+      }
+    },
+    "get_terminal_status": {
+      "method": "GET",
+      "url": "/terminals/status",
+      "headers": {
+        "Authorization": "Bearer YOUR_TOKEN"
+      }
+    },
+    "reset_terminal": {
+      "method": "POST",
+      "url": "/terminals/reset",
+      "headers": {
+        "Authorization": "Bearer YOUR_TOKEN"
+      }
+    }
+  },
+  "troubleshooting": {
+    "common_issues": {
+      "terminal_not_connecting": {
+        "symptoms": ["status: disconnected", "connection timeout"],
+        "solutions": [
+          "Verificar cabo USB/Serial conectado",
+          "Verificar porta correta (COM1, /dev/ttyUSB0)",
+          "Verificar baudrate (115200 é padrão)",
+          "Verificar permissões no Linux (sudo usermod -a -G dialout $USER)",
+          "Tentar reset: POST /terminals/reset"
+        ]
+      },
+      "transaction_timeout": {
+        "symptoms": ["status: timeout", "transaction não completa"],
+        "solutions": [
+          "Verificar conexão com terminal",
+          "Aumentar timeout na configuração",
+          "Verificar se cartão está inserido corretamente",
+          "Tentar cancelar e reiniciar transação"
+        ]
+      },
+      "permission_denied": {
+        "symptoms": ["Permission denied /dev/ttyUSB0"],
+        "solutions": [
+          "Linux: sudo usermod -a -G dialout $USER",
+          "Linux: sudo chmod 666 /dev/ttyUSB0",
+          "Docker: adicionar device mapping",
+          "Docker: usar privileged: true"
+        ]
+      },
+      "bluetooth_not_pairing": {
+        "symptoms": ["Bluetooth connection failed"],
+        "solutions": [
+          "Verificar se terminal está em modo pareamento",
+          "Verificar endereço MAC correto",
+          "Linux: sudo apt install bluez python3-bluez",
+          "Verificar se PyBluez está instalado"
+        ]
+      }
+    },
+    "diagnostic_commands": {
+      "check_serial_ports": {
+        "linux": "ls -la /dev/tty*",
+        "windows": "mode",
+        "description": "Lista portas seriais disponíveis"
+      },
+      "check_usb_devices": {
+        "linux": "lsusb",
+        "windows": "Get-PnpDevice -Class USB",
+        "description": "Lista dispositivos USB conectados"
+      },
+      "check_bluetooth": {
+        "linux": "hciconfig -a",
+        "windows": "Get-PnpDevice -Class Bluetooth",
+        "description": "Verifica adaptadores Bluetooth"
+      },
+      "test_serial_connection": {
+        "command": "python -c \"import serial; s=serial.Serial('/dev/ttyUSB0', 115200); print('OK')\"",
+        "description": "Testa conexão serial básica"
+      }
+    }
+  },
+  "dependencies": {
+    "required": [
+      "pyserial>=3.5",
+      "asyncio",
+      "pydantic"
+    ],
+    "optional": {
+      "bluetooth": [
+        "pybluez>=0.23"
+      ],
+      "usb": [
+        "pyusb>=1.2.1"
+      ]
+    },
+    "installation": {
+      "basic": "pip install pyserial",
+      "bluetooth": "pip install pybluez",
+      "usb": "pip install pyusb",
+      "all": "pip install pyserial pybluez pyusb"
+    }
+  }
+} 

@@ -1,0 +1,49 @@
+{
+  "short_name": "RecoveryTruck",
+  "name": "RecoveryTruck - Autoatendimento",
+  "description": "Sistema de autoatendimento para serviços de recuperação física",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "theme_color": "#1A3A4A",
+  "background_color": "#1A3A4A",
+  "prefer_related_applications": false,
+  "scope": "/",
+  "categories": ["business", "utilities"],
+  "screenshots": [
+    {
+      "src": "screenshot1.png",
+      "sizes": "1280x720",
+      "type": "image/png"
+    }
+  ],
+  "related_applications": [],
+  "shortcuts": [
+    {
+      "name": "Iniciar Atendimento",
+      "short_name": "Atendimento",
+      "description": "Iniciar um novo atendimento",
+      "url": "/?source=pwa",
+      "icons": [{ "src": "logo192.png", "sizes": "192x192" }]
+    }
+  ]
+} 

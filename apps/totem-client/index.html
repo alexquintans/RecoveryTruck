@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#1A3A4A" />
+    <meta name="description" content="Sistema de autoatendimento RecoveryTruck" />
+    
+    <!-- Meta tags para modo tela cheia em dispositivos móveis -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="RecoveryTruck" />
+    
+    <!-- Manifesto PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Ícones para iOS -->
+    <link rel="apple-touch-icon" href="/logo192.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/logo192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/logo192.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/logo192.png" />
+    
+    <!-- Tela de inicialização para iOS -->
+    <link rel="apple-touch-startup-image" href="/splash.png" />
+    
+    <!-- Fontes -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <title>RecoveryTruck - Autoatendimento</title>
+    
+    <script>
+      // Verificar se está rodando como PWA instalada
+      function checkPWAMode() {
+        // Métodos para verificar se está em modo standalone/PWA
+        const isStandalone = 
+          window.matchMedia('(display-mode: standalone)').matches || 
+          window.matchMedia('(display-mode: fullscreen)').matches ||
+          window.navigator.standalone === true;
+        
+        window.IS_PWA_MODE = isStandalone;
+        
+        // Forçar tela cheia em PWAs
+        if (isStandalone) {
+          console.log("PWA detectada! Modo tela cheia ativado automaticamente.");
+          
+          // Tentar entrar em tela cheia assim que possível
+          document.addEventListener('click', function tryFullscreen() {
+            if (document.documentElement.requestFullscreen) {
+              document.documentElement.requestFullscreen();
+            } else if (document.documentElement.webkitRequestFullscreen) {
+              document.documentElement.webkitRequestFullscreen();
+            } else if (document.documentElement.mozRequestFullScreen) {
+              document.documentElement.mozRequestFullScreen();
+            } else if (document.documentElement.msRequestFullscreen) {
+              document.documentElement.msRequestFullscreen();
+            }
+            document.removeEventListener('click', tryFullscreen);
+          }, { once: true });
+        }
+      }
+      
+      // Executar a verificação
+      checkPWAMode();
+      
+      // Verificar novamente quando o modo de exibição mudar
+      window.matchMedia('(display-mode: standalone)').addEventListener('change', (e) => {
+        window.IS_PWA_MODE = e.matches;
+        if (e.matches) {
+          console.log("Aplicação entrou em modo PWA");
+        }
+      });
+      
+      window.matchMedia('(display-mode: fullscreen)').addEventListener('change', (e) => {
+        if (e.matches) {
+          window.IS_PWA_MODE = true;
+          console.log("Aplicação entrou em modo tela cheia");
+        }
+      });
+    </script>
+    
+    <style>
+      /* Estilos para simular tela cheia em PWAs */
+      html, body {
+        height: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      
+      body {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+      }
+      
+      #root {
+        height: 100%;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html> 

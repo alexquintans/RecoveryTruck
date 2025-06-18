@@ -1,0 +1,21 @@
+================================================
+            COMPROVANTE DE PAGAMENTO
+================================================
+
+              RecoveryTruck Teste
+            CNPJ: 12.345.678/9012-34
+
+Data/Hora: 14/06/2025 19:02:45
+Transacao: TXN-MERCHANT-001
+Valor: R$ 99.99
+Modalidade: Cartao de Debito
+Status: APROVADA
+
+Bandeira: MASTERCARD
+Cartao: ****5678
+
+         *** VIA DO ESTABELECIMENTO ***
+
+================================================
+           Obrigado pela preferencia!
+================================================

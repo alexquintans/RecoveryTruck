@@ -1,0 +1,9 @@
+# Permitir acesso a todos os bots
+User-agent: *
+Allow: /
+
+# Desativar indexação de páginas administrativas
+Disallow: /admin
+
+# Sitemap
+Sitemap: https://seu-dominio.com.br/sitemap.xml 

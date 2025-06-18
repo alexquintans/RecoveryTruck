@@ -1,15 +1,20 @@
 import hmac
 import hashlib
 import json
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 import httpx
+import logging
 from .base import PaymentAdapter
 
+logger = logging.getLogger(__name__)
+
 class PagBankAdapter(PaymentAdapter):
-    """Adaptador para integração com PagBank (antigo PagSeguro)."""
+    """🏧 Adaptador para integração com PagBank com impressão completa"""
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: Dict[str, Any]):
         """Inicializa o adaptador com as configurações do tenant."""
+        super().__init__(config)  # Inicializa impressora
+        
         self.api_url = config.get("api_url", "https://api.pagbank.com.br/v1")
         self.api_key = config["api_key"]
         self.merchant_id = config["merchant_id"]
@@ -20,6 +25,8 @@ class PagBankAdapter(PaymentAdapter):
                 "Content-Type": "application/json"
             }
         )
+        
+        logger.info(f"🏧 PagBankAdapter initialized for merchant {self.merchant_id}")
     
     def _generate_signature(self, data: Dict) -> str:
         """Gera assinatura HMAC para autenticação."""
@@ -64,13 +71,27 @@ class PagBankAdapter(PaymentAdapter):
         
         return True
     
-    async def print_receipt(self, transaction_id: str) -> bool:
-        """Imprime o comprovante de uma transação."""
-        response = await self.client.get(f"/payments/{transaction_id}/receipt")
-        response.raise_for_status()
-        
-        # TODO: Implement printer integration
-        return True
+    async def _fetch_transaction_details(self, transaction_id: str) -> Dict[str, Any]:
+        """🔍 Busca detalhes completos da transação na API PagBank"""
+        try:
+            response = await self.client.get(f"/payments/{transaction_id}")
+            response.raise_for_status()
+            
+            transaction_data = response.json()
+            
+            # Enriquece dados com informações específicas do PagBank
+            transaction_data["merchant"] = {
+                "name": self.config.get("merchant_name", "PagBank Merchant"),
+                "cnpj": self.config.get("merchant_cnpj", "00000000000000"),
+                "address": self.config.get("merchant_address")
+            }
+            
+            logger.info(f"🔍 PagBank transaction details fetched: {transaction_id}")
+            return transaction_data
+            
+        except Exception as e:
+            logger.error(f"❌ Error fetching PagBank transaction {transaction_id}: {e}")
+            raise
     
     async def get_payment_link(self, transaction_id: str) -> Optional[str]:
         """Obtém o link de pagamento para QR Code."""
@@ -79,8 +100,3 @@ class PagBankAdapter(PaymentAdapter):
         
         data = response.json()
         return data.get("payment_link")
-    
-    def verify_webhook(self, payload: Dict, signature: str) -> bool:
-        """Verifica a assinatura do webhook."""
-        expected_signature = self._generate_signature(payload)
-        return hmac.compare_digest(signature, expected_signature) 

@@ -1,0 +1,212 @@
+{
+  "webhook_validation": {
+    "description": "🔐 Configuração de Validação de Webhooks - Sistema Avançado de Segurança",
+    "version": "1.0.0",
+    "providers": {
+      "sicredi": {
+        "enabled": true,
+        "secret_key": "YOUR_SICREDI_WEBHOOK_SECRET",
+        "algorithm": "hmac_sha256",
+        "signature_header": "X-Sicredi-Signature",
+        "timestamp_header": "X-Sicredi-Timestamp",
+        "signature_prefix": "sha256=",
+        "require_timestamp": true,
+        "max_timestamp_diff": 300,
+        "allow_replay": false,
+        "allowed_ips": [
+          "200.201.202.0/24",
+          "201.202.203.0/24"
+        ],
+        "description": "Configuração para webhooks do Sicredi"
+      },
+      "stone": {
+        "enabled": true,
+        "secret_key": "YOUR_STONE_WEBHOOK_SECRET",
+        "algorithm": "hmac_sha256",
+        "signature_header": "X-Stone-Signature",
+        "timestamp_header": "X-Stone-Timestamp",
+        "signature_prefix": "sha256=",
+        "require_timestamp": true,
+        "max_timestamp_diff": 600,
+        "allow_replay": false,
+        "allowed_ips": [
+          "200.201.202.0/24",
+          "201.202.203.0/24"
+        ],
+        "description": "Configuração para webhooks do Stone"
+      },
+      "pagseguro": {
+        "enabled": true,
+        "secret_key": "YOUR_PAGSEGURO_WEBHOOK_SECRET",
+        "algorithm": "hmac_sha1",
+        "signature_header": "X-PagSeguro-Signature",
+        "timestamp_header": null,
+        "signature_prefix": "",
+        "require_timestamp": false,
+        "max_timestamp_diff": 300,
+        "allow_replay": false,
+        "allowed_ips": [],
+        "description": "Configuração para webhooks do PagSeguro"
+      },
+      "mercadopago": {
+        "enabled": true,
+        "secret_key": "YOUR_MERCADOPAGO_WEBHOOK_SECRET",
+        "algorithm": "hmac_sha256",
+        "signature_header": "X-Signature",
+        "timestamp_header": "X-Request-Id",
+        "signature_prefix": "",
+        "require_timestamp": false,
+        "max_timestamp_diff": 600,
+        "allow_replay": false,
+        "allowed_ips": [],
+        "description": "Configuração para webhooks do MercadoPago"
+      },
+      "safrapay": {
+        "enabled": true,
+        "secret_key": "YOUR_SAFRAPAY_WEBHOOK_SECRET",
+        "algorithm": "hmac_sha256",
+        "signature_header": "X-SafraPay-Signature",
+        "timestamp_header": "X-SafraPay-Timestamp",
+        "signature_prefix": "sha256=",
+        "require_timestamp": true,
+        "max_timestamp_diff": 300,
+        "allow_replay": false,
+        "allowed_ips": [],
+        "description": "Configuração para webhooks do SafraPay"
+      },
+      "pagbank": {
+        "enabled": true,
+        "secret_key": "YOUR_PAGBANK_WEBHOOK_SECRET",
+        "algorithm": "hmac_sha256",
+        "signature_header": "X-PagBank-Signature",
+        "timestamp_header": "X-PagBank-Timestamp",
+        "signature_prefix": "sha256=",
+        "require_timestamp": true,
+        "max_timestamp_diff": 300,
+        "allow_replay": false,
+        "allowed_ips": [],
+        "description": "Configuração para webhooks do PagBank"
+      }
+    },
+    "security": {
+      "replay_protection": {
+        "enabled": true,
+        "max_age": 300,
+        "description": "Proteção contra replay attacks - webhooks duplicados são rejeitados"
+      },
+      "ip_validation": {
+        "enabled": true,
+        "description": "Validação de IP - apenas IPs autorizados podem enviar webhooks"
+      },
+      "timestamp_validation": {
+        "enabled": true,
+        "description": "Validação de timestamp - webhooks muito antigos são rejeitados"
+      },
+      "signature_validation": {
+        "enabled": true,
+        "description": "Validação de assinatura HMAC - garante autenticidade do webhook"
+      }
+    },
+    "endpoints": {
+      "base_url": "/webhooks",
+      "routes": {
+        "sicredi": "/webhooks/sicredi",
+        "stone": "/webhooks/stone",
+        "pagseguro": "/webhooks/pagseguro",
+        "mercadopago": "/webhooks/mercadopago",
+        "safrapay": "/webhooks/safrapay",
+        "pagbank": "/webhooks/pagbank"
+      },
+      "test_endpoints": {
+        "config": "/webhooks/test/{provider}",
+        "status": "/webhooks/status"
+      }
+    },
+    "logging": {
+      "level": "INFO",
+      "log_successful_webhooks": true,
+      "log_failed_webhooks": true,
+      "log_security_events": true,
+      "log_replay_attacks": true
+    },
+    "integration": {
+      "auto_print_receipts": true,
+      "background_processing": true,
+      "notification_system": true,
+      "database_updates": true
+    }
+  },
+  "installation": {
+    "description": "📋 Instruções de Instalação e Configuração",
+    "steps": [
+      "1. Copie este arquivo para config/webhook-config.json",
+      "2. Substitua YOUR_*_WEBHOOK_SECRET pelas chaves reais de cada provedor",
+      "3. Configure os IPs autorizados para cada provedor",
+      "4. Ajuste os timeouts conforme necessário",
+      "5. Configure os endpoints nos provedores de pagamento",
+      "6. Teste usando os endpoints de teste"
+    ],
+    "testing": {
+      "description": "🧪 Como testar o sistema",
+      "commands": [
+        "python tests/test_webhook_validation.py",
+        "curl -X GET http://localhost:8000/webhooks/status",
+        "curl -X GET http://localhost:8000/webhooks/test/sicredi"
+      ]
+    }
+  },
+  "security_best_practices": {
+    "description": "🔒 Melhores Práticas de Segurança",
+    "recommendations": [
+      "Use chaves secretas fortes e únicas para cada provedor",
+      "Configure IPs autorizados sempre que possível",
+      "Monitore logs de segurança regularmente",
+      "Mantenha timeouts baixos para evitar ataques de replay",
+      "Use HTTPS sempre em produção",
+      "Implemente rate limiting nos endpoints",
+      "Monitore tentativas de webhook inválidas",
+      "Faça backup das configurações de segurança"
+    ]
+  },
+  "troubleshooting": {
+    "description": "🔧 Solução de Problemas Comuns",
+    "common_issues": {
+      "signature_mismatch": {
+        "problem": "Assinatura não confere",
+        "solutions": [
+          "Verifique se a chave secreta está correta",
+          "Confirme o algoritmo de hash (SHA256 vs SHA1)",
+          "Verifique se o prefixo da assinatura está correto",
+          "Confirme a codificação do payload (UTF-8)"
+        ]
+      },
+      "timestamp_validation_failed": {
+        "problem": "Validação de timestamp falhou",
+        "solutions": [
+          "Sincronize o relógio do servidor",
+          "Ajuste max_timestamp_diff se necessário",
+          "Verifique o formato do timestamp",
+          "Confirme o nome do header de timestamp"
+        ]
+      },
+      "replay_attack_detected": {
+        "problem": "Webhook rejeitado como replay",
+        "solutions": [
+          "Verifique se não está enviando webhooks duplicados",
+          "Ajuste max_age da proteção de replay",
+          "Confirme que transaction_id é único",
+          "Verifique se timestamp está correto"
+        ]
+      },
+      "ip_not_allowed": {
+        "problem": "IP não autorizado",
+        "solutions": [
+          "Adicione o IP à lista de IPs autorizados",
+          "Verifique se está usando proxy/load balancer",
+          "Confirme o header X-Forwarded-For",
+          "Desabilite validação de IP se necessário"
+        ]
+      }
+    }
+  }
+} 

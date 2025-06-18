@@ -20,6 +20,7 @@ class Tenant(Base):
     services = relationship("Service", back_populates="tenant")
     tickets = relationship("Ticket", back_populates="tenant")
     operators = relationship("Operator", back_populates="tenant")
+    payment_sessions = relationship("PaymentSession", back_populates="tenant")
 
 class Service(Base):
     __tablename__ = "services"
@@ -38,6 +39,35 @@ class Service(Base):
     # Relationships
     tenant = relationship("Tenant", back_populates="services")
     tickets = relationship("Ticket", back_populates="service")
+    payment_sessions = relationship("PaymentSession", back_populates="service")
+
+class PaymentSession(Base):
+    """Sessão de pagamento criada quando cliente escolhe serviço, antes do pagamento ser confirmado"""
+    __tablename__ = "payment_sessions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    service_id = Column(UUID(as_uuid=True), ForeignKey("services.id"), nullable=False)
+    customer_name = Column(String(100), nullable=False)
+    customer_cpf = Column(String(11), nullable=False)  # Encrypted
+    customer_phone = Column(String(20), nullable=False)
+    consent_version = Column(String(10), nullable=False)
+    status = Column(String(20), nullable=False, default="pending")  # pending, paid, failed, expired
+    payment_method = Column(String(20), nullable=False)  # credit, debit, pix, tap
+    amount = Column(Numeric(10, 2), nullable=False)
+    transaction_id = Column(String(100), nullable=True)  # Preenchido após criar pagamento
+    payment_link = Column(Text, nullable=True)
+    webhook_data = Column(JSONB)
+    expires_at = Column(DateTime(timezone=True), nullable=False)  # Sessão expira em 30 min
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    completed_at = Column(DateTime(timezone=True))
+
+    # Relationships
+    tenant = relationship("Tenant", back_populates="payment_sessions")
+    service = relationship("Service", back_populates="payment_sessions")
+    ticket = relationship("Ticket", back_populates="payment_session", uselist=False)  # 1:1 after payment
+    consent = relationship("Consent", back_populates="payment_session", uselist=False)
 
 class Ticket(Base):
     __tablename__ = "tickets"
@@ -45,41 +75,48 @@ class Ticket(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     service_id = Column(UUID(as_uuid=True), ForeignKey("services.id"), nullable=False)
+    payment_session_id = Column(UUID(as_uuid=True), ForeignKey("payment_sessions.id"), nullable=False)
     ticket_number = Column(Integer, nullable=False)
-    status = Column(String(20), nullable=False)  # pending, paid, called
+    
+    # Estados: paid -> printing -> in_queue -> called -> in_progress -> completed
+    # Alternativos: print_error, cancelled, expired
+    status = Column(String(20), nullable=False, default="paid")
+    
+    # Dados do cliente
     customer_name = Column(String(100), nullable=False)
     customer_cpf = Column(String(11), nullable=False)  # Encrypted
     customer_phone = Column(String(20), nullable=False)
     consent_version = Column(String(10), nullable=False)
+    
+    # Sistema de fila e priorização
+    priority = Column(String(10), nullable=False, default="normal")  # high, normal, low
+    queue_position = Column(Integer)                                 # Posição na fila
+    estimated_wait_minutes = Column(Integer)                         # Tempo estimado de espera
+    assigned_operator_id = Column(UUID(as_uuid=True), ForeignKey("operators.id"))  # Operador atribuído
+    
+    # Timestamps do ciclo de vida
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    called_at = Column(DateTime(timezone=True))
+    printed_at = Column(DateTime(timezone=True))           # Quando foi impresso
+    queued_at = Column(DateTime(timezone=True))            # Quando entrou na fila (in_queue)
+    called_at = Column(DateTime(timezone=True))            # Quando foi chamado
+    started_at = Column(DateTime(timezone=True))           # Quando iniciou atendimento
+    completed_at = Column(DateTime(timezone=True))         # Quando foi concluído
+    cancelled_at = Column(DateTime(timezone=True))         # Quando foi cancelado
+    expired_at = Column(DateTime(timezone=True))           # Quando expirou
+    reprinted_at = Column(DateTime(timezone=True))         # Última reimpressão
+    
+    # Metadados adicionais
+    operator_notes = Column(Text)                          # Observações do operador
+    cancellation_reason = Column(String(255))              # Motivo do cancelamento
+    print_attempts = Column(Integer, default=0)            # Tentativas de impressão
+    reactivation_count = Column(Integer, default=0)        # Quantas vezes foi reativado
 
     # Relationships
     tenant = relationship("Tenant", back_populates="tickets")
     service = relationship("Service", back_populates="tickets")
-    payment = relationship("Payment", back_populates="ticket", uselist=False)
-    consent = relationship("Consent", back_populates="ticket", uselist=False)
-
-class Payment(Base):
-    __tablename__ = "payments"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
-    ticket_id = Column(UUID(as_uuid=True), ForeignKey("tickets.id"), nullable=False)
-    transaction_id = Column(String(100), nullable=False, unique=True)
-    amount = Column(Numeric(10, 2), nullable=False)
-    status = Column(String(20), nullable=False)  # pending, completed, failed
-    payment_method = Column(String(20), nullable=False)  # credit, debit, pix, tap
-    payment_link = Column(Text)
-    webhook_data = Column(JSONB)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    completed_at = Column(DateTime(timezone=True))
-
-    # Relationships
-    tenant = relationship("Tenant")
-    ticket = relationship("Ticket", back_populates="payment")
+    payment_session = relationship("PaymentSession", back_populates="ticket")
+    assigned_operator = relationship("Operator", foreign_keys=[assigned_operator_id])
 
 class Operator(Base):
     __tablename__ = "operators"
@@ -102,7 +139,7 @@ class Consent(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
-    ticket_id = Column(UUID(as_uuid=True), ForeignKey("tickets.id"), nullable=False)
+    payment_session_id = Column(UUID(as_uuid=True), ForeignKey("payment_sessions.id"), nullable=False)
     version = Column(String(10), nullable=False)
     ip_address = Column(String(45))
     user_agent = Column(Text)
@@ -110,4 +147,4 @@ class Consent(Base):
 
     # Relationships
     tenant = relationship("Tenant")
-    ticket = relationship("Ticket", back_populates="consent") 
+    payment_session = relationship("PaymentSession", back_populates="consent") 

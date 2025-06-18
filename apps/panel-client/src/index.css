@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', sans-serif;
+  }
+  
+  body {
+    @apply bg-background text-text min-h-screen;
+  }
+}
+
+@layer components {
+  .panel-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6;
+  }
+  
+  .panel-header {
+    @apply bg-primary text-white p-4 shadow-md rounded-t-lg;
+  }
+  
+  .panel-content {
+    @apply bg-white shadow-md rounded-b-lg p-6;
+  }
+  
+  .ticket-card {
+    @apply bg-white shadow-md rounded-lg p-4 border-l-4 transition-all duration-300;
+  }
+  
+  .ticket-card-waiting {
+    @apply border-gray-300;
+  }
+  
+  .ticket-card-called {
+    @apply border-primary animate-pulse;
+  }
+  
+  .ticket-card-in-progress {
+    @apply border-secondary;
+  }
+  
+  .ticket-number {
+    @apply text-4xl font-bold;
+  }
+} 

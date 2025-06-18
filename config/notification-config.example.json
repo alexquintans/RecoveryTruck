@@ -1,0 +1,363 @@
+{
+  "notification_system": {
+    "description": "🔊 Sistema de Notificações Sonoras para Operadores",
+    "version": "1.0.0",
+    "enabled": true
+  },
+  
+  "default_operator_config": {
+    "sounds_enabled": true,
+    "master_volume": 0.8,
+    "quiet_hours_enabled": false,
+    "quiet_hours_start": "22:00",
+    "quiet_hours_end": "08:00",
+    "only_assigned_tickets": false,
+    "min_priority_level": 1,
+    
+    "event_sounds": {
+      "new_ticket_in_queue": {
+        "sound_type": "chime_soft",
+        "enabled": true,
+        "volume": 0.6,
+        "repeat_count": 1,
+        "repeat_interval": 0.5,
+        "priority": 2
+      },
+      "ticket_called": {
+        "sound_type": "call_ticket",
+        "enabled": true,
+        "volume": 0.9,
+        "repeat_count": 2,
+        "repeat_interval": 1.0,
+        "priority": 4
+      },
+      "ticket_urgent": {
+        "sound_type": "beep_urgent",
+        "enabled": true,
+        "volume": 1.0,
+        "repeat_count": 3,
+        "repeat_interval": 0.3,
+        "priority": 5
+      },
+      "ticket_timeout": {
+        "sound_type": "beep_warning",
+        "enabled": true,
+        "volume": 0.8,
+        "repeat_count": 2,
+        "repeat_interval": 0.5,
+        "priority": 3
+      },
+      "payment_completed": {
+        "sound_type": "beep_success",
+        "enabled": true,
+        "volume": 0.7,
+        "repeat_count": 1,
+        "repeat_interval": 0.5,
+        "priority": 2
+      },
+      "system_error": {
+        "sound_type": "beep_error",
+        "enabled": true,
+        "volume": 0.9,
+        "repeat_count": 2,
+        "repeat_interval": 0.5,
+        "priority": 4
+      },
+      "operator_assigned": {
+        "sound_type": "notification",
+        "enabled": true,
+        "volume": 0.6,
+        "repeat_count": 1,
+        "repeat_interval": 0.5,
+        "priority": 2
+      },
+      "queue_empty": {
+        "sound_type": "chime_soft",
+        "enabled": false,
+        "volume": 0.5,
+        "repeat_count": 1,
+        "repeat_interval": 0.5,
+        "priority": 1
+      },
+      "shift_start": {
+        "sound_type": "beep_success",
+        "enabled": true,
+        "volume": 0.7,
+        "repeat_count": 1,
+        "repeat_interval": 0.5,
+        "priority": 2
+      },
+      "shift_end": {
+        "sound_type": "beep_long",
+        "enabled": true,
+        "volume": 0.7,
+        "repeat_count": 1,
+        "repeat_interval": 0.5,
+        "priority": 2
+      }
+    }
+  },
+  
+  "sound_types": {
+    "beep_short": {
+      "name": "Beep Curto",
+      "description": "Beep curto e discreto",
+      "category": "beeps",
+      "duration_ms": 200,
+      "frequency_hz": 800
+    },
+    "beep_long": {
+      "name": "Beep Longo",
+      "description": "Beep longo e suave",
+      "category": "beeps",
+      "duration_ms": 800,
+      "frequency_hz": 600
+    },
+    "beep_urgent": {
+      "name": "Beep Urgente",
+      "description": "Beep urgente com múltiplas repetições",
+      "category": "beeps",
+      "duration_ms": 150,
+      "frequency_hz": 1200
+    },
+    "beep_success": {
+      "name": "Beep Sucesso",
+      "description": "Som de sucesso/confirmação",
+      "category": "beeps",
+      "duration_ms": 300,
+      "frequency_hz": 1000
+    },
+    "beep_warning": {
+      "name": "Beep Alerta",
+      "description": "Som de alerta/atenção",
+      "category": "beeps",
+      "duration_ms": 400,
+      "frequency_hz": 900
+    },
+    "beep_error": {
+      "name": "Beep Erro",
+      "description": "Som de erro/problema",
+      "category": "beeps",
+      "duration_ms": 500,
+      "frequency_hz": 400
+    },
+    "chime_soft": {
+      "name": "Campainha Suave",
+      "description": "Campainha suave e agradável",
+      "category": "chimes",
+      "duration_ms": 600,
+      "frequency_hz": 800
+    },
+    "chime_loud": {
+      "name": "Campainha Alta",
+      "description": "Campainha alta e clara",
+      "category": "chimes",
+      "duration_ms": 800,
+      "frequency_hz": 1000
+    },
+    "notification": {
+      "name": "Notificação",
+      "description": "Som de notificação padrão",
+      "category": "notifications",
+      "duration_ms": 400,
+      "frequency_hz": 750
+    },
+    "call_ticket": {
+      "name": "Chamar Ticket",
+      "description": "Som específico para chamada de ticket",
+      "category": "notifications",
+      "duration_ms": 1000,
+      "frequency_hz": 850
+    }
+  },
+  
+  "notification_events": {
+    "new_ticket_in_queue": {
+      "name": "Novo Ticket na Fila",
+      "description": "Novo ticket adicionado à fila de atendimento",
+      "default_priority": 2,
+      "recommended_sounds": ["chime_soft", "notification"]
+    },
+    "ticket_called": {
+      "name": "Ticket Chamado",
+      "description": "Ticket chamado para atendimento",
+      "default_priority": 4,
+      "recommended_sounds": ["call_ticket", "chime_loud"]
+    },
+    "ticket_urgent": {
+      "name": "Ticket Urgente",
+      "description": "Ticket com prioridade urgente",
+      "default_priority": 5,
+      "recommended_sounds": ["beep_urgent", "beep_warning"]
+    },
+    "ticket_timeout": {
+      "name": "Ticket Expirado",
+      "description": "Ticket expirado por timeout",
+      "default_priority": 3,
+      "recommended_sounds": ["beep_warning", "beep_error"]
+    },
+    "payment_completed": {
+      "name": "Pagamento Concluído",
+      "description": "Pagamento concluído com sucesso",
+      "default_priority": 2,
+      "recommended_sounds": ["beep_success", "chime_soft"]
+    },
+    "system_error": {
+      "name": "Erro do Sistema",
+      "description": "Erro no sistema",
+      "default_priority": 4,
+      "recommended_sounds": ["beep_error", "beep_urgent"]
+    },
+    "operator_assigned": {
+      "name": "Operador Atribuído",
+      "description": "Ticket atribuído ao operador",
+      "default_priority": 2,
+      "recommended_sounds": ["notification", "beep_short"]
+    },
+    "queue_empty": {
+      "name": "Fila Vazia",
+      "description": "Fila de atendimento vazia",
+      "default_priority": 1,
+      "recommended_sounds": ["chime_soft"]
+    },
+    "shift_start": {
+      "name": "Início do Turno",
+      "description": "Início do turno do operador",
+      "default_priority": 2,
+      "recommended_sounds": ["beep_success", "chime_soft"]
+    },
+    "shift_end": {
+      "name": "Fim do Turno",
+      "description": "Fim do turno do operador",
+      "default_priority": 2,
+      "recommended_sounds": ["beep_long", "chime_soft"]
+    }
+  },
+  
+  "tenant_specific_configs": {
+    "recovery_truck_premium": {
+      "sounds_enabled": true,
+      "master_volume": 0.9,
+      "quiet_hours_enabled": true,
+      "quiet_hours_start": "23:00",
+      "quiet_hours_end": "07:00",
+      "custom_event_sounds": {
+        "ticket_called": {
+          "sound_type": "chime_loud",
+          "volume": 1.0,
+          "repeat_count": 3
+        }
+      }
+    },
+    "recovery_truck_basic": {
+      "sounds_enabled": true,
+      "master_volume": 0.7,
+      "quiet_hours_enabled": false,
+      "custom_event_sounds": {
+        "new_ticket_in_queue": {
+          "sound_type": "beep_short",
+          "volume": 0.5
+        }
+      }
+    }
+  },
+  
+  "installation": {
+    "requirements": [
+      "FastAPI WebSocket connection",
+      "Browser with Web Audio API support",
+      "JavaScript AudioContext enabled"
+    ],
+    "setup_steps": [
+      "1. Copie este arquivo para config/notification-config.json",
+      "2. Configure as credenciais específicas do tenant",
+      "3. Ajuste volumes e tipos de som conforme necessário",
+      "4. Teste os sons usando o endpoint /notifications/test",
+      "5. Configure horários silenciosos se necessário"
+    ]
+  },
+  
+  "api_endpoints": {
+    "get_config": "GET /notifications/config",
+    "update_config": "PUT /notifications/config",
+    "get_sounds": "GET /notifications/sounds",
+    "get_events": "GET /notifications/events",
+    "test_sound": "POST /notifications/test",
+    "trigger_event": "POST /notifications/trigger/{event}",
+    "get_status": "GET /notifications/status",
+    "reset_config": "DELETE /notifications/config"
+  },
+  
+  "websocket_integration": {
+    "connection_url": "ws://localhost:8000/ws/operator/{tenant_id}",
+    "message_format": {
+      "type": "sound_notification",
+      "event": "ticket_called",
+      "sound": {
+        "type": "call_ticket",
+        "volume": 0.9,
+        "repeat_count": 2,
+        "repeat_interval": 1.0,
+        "priority": 4
+      },
+      "timestamp": "2024-01-01T00:00:00",
+      "operator_id": "operator-123",
+      "ticket": {
+        "id": "ticket-456",
+        "ticket_number": 42,
+        "customer_name": "João Silva"
+      }
+    }
+  },
+  
+  "troubleshooting": {
+    "no_sound": {
+      "problem": "Sons não estão sendo reproduzidos",
+      "solutions": [
+        "Verificar se sounds_enabled está true",
+        "Verificar se não está em horário silencioso",
+        "Verificar volume master e do evento",
+        "Verificar se WebSocket está conectado",
+        "Verificar permissões de áudio do browser"
+      ]
+    },
+    "sound_too_loud": {
+      "problem": "Sons muito altos",
+      "solutions": [
+        "Reduzir master_volume",
+        "Reduzir volume específico do evento",
+        "Configurar horários silenciosos",
+        "Ajustar min_priority_level"
+      ]
+    },
+    "sound_too_quiet": {
+      "problem": "Sons muito baixos",
+      "solutions": [
+        "Aumentar master_volume",
+        "Aumentar volume específico do evento",
+        "Verificar volume do sistema operacional",
+        "Verificar configurações do browser"
+      ]
+    },
+    "websocket_disconnected": {
+      "problem": "WebSocket desconectado",
+      "solutions": [
+        "Verificar conexão de rede",
+        "Recarregar página do operador",
+        "Verificar logs do servidor",
+        "Verificar autenticação JWT"
+      ]
+    }
+  },
+  
+  "testing": {
+    "test_commands": [
+      "curl -X POST 'http://localhost:8000/notifications/test' -H 'Authorization: Bearer TOKEN' -H 'Content-Type: application/json' -d '{\"sound_type\": \"beep_short\", \"volume\": 0.8, \"repeat_count\": 1}'",
+      "curl -X POST 'http://localhost:8000/notifications/trigger/ticket_called' -H 'Authorization: Bearer TOKEN'",
+      "curl -X GET 'http://localhost:8000/notifications/status' -H 'Authorization: Bearer TOKEN'"
+    ],
+    "browser_testing": {
+      "javascript_example": "// Conectar WebSocket e escutar notificações\nconst ws = new WebSocket('ws://localhost:8000/ws/operator/tenant-id');\nws.onmessage = (event) => {\n  const data = JSON.parse(event.data);\n  if (data.type === 'sound_notification') {\n    playSound(data.sound);\n  }\n};"
+    }
+  }
+}
