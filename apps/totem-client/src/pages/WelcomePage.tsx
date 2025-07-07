@@ -62,7 +62,7 @@ const WelcomePage: React.FC = () => {
           variants={itemVariants}
           className="text-4xl font-bold text-primary mb-4"
         >
-          Bem-vindo à RecoveryTruck
+          Bem-vindo ao RecoveryTruck
         </motion.h1>
         
         <motion.p 

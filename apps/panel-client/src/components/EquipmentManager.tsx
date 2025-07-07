@@ -1,6 +1,8 @@
+// @jsxImportSource react
 import React, { useState } from 'react';
 import { usePanelStore } from '../store/panelStore';
 import { ServiceCountdown } from './ServiceCountdown';
+import { EquipmentCard } from './EquipmentCard';
 import type { Equipment, Ticket } from '../types';
 
 interface EquipmentManagerProps {
@@ -11,14 +13,15 @@ interface EquipmentManagerProps {
 export const EquipmentManager: React.FC<EquipmentManagerProps> = ({ 
   onSelectEquipment,
   onEndOperation
-}) => {
+}: EquipmentManagerProps) => {
   const { equipment, tickets, setEquipmentStatus, endOperation, operationConfig, setServiceDuration } = usePanelStore();
   const [editingServiceTime, setEditingServiceTime] = useState<boolean>(false);
   const [serviceDurationInput, setServiceDurationInput] = useState<number>(operationConfig.serviceDuration);
+  const [selectedEquipment, setSelectedEquipment] = useState<string | null>(null);
   
   // Agrupar equipamentos por tipo
   const equipmentByType: Record<string, Equipment[]> = {};
-  equipment.forEach(eq => {
+  equipment.forEach((eq: Equipment) => {
     if (!equipmentByType[eq.type]) {
       equipmentByType[eq.type] = [];
     }
@@ -27,7 +30,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({
   
   // Encontrar ticket associado a um equipamento
   const findTicketForEquipment = (equipmentId: string): Ticket | undefined => {
-    return tickets.find(t => 
+    return tickets.find((t: Ticket) => 
       t.equipmentId === equipmentId && 
       (t.status === 'in_progress' || t.status === 'called')
     );
@@ -48,44 +51,40 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({
   };
 
   // Atualizar duração do serviço
-  const handleUpdateServiceDuration = () => {
+  const handleUpdateServiceDuration = (): void => {
     setServiceDuration(serviceDurationInput);
     setEditingServiceTime(false);
   };
 
   // Encerrar operação
-  const handleEndOperation = () => {
+  const handleEndOperation = (): void => {
     endOperation();
     if (onEndOperation) onEndOperation();
   };
   
-  // Renderizar um equipamento
+  // Selecionar equipamento
+  const handleSelectEquipment = (eq: Equipment): void => {
+    if (eq.status === 'available') {
+      setSelectedEquipment(eq.id);
+      if (onSelectEquipment) onSelectEquipment(eq);
+    }
+  };
+  
+  // Renderizar um equipamento com o novo card
   const renderEquipment = (eq: Equipment) => {
     const ticket = findTicketForEquipment(eq.id);
     
-    // Determinar cor de fundo com base no status
-    let bgColor = 'bg-green-100';
-    if (eq.status === 'in_use') bgColor = 'bg-yellow-100';
-    if (eq.status === 'maintenance') bgColor = 'bg-red-100';
-    
     return (
-      <div 
-        key={eq.id} 
-        className={`${bgColor} rounded-lg shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow`}
-        onClick={() => onSelectEquipment && eq.status === 'available' && onSelectEquipment(eq)}
-      >
-        <h3 className="font-semibold text-lg">{eq.name}</h3>
-        <div className="mt-2 flex justify-between items-center">
-          <span className="text-sm">
-            Status: <span className="font-medium">{
-              eq.status === 'available' ? 'Disponível' : 
-              eq.status === 'in_use' ? 'Em Uso' : 'Manutenção'
-            }</span>
-          </span>
-        </div>
+      <div key={eq.id} className="relative">
+        <EquipmentCard
+          equipamento={eq}
+          selecionado={selectedEquipment === eq.id}
+          onClick={() => handleSelectEquipment(eq)}
+        />
         
+        {/* Informações do ticket em uso */}
         {ticket && ticket.status === 'in_progress' && ticket.startedAt && (
-          <div className="mt-3">
+          <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
             <p className="text-sm mb-1">
               <span className="font-medium">Cliente:</span> {ticket.customer?.name}
             </p>
@@ -100,6 +99,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({
           </div>
         )}
         
+        {/* Botões de controle de status */}
         <div className="mt-3 flex justify-end gap-2">
           {eq.status === 'available' && (
             <button
@@ -107,7 +107,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({
                 e.stopPropagation();
                 setEquipmentStatus(eq.id, 'maintenance' as const);
               }}
-              className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
+              className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
             >
               Manutenção
             </button>
@@ -119,7 +119,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({
                 e.stopPropagation();
                 setEquipmentStatus(eq.id, 'available' as const);
               }}
-              className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
+              className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
             >
               Disponibilizar
             </button>
@@ -182,7 +182,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({
           <h3 className="text-xl font-medium mb-3">
             {type === 'banheira_gelo' ? 'Banheiras de Gelo' : 'Botas de Compressão'}
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {eqs.map(renderEquipment)}
           </div>
         </div>

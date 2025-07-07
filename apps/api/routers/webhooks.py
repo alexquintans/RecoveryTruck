@@ -7,7 +7,7 @@ import logging
 import json
 from datetime import datetime
 
-from apps.api.services.webhook_validator import (
+from services.webhook_validator import (
     webhook_validator, WebhookProvider, WebhookValidationResult,
     get_sicredi_config, get_stone_config, get_pagseguro_config,
     get_mercadopago_config, get_safrapay_config, get_pagbank_config
@@ -15,7 +15,7 @@ from apps.api.services.webhook_validator import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/webhooks", tags=["webhooks"])
+router = APIRouter(tags=["webhooks"])
 
 # === Configuração de Webhooks ===
 
@@ -272,7 +272,7 @@ async def handle_payment_approved(
     logger.info(f"✅ Payment approved: {result.transaction_id}")
     
     try:
-        from apps.api.services.printer_service import printer_service, ReceiptData, ReceiptType
+        from services.printer_service import printer_service, ReceiptData, ReceiptType
         
         receipt_data = ReceiptData(
             transaction_id=result.transaction_id or "unknown",

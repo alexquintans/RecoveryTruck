@@ -1,9 +1,11 @@
-import { getAuthToken } from './auth';
+import { getAuthToken, logout } from './auth';
 
 /**
  * Configuração base para requisições API
  */
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore - import.meta.env disponível em projetos Vite
+export const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000';
 
 /**
  * Opções para requisições fetch
@@ -36,6 +38,10 @@ export async function fetchApi<T = any>(
   // Configura os headers
   const headers = new Headers(fetchOptions.headers);
   
+  // Sempre setar Content-Type: application/json quando houver body
+  if (!headers.has('Content-Type') && fetchOptions.body) {
+    headers.set('Content-Type', 'application/json');
+  }
   if (!headers.has('Content-Type') && !fetchOptions.body) {
     headers.set('Content-Type', 'application/json');
   }
@@ -46,6 +52,14 @@ export async function fetchApi<T = any>(
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);
     }
+  }
+  
+  // Header de Tenant (se existir)
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore - Tipagem ImportMeta fora do contexto Vite
+  const tenantId = (import.meta as any).env?.VITE_TENANT_ID as string | "52c6777f-ee24-433b-8e4b-7185950da52e";
+  if (tenantId && !headers.has('X-Tenant-Id')) {
+    headers.set('X-Tenant-Id', tenantId);
   }
   
   // Realiza a requisição
@@ -62,6 +76,13 @@ export async function fetchApi<T = any>(
       errorData = await response.json();
     } catch (e) {
       errorData = { message: response.statusText };
+    }
+    
+    // Logout automático se token inválido/expirado
+    if (response.status === 401) {
+      logout();
+      // Opcional: emitir evento para redirecionar
+      window.dispatchEvent(new CustomEvent('auth:logout'));
     }
     
     const error = new Error(errorData.message || 'Erro na requisição');

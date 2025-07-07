@@ -1,10 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import SignatureCanvas from 'react-signature-canvas';
 import { Button } from '../components/Button';
 import { TermsOfService } from '../components/TermsOfService';
 import { useTotemStore } from '../store/totemStore';
+import { api } from '../utils/api';
 
 const TermsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -12,12 +13,46 @@ const TermsPage: React.FC = () => {
   const [signed, setSigned] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const signatureRef = useRef<any>(null);
+  const [existingConsent, setExistingConsent] = useState<{ signature: string; created_at: string } | null>(null);
+  const [loadingConsent, setLoadingConsent] = useState(true);
   
   // Redirecionar se não houver serviço selecionado ou dados do cliente
   if (!selectedService || !customerData) {
     navigate('/customer-info');
     return null;
   }
+
+  // Buscar consentimento mais recente ao carregar
+  useEffect(() => {
+    const fetchConsent = async () => {
+      setLoadingConsent(true);
+      try {
+        const tenantId = (import.meta as any).env?.VITE_TENANT_ID || '52c6777f-ee24-433b-8e4b-7185950da52e';
+        const params: any = { tenant_id: tenantId };
+        if (customerData.cpf) params.cpf = customerData.cpf.replace(/\D/g, '');
+        else if (customerData.name && customerData.phone) {
+          params.name = customerData.name;
+          params.phone = customerData.phone;
+        } else if (customerData.name) {
+          params.name = customerData.name;
+        }
+        const query = new URLSearchParams(params).toString();
+        const res = await fetch(`/customers/consents/last?${query}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.signature) {
+            setExistingConsent(data);
+          }
+        }
+      } catch (e) {
+        // Ignorar erro
+      } finally {
+        setLoadingConsent(false);
+      }
+    };
+    fetchConsent();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Limpar assinatura
   const handleClearSignature = () => {
@@ -37,27 +72,24 @@ const TermsPage: React.FC = () => {
 
   // Salvar assinatura e continuar
   const handleContinue = () => {
-    if (!checkSignature()) {
-      setError('Por favor, assine o termo de responsabilidade para continuar.');
-      return;
+    if (!existingConsent) {
+      if (!checkSignature()) {
+        setError('Por favor, assine o termo de responsabilidade para continuar.');
+        return;
+      }
     }
-
-    // Salvar assinatura como base64
-    if (signatureRef.current) {
-      const signatureData = signatureRef.current.toDataURL();
-      
-      // Atualizar os dados do cliente com a assinatura
-      setCustomer({
-        ...customerData,
-        signature: signatureData,
-        termsAccepted: true,
-        termsAcceptedAt: new Date().toISOString(),
-      });
-      
-      // Avançar para a página de pagamento
-      setStep('payment');
-      navigate('/payment');
+    let signatureData = existingConsent?.signature;
+    if (!existingConsent && signatureRef.current) {
+      signatureData = signatureRef.current.toDataURL();
     }
+    setCustomer({
+      ...customerData,
+      signature: signatureData,
+      termsAccepted: true,
+      termsAcceptedAt: new Date().toISOString(),
+    });
+    setStep('payment');
+    navigate('/payment');
   };
 
   // Voltar para a página anterior
@@ -86,29 +118,43 @@ const TermsPage: React.FC = () => {
           <TermsOfService service={selectedService} />
         </div>
 
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold mb-2">Assinatura:</h3>
-          <div className="border-2 border-gray-300 rounded-xl bg-white">
-            <div className="w-full h-40">
-              {/* @ts-ignore */}
-              <SignatureCanvas
-                ref={signatureRef}
-                canvasProps={{
-                  className: 'w-full h-40',
-                }}
-                onEnd={() => setSigned(true)}
-              />
-            </div>
+        {loadingConsent ? (
+          <div className="flex justify-center items-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-4 border-primary"></div>
+            <span className="ml-3 text-primary">Verificando consentimento anterior...</span>
           </div>
-          {error && <p className="mt-2 text-red-500">{error}</p>}
-          <button
-            type="button"
-            onClick={handleClearSignature}
-            className="mt-2 text-primary hover:underline focus:outline-none text-sm"
-          >
-            Limpar assinatura
-          </button>
-        </div>
+        ) : existingConsent ? (
+          <div className="mb-6 text-center">
+            <h3 className="text-lg font-semibold mb-2 text-green-700">Assinatura já registrada recentemente</h3>
+            <img src={existingConsent.signature} alt="Assinatura salva" className="mx-auto border-2 border-green-400 rounded-lg bg-white max-h-32" />
+            <p className="text-sm text-gray-600 mt-2">Assinatura coletada em {new Date(existingConsent.created_at).toLocaleDateString()}</p>
+            <p className="text-green-700 font-semibold mt-2">Você não precisa assinar novamente.</p>
+          </div>
+        ) : (
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-2">Assinatura:</h3>
+            <div className="border-2 border-gray-300 rounded-xl bg-white">
+              <div className="w-full h-40">
+                {/* @ts-ignore */}
+                <SignatureCanvas
+                  ref={signatureRef}
+                  canvasProps={{
+                    className: 'w-full h-40',
+                  }}
+                  onEnd={() => setSigned(true)}
+                />
+              </div>
+            </div>
+            {error && <p className="mt-2 text-red-500">{error}</p>}
+            <button
+              type="button"
+              onClick={handleClearSignature}
+              className="mt-2 text-primary hover:underline focus:outline-none text-sm"
+            >
+              Limpar assinatura
+            </button>
+          </div>
+        )}
 
         <div className="flex justify-between mt-8">
           <Button
@@ -128,7 +174,7 @@ const TermsPage: React.FC = () => {
             variant="primary"
             size="lg"
             onClick={handleContinue}
-            disabled={!signed}
+            disabled={!signed && !existingConsent}
             icon={
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />

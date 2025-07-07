@@ -1,6 +1,14 @@
 # 🏧 Terminal Físico - Sistema de Maquininha Integrada
 
-from .base import TerminalAdapter, TerminalStatus, PaymentTerminalError
+from .base import (
+    TerminalAdapter,
+    TerminalStatus,
+    PaymentMethod,
+    TransactionStatus,
+    TransactionRequest,
+    TransactionResponse,
+    PaymentTerminalError,
+)
 from .sicredi_terminal import SicrediTerminalAdapter
 from .stone_terminal import StoneTerminalAdapter
 from .mock_terminal import MockTerminalAdapter
@@ -9,14 +17,18 @@ from .protocols import BluetoothProtocol, USBProtocol, SerialProtocol, TCPProtoc
 
 __all__ = [
     "TerminalAdapter",
-    "TerminalStatus", 
+    "TerminalStatus",
+    "PaymentMethod",
+    "TransactionStatus",
+    "TransactionRequest",
+    "TransactionResponse",
     "PaymentTerminalError",
     "SicrediTerminalAdapter",
-    "StoneTerminalAdapter", 
+    "StoneTerminalAdapter",
     "MockTerminalAdapter",
     "TerminalAdapterFactory",
     "BluetoothProtocol",
-    "USBProtocol", 
+    "USBProtocol",
     "SerialProtocol",
-    "TCPProtocol"
+    "TCPProtocol",
 ] 

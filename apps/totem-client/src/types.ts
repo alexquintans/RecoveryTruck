@@ -42,6 +42,8 @@ export type TicketStatus =
 export interface Ticket {
   id: string;
   number: string;
+  ticket_number?: number;
+  ticketNumber?: number; // compatibilidade camelCase
   serviceId: string;
   service?: Service;
   customerId?: string;

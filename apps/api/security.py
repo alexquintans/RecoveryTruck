@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # JWT Settings
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key")
+SECRET_KEY = os.getenv("JWT_SECRET", "your-secret-key")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -18,7 +18,11 @@ ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", Fernet.generate_key())
 fernet = Fernet(ENCRYPTION_KEY)
 
 # Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(
+    schemes=["bcrypt"], 
+    deprecated="auto",
+    bcrypt__rounds=12
+)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash."""
@@ -42,9 +46,12 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 def verify_token(token: str) -> Optional[dict]:
     """Verify JWT token."""
     try:
+        print(f"🔍 Verificando token com SECRET_KEY: {SECRET_KEY[:20]}...")
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        print(f"✅ Token decodificado com sucesso: {payload}")
         return payload
-    except JWTError:
+    except JWTError as e:
+        print(f"❌ Erro ao decodificar token: {str(e)}")
         return None
 
 def encrypt_data(data: str) -> str:

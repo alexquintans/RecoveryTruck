@@ -21,6 +21,7 @@ interface Ticket {
   status: string;
   createdAt: string;
   service?: Service;
+  services?: Service[];
   customer?: Customer;
   queuePosition?: number;
 }
@@ -79,9 +80,17 @@ export const TicketDisplay: React.FC<TicketDisplayProps> = ({
       <div>
         <div className="flex items-center gap-2">
           <span className={titleClasses[size]}>{ticket.number}</span>
-          {ticket.service && (
+          {ticket.services && ticket.services.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {ticket.services.map((service, index) => (
+                <span key={service.id} className="text-sm text-gray-600">
+                  {service.name}{index < ticket.services!.length - 1 ? ', ' : ''}
+                </span>
+              ))}
+            </div>
+          ) : ticket.service ? (
             <span className="text-sm text-gray-600">{ticket.service.name}</span>
-          )}
+          ) : null}
         </div>
         
         {ticket.customer && (

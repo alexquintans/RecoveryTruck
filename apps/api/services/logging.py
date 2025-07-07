@@ -1,15 +1,34 @@
+# Dependência opcional de OpenTelemetry
 import logging
 import json
 from datetime import datetime
 from typing import Any, Dict, Optional
-from opentelemetry import trace
-from opentelemetry.trace import Status, StatusCode
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 import sys
 import os
 import threading
+
+# Tentativa de importação do OpenTelemetry
+try:
+    from opentelemetry import trace  # type: ignore
+    from opentelemetry.trace import Status, StatusCode  # type: ignore
+    from opentelemetry.sdk.trace import TracerProvider  # type: ignore
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor  # type: ignore
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter  # type: ignore
+    _OTEL_AVAILABLE = True
+except ModuleNotFoundError:
+    _OTEL_AVAILABLE = False
+
+    class _NoOp:
+        def __getattr__(self, _):
+            def _noop(*args, **kwargs):
+                return None
+            return _noop
+
+    trace = _NoOp()  # type: ignore
+    Status = StatusCode = TracerProvider = BatchSpanProcessor = OTLPSpanExporter = object  # type: ignore
+
+    import warnings
+    warnings.warn("Biblioteca 'opentelemetry' não instalada. Logs não terão tracing.")
 
 class StructuredLogger:
     def __init__(self, name: str):
@@ -30,14 +49,15 @@ class StructuredLogger:
         }
         
         # Adiciona trace_id se disponível
-        current_span = trace.get_current_span()
-        if current_span.is_recording():
-            context = current_span.get_span_context()
-            log_data.update({
-                "trace_id": format(context.trace_id, "032x"),
-                "span_id": format(context.span_id, "016x"),
-                "trace_flags": format(context.trace_flags, "02x")
-            })
+        if _OTEL_AVAILABLE:
+            current_span = trace.get_current_span()
+            if getattr(current_span, "is_recording", lambda: False)():
+                context = current_span.get_span_context()
+                log_data.update({
+                    "trace_id": format(context.trace_id, "032x"),
+                    "span_id": format(context.span_id, "016x"),
+                    "trace_flags": format(context.trace_flags, "02x")
+                })
         
         # Adiciona informações do sistema
         log_data.update({
@@ -101,7 +121,24 @@ class StructuredLogger:
         """Decorator para adicionar span do OpenTelemetry"""
         def decorator(func):
             async def wrapper(*args, **kwargs):
-                with self.tracer.start_as_current_span(name) as span:
+                if _OTEL_AVAILABLE:
+                    span_cm = self.tracer.start_as_current_span(name)  # type: ignore
+                else:
+                    class _DummySpan:
+                        def __enter__(self_inner):
+                            return self_inner
+                        def __exit__(self_inner, exc_type, exc_val, exc_tb):
+                            return False
+                        def set_attribute(self_inner, *args, **kwargs):
+                            pass
+                        def set_status(self_inner, *args, **kwargs):
+                            pass
+                        def record_exception(self_inner, *args, **kwargs):
+                            pass
+
+                    span_cm = _DummySpan()
+
+                with span_cm as span:
                     try:
                         # Adiciona atributos do span
                         span.set_attribute("service.name", self.service_name)

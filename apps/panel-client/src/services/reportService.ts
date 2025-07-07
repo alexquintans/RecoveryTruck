@@ -1,5 +1,8 @@
+// @ts-ignore
 import jsPDF from 'jspdf';
+// @ts-ignore
 import 'jspdf-autotable';
+// @ts-ignore
 import autoTable from 'jspdf-autotable';
 
 // Definições de tipos
@@ -47,6 +50,11 @@ export interface Ticket {
   cancelledAt?: string;
   service?: Service;
   customer?: Customer;
+  service_name?: string;
+  customer_name?: string;
+  services?: Service[];
+  operatorId?: string;
+  equipmentId?: string;
 }
 
 export interface Equipment {
@@ -120,15 +128,24 @@ const calculateAverageRevenue = (tickets: Ticket[]): number => {
 const calculateServiceStats = (tickets: Ticket[]) => {
   const serviceStats: Record<string, { count: number, revenue: number }> = {};
   
-  tickets.filter(ticket => ticket.status === 'completed' && ticket.service).forEach(ticket => {
-    const serviceName = ticket.service?.name || 'Desconhecido';
+  tickets.filter(ticket => ticket.status === 'completed').forEach(ticket => {
+    // Usar service_name se disponível, senão usar service.name
+    const serviceName = ticket.service_name || ticket.service?.name || 'Desconhecido';
     
     if (!serviceStats[serviceName]) {
       serviceStats[serviceName] = { count: 0, revenue: 0 };
     }
     
     serviceStats[serviceName].count += 1;
-    serviceStats[serviceName].revenue += ticket.service?.price || 0;
+    
+    // Calcular preço total dos serviços
+    if (ticket.services && ticket.services.length > 0) {
+      serviceStats[serviceName].revenue += ticket.services.reduce((sum, service) => 
+        sum + (service.price || 0), 0
+      );
+    } else {
+      serviceStats[serviceName].revenue += ticket.service?.price || 0;
+    }
   });
   
   return serviceStats;
@@ -225,14 +242,30 @@ export const generateReport = (stats: PanelStats, tickets: Ticket[], equipment?:
     doc.setFontSize(14);
     doc.text('Atendimentos Concluídos', 14, finalY2 + 15);
     
-    // Dados para a tabela de tickets
-    const ticketData = completedTickets.slice(0, 15).map(ticket => [
-      ticket.number,
-      ticket.service?.name || 'Serviço',
-      ticket.customer?.name || 'Cliente',
-      formatDateTime(ticket.completedAt || ''),
-      formatCurrency(ticket.service?.price || 0)
-    ]);
+    // Dados para a tabela de tickets com campos mais relevantes
+    const ticketData = completedTickets.slice(0, 15).map(ticket => {
+      // Usar service_name se disponível, senão usar service.name
+      const serviceName = ticket.service_name || ticket.service?.name || 'Serviço';
+      
+      // Usar customer_name se disponível, senão usar customer.name
+      const customerName = ticket.customer_name || ticket.customer?.name || 'Cliente';
+      
+      // Calcular preço total dos serviços
+      let totalPrice = 0;
+      if (ticket.services && ticket.services.length > 0) {
+        totalPrice = ticket.services.reduce((sum, service) => sum + (service.price || 0), 0);
+      } else {
+        totalPrice = ticket.service?.price || 0;
+      }
+      
+      return [
+        ticket.number,
+        serviceName,
+        customerName,
+        formatDateTime(ticket.completedAt || ''),
+        formatCurrency(totalPrice)
+      ];
+    });
     
     // Tabela de tickets
     autoTable(doc, {

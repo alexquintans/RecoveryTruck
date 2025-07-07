@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 
-from models import Ticket, Service, Operator
+from models import Ticket, Service, Operator, TicketService
 from constants import (
     TicketStatus, QueuePriority, QueueSortOrder, 
     QUEUE_CONFIG, QUEUE_TIMINGS, calculate_priority, get_waiting_time_status
@@ -41,14 +41,17 @@ class QueueManager:
             queue_statuses.append(TicketStatus.IN_PROGRESS.value)
         
         # Query base
-        query = self.db.query(Ticket).join(Service).filter(
+        query = self.db.query(Ticket)\
+            .join(TicketService, TicketService.ticket_id == Ticket.id)\
+            .join(Service, Service.id == TicketService.service_id)\
+            .filter(
             Ticket.tenant_id == tenant_id,
             Ticket.status.in_(queue_statuses)
         )
         
         # Filtros opcionais
         if service_id:
-            query = query.filter(Ticket.service_id == service_id)
+            query = query.filter(TicketService.service_id == service_id)
         
         if priority_filter:
             query = query.filter(Ticket.priority == priority_filter.value)
@@ -134,8 +137,9 @@ class QueueManager:
             ticket.queue_position = position
             
             # Calcular tempo estimado de espera
+            service = ticket.services[0].service if ticket.services else None
             estimated_wait = self._calculate_estimated_wait_time(
-                position, ticket.service, in_progress_tickets
+                position, service, in_progress_tickets
             )
             ticket.estimated_wait_minutes = estimated_wait
         
@@ -212,7 +216,13 @@ class QueueManager:
         # Estatísticas por serviço
         by_service = {}
         for ticket in active_tickets:
-            service_name = ticket.service.name
+            # Obter nome do serviço através da relação TicketService
+            service_name = "Sem serviço"
+            if ticket.services:
+                service = ticket.services[0].service
+                if service:
+                    service_name = service.name
+            
             if service_name not in by_service:
                 by_service[service_name] = {
                     "total": 0,

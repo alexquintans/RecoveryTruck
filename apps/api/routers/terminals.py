@@ -5,15 +5,21 @@ from typing import Dict, List, Any, Optional
 from pydantic import BaseModel, Field
 import logging
 
-from ..core.auth import get_current_tenant
-from ..services.payment.terminal_manager import terminal_manager
-from ..services.payment.terminal import (
+# Substitui get_current_tenant por derivação do operador autenticado
+from auth import get_current_operator
+from services.payment.terminal_manager import terminal_manager
+from services.payment.terminal import (
     TransactionRequest, PaymentMethod, PaymentTerminalError
 )
 
+# Função helper para obter tenant a partir do operador autenticado
+def get_current_tenant(current_operator = Depends(get_current_operator)) -> str:
+    """Retorna o tenant_id do operador autenticado"""
+    return str(current_operator.tenant_id)
+
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/terminals", tags=["terminals"])
+router = APIRouter(tags=["terminals"])
 
 # === Schemas ===
 

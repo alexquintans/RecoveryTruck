@@ -1,8 +1,10 @@
-from pydantic_settings import BaseSettings
-from typing import List
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import List, Any
 import os
+from pydantic import field_validator
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(extra="ignore", env_file=".env")
     # Database
     DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/totem")
     
@@ -17,8 +19,15 @@ class Settings(BaseSettings):
     
     # Printer
     PRINTER_TYPE: str = os.getenv("PRINTER_TYPE", "usb")
-    PRINTER_VENDOR_ID: int = int(os.getenv("PRINTER_VENDOR_ID", "0x0483"))
-    PRINTER_PRODUCT_ID: int = int(os.getenv("PRINTER_PRODUCT_ID", "0x5740"))
+    # Converte valores que podem vir como hexadecimal (ex.: 0x0483)
+    def _parse_int(value: str) -> int:
+        try:
+            return int(value, 0)  # base 0 permite 0x (hex), 0o (octal), etc.
+        except ValueError:
+            return int(value)
+
+    PRINTER_VENDOR_ID: int = _parse_int(os.getenv("PRINTER_VENDOR_ID", "0x0483"))
+    PRINTER_PRODUCT_ID: int = _parse_int(os.getenv("PRINTER_PRODUCT_ID", "0x5740"))
     
     # Payment Processors
     STONE_API_URL: str = os.getenv("STONE_API_URL", "https://api.stone.com.br/v1")
@@ -37,13 +46,14 @@ class Settings(BaseSettings):
     LOG_FORMAT: str = os.getenv("LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     
     # Security
-    CORS_ORIGINS: List[str] = os.getenv("CORS_ORIGINS", "*").split(",")
+    CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "*")
+    
+    def cors_origin_list(self) -> List[str]:
+        """Retorna lista de origens a partir da string"""
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
     
     # Rate Limiting
     RATE_LIMIT_REQUESTS: int = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
     RATE_LIMIT_PERIOD: int = int(os.getenv("RATE_LIMIT_PERIOD", "60"))  # em segundos
-    
-    class Config:
-        env_file = ".env"
 
 settings = Settings() 

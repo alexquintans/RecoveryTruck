@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '../components/Button';
@@ -7,6 +7,7 @@ import { Modal } from '../components/Modal';
 import { PrivacyPolicy } from '../components/PrivacyPolicy';
 import { useTotemStore } from '../store/totemStore';
 import { validateCPF, validatePhone, validateName, formatCPF, formatPhone } from '../utils';
+import { api } from '../utils/api';
 import type { Customer } from '../types';
 
 const CustomerInfoPage: React.FC = () => {
@@ -28,12 +29,44 @@ const CustomerInfoPage: React.FC = () => {
   
   // Estado do modal de política de privacidade
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
+
+  // Estados para auto-preenchimento
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchTimeout, setSearchTimeout] = useState<number | null>(null);
   
   // Redirecionar se não houver serviço selecionado
   if (!selectedService) {
     navigate('/service');
     return null;
   }
+
+  // Função para buscar cliente na base
+  const searchCustomer = async (searchTerm: string) => {
+    if (!searchTerm || searchTerm.length < 3) return;
+    
+    setIsSearching(true);
+    try {
+      // Buscar por nome ou CPF
+      const customer = await api.searchCustomer(searchTerm);
+      if (customer) {
+        // Auto-preenchimento dos campos
+        setFormData(prev => ({
+          ...prev,
+          name: customer.name || prev.name,
+          cpf: customer.cpf || prev.cpf,
+          phone: customer.phone || prev.phone,
+        }));
+        
+        // Mostrar feedback visual de sucesso
+        console.log('Cliente encontrado na base de dados!');
+      }
+    } catch (error) {
+      // Cliente não encontrado - não é erro, apenas não existe na base
+      console.log('Cliente não encontrado na base de dados');
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   // Lidar com mudanças nos campos
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -61,7 +94,31 @@ const CustomerInfoPage: React.FC = () => {
         [name]: '',
       }));
     }
+
+    // Auto-preenchimento: buscar cliente quando digitar nome ou CPF
+    if (name === 'name' || name === 'cpf') {
+      // Cancelar busca anterior
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+      
+      // Nova busca com delay para evitar muitas requisições
+      const timeout = setTimeout(() => {
+        searchCustomer(formattedValue as string);
+      }, 1000); // 1 segundo de delay
+      
+      setSearchTimeout(timeout);
+    }
   };
+
+  // Limpar timeout ao desmontar
+  useEffect(() => {
+    return () => {
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+    };
+  }, [searchTimeout]);
 
   // Validar formulário
   const validateForm = (): boolean => {
@@ -71,6 +128,7 @@ const CustomerInfoPage: React.FC = () => {
       newErrors.name = 'Nome completo é obrigatório (mínimo 3 caracteres)';
     }
     
+    // CPF agora é opcional, mas se preenchido deve ser válido
     if (formData.cpf && !validateCPF(formData.cpf)) {
       newErrors.cpf = 'CPF inválido';
     }
@@ -100,7 +158,7 @@ const CustomerInfoPage: React.FC = () => {
 
   // Voltar para a página anterior
   const handleBack = () => {
-    navigate('/service');
+    navigate('/extras');
   };
 
   // Abrir modal de política de privacidade
@@ -121,11 +179,14 @@ const CustomerInfoPage: React.FC = () => {
             Suas Informações
           </h2>
           <p className="text-text-light">
-            Preencha seus dados para continuar com o serviço: 
-            <span className="font-semibold text-primary ml-1">
-              {selectedService.name}
-            </span>
+            Preencha seus dados para continuar com o serviço
           </p>
+          {isSearching && (
+            <div className="mt-2 flex items-center justify-center gap-2 text-sm text-primary">
+              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-primary"></div>
+              Buscando dados na base...
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -151,10 +212,10 @@ const CustomerInfoPage: React.FC = () => {
             )}
           </div>
 
-          {/* CPF */}
+          {/* CPF - Agora opcional */}
           <div>
             <label htmlFor="cpf" className="block text-lg font-medium mb-2">
-              CPF
+              CPF <span className="text-gray-500 text-sm">(opcional)</span>
             </label>
             <input
               type="text"
@@ -165,19 +226,22 @@ const CustomerInfoPage: React.FC = () => {
               className={`w-full p-4 text-lg rounded-xl border ${
                 errors.cpf ? 'border-red-500' : 'border-gray-300'
               } focus:ring-2 focus:ring-primary focus:border-transparent`}
-              placeholder="000.000.000-00"
+              placeholder="000.000.000-00 (opcional)"
               maxLength={14}
               autoComplete="off"
             />
             {errors.cpf && (
               <p className="mt-1 text-red-500">{errors.cpf}</p>
             )}
+            <p className="mt-1 text-sm text-gray-500">
+              Preencha o CPF para agilizar futuros atendimentos
+            </p>
           </div>
 
           {/* Telefone */}
           <div>
             <label htmlFor="phone" className="block text-lg font-medium mb-2">
-              Telefone
+              Telefone <span className="text-gray-500 text-sm">(opcional)</span>
             </label>
             <input
               type="tel"
@@ -188,7 +252,7 @@ const CustomerInfoPage: React.FC = () => {
               className={`w-full p-4 text-lg rounded-xl border ${
                 errors.phone ? 'border-red-500' : 'border-gray-300'
               } focus:ring-2 focus:ring-primary focus:border-transparent`}
-              placeholder="(00) 00000-0000"
+              placeholder="(00) 00000-0000 (opcional)"
               maxLength={15}
               autoComplete="tel"
             />

@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Optional
 
 from database import get_db
-from models import Operator
+from models import Operator, Tenant
 from schemas import OperatorCreate
 from security import verify_password, create_access_token, verify_token, get_password_hash
 
@@ -52,9 +52,22 @@ def authenticate_operator(db: Session, email: str, password: str) -> Optional[Op
     return operator
 
 def create_operator(db: Session, operator: OperatorCreate) -> Operator:
-    """Create new operator."""
+    """Create new operator. Aceita tenant_id ou tenant_name."""
+
+    # Resolve tenant_id
+    tenant_id = operator.tenant_id
+    if not tenant_id and operator.tenant_name:
+        tenant = db.query(Tenant).filter(Tenant.name == operator.tenant_name).first()
+        if not tenant:
+            raise HTTPException(status_code=404, detail="Tenant não encontrado")
+        tenant_id = tenant.id
+
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="tenant_id ou tenant_name obrigatório")
+
     hashed_password = get_password_hash(operator.password)
     db_operator = Operator(
+        tenant_id=tenant_id,
         name=operator.name,
         email=operator.email,
         password_hash=hashed_password,

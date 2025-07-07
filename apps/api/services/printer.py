@@ -3,8 +3,29 @@ import json
 import asyncio
 from datetime import datetime
 import logging
-from escpos.printer import Usb, Network, Serial
-from escpos.exceptions import Error as ESCPOSError
+# Tenta importar biblioteca escpos; se não estiver instalada, usa stub para permitir execução
+try:
+    from escpos.printer import Usb, Network, Serial  # type: ignore
+    from escpos.exceptions import Error as ESCPOSError  # type: ignore
+    _ESC_POS_AVAILABLE = True
+except ModuleNotFoundError:
+    _ESC_POS_AVAILABLE = False
+
+    class _EscposStub:  # pega qualquer chamada e ignora
+        def __getattr__(self, item):
+            def _noop(*args, **kwargs):
+                return None
+            return _noop
+
+    Usb = Network = Serial = _EscposStub()  # type: ignore
+
+    class ESCPOSError(Exception):
+        pass
+
+    import warnings
+    warnings.warn(
+        "Biblioteca 'python-escpos' não instalada. Usando impressora mock."
+    )
 
 logger = logging.getLogger(__name__)
 

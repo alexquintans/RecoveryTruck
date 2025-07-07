@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
 from typing import Optional
 from datetime import datetime, timedelta
-from ..services.metrics import MetricsService
-from ..services.auth import get_current_operator
-from ..models.operator import Operator
-from ..database import get_db
+from services.metrics import MetricsService
+from auth import get_current_operator
+from models import Operator
+from database import get_db
 from sqlalchemy.orm import Session
 
 router = APIRouter()

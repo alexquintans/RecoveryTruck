@@ -19,6 +19,7 @@ const SOUNDS = {
   payment: '/sounds/payment.mp3',
   ticket: '/sounds/ticket.mp3',
   call: '/sounds/call.mp3',
+  ticket_called: '/sounds/call.mp3',
 };
 
 export function useSoundNotifications(

@@ -1,13 +1,14 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Service, Customer, Payment, Ticket } from '../types';
+import type { Service, Customer, Ticket } from '../types';
+import type { PaymentSession } from '../utils/api';
 
 interface TotemState {
   // Dados do fluxo
   currentStep: 'welcome' | 'service' | 'customer' | 'terms' | 'payment' | 'ticket';
-  selectedService: Service | null;
+  selectedService: Service | Service[] | null;
   customerData: Customer | null;
-  currentPayment: Payment | null;
+  currentPayment: PaymentSession | null;
   currentTicket: Ticket | null;
   
   // Estado da UI
@@ -16,9 +17,9 @@ interface TotemState {
   
   // Ações
   setStep: (step: TotemState['currentStep']) => void;
-  setService: (service: Service | null) => void;
+  setService: (service: Service | Service[] | null) => void;
   setCustomer: (customer: Customer | null) => void;
-  setPayment: (payment: Payment | null) => void;
+  setPayment: (payment: PaymentSession | null) => void;
   setTicket: (ticket: Ticket | null) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;

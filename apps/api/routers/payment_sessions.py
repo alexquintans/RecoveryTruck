@@ -21,7 +21,6 @@ from constants import TicketStatus, PaymentSessionStatus
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/payment-sessions",
     tags=["payment-sessions"]
 )
 
@@ -45,14 +44,28 @@ def generate_qr_code(payment_link: str) -> str:
     
     return f"data:image/png;base64,{img_str}"
 
-@router.post("", response_model=PaymentSessionWithQR)
+@router.post("", response_model=PaymentSessionSchema)
 async def create_payment_session(
-    payment_session: PaymentSessionCreate,
-    db: Session = Depends(get_db),
-    # Remover dependência do operador - totem não tem autenticação
-    # current_operator: Operator = Depends(get_current_operator)
+    session_in: PaymentSessionCreate,
+    db: Session = Depends(get_db)
 ):
-    """Criar nova sessão de pagamento - chamado pelo totem quando cliente escolhe serviço."""
+    # Suporte a simulação de pagamento
+    if getattr(session_in, 'mock', False):
+        # Cria uma sessão de pagamento simulada já aprovada
+        payment_session = PaymentSession(
+            tenant_id=session_in.tenant_id,
+            service_id=session_in.service_id,
+            customer_name=session_in.customer_name,
+            customer_cpf=encrypt_data(session_in.customer_cpf) if session_in.customer_cpf else None,
+            customer_phone=session_in.customer_phone,
+            consent_version=session_in.consent_version,
+            payment_method=session_in.payment_method,
+            status="approved",
+        )
+        db.add(payment_session)
+        db.commit()
+        db.refresh(payment_session)
+        return payment_session
     
     # TODO: Implementar tenant_id via header ou configuração do totem
     # Por enquanto, usar um tenant_id fixo para desenvolvimento
@@ -60,7 +73,7 @@ async def create_payment_session(
     
     # Verify service exists
     service = db.query(Service).filter(
-        Service.id == payment_session.service_id,
+        Service.id == session_in.service_id,
         Service.is_active == True
     ).first()
     
@@ -75,12 +88,12 @@ async def create_payment_session(
     
     db_payment_session = PaymentSession(
         tenant_id=TEMP_TENANT_ID,  # TODO: get from context
-        service_id=payment_session.service_id,
-        customer_name=payment_session.customer_name,
-        customer_cpf=encrypt_data(payment_session.customer_cpf),
-        customer_phone=payment_session.customer_phone,
-        consent_version=payment_session.consent_version,
-        payment_method=payment_session.payment_method,
+        service_id=session_in.service_id,
+        customer_name=session_in.customer_name,
+        customer_cpf=encrypt_data(session_in.customer_cpf) if session_in.customer_cpf else None,
+        customer_phone=session_in.customer_phone,
+        consent_version=session_in.consent_version,
+        payment_method=session_in.payment_method,
         amount=service.price,
         status="pending",
         expires_at=expires_at
@@ -94,7 +107,8 @@ async def create_payment_session(
     db_consent = Consent(
         tenant_id=TEMP_TENANT_ID,
         payment_session_id=db_payment_session.id,
-        version=payment_session.consent_version
+        version=session_in.consent_version,
+        signature=getattr(session_in, 'signature', None)  # Salva assinatura se enviada
     )
     
     db.add(db_consent)
@@ -124,7 +138,7 @@ async def create_payment_session(
             
             payment_data = await adapter.create_payment(
                 amount=float(service.price),
-                description=f"Serviço: {service.name} - Cliente: {payment_session.customer_name}",
+                description=f"Serviço: {service.name} - Cliente: {session_in.customer_name}",
                 metadata={
                     "payment_session_id": str(db_payment_session.id),
                     "service_id": str(service.id),
@@ -145,14 +159,17 @@ async def create_payment_session(
             print(f"Error creating payment: {e}")
     
     # Generate QR code if payment link exists
-    response = PaymentSessionWithQR.from_orm(db_payment_session)
+    response = PaymentSessionSchema.from_orm(db_payment_session)
     if payment_link:
         response.qr_code = generate_qr_code(payment_link)
     
     return response
 
 @router.post("/webhook")
-async def payment_webhook(request: Request, db: Session = Depends(get_db)):
+async def payment_webhook(
+    request: Request,
+    db: Session = Depends(get_db)
+):
     """Handle payment webhook from payment provider."""
     
     try:
@@ -515,7 +532,9 @@ async def get_print_status():
         )
 
 @router.get("/integration/status")
-async def get_integration_status(db: Session = Depends(get_db)):
+async def get_integration_status(
+    db: Session = Depends(get_db)
+):
     """Retorna o status da integração pagamento ↔ ticket"""
     
     # Buscar estatísticas das últimas 24 horas
@@ -606,7 +625,9 @@ async def get_integration_status(db: Session = Depends(get_db)):
     }
 
 @router.get("/integration/test")
-async def test_integration_flow(db: Session = Depends(get_db)):
+async def test_integration_flow(
+    db: Session = Depends(get_db)
+):
     """Testa o fluxo completo de integração pagamento ↔ ticket"""
     
     # Criar uma sessão de pagamento de teste

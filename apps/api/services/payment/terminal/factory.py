@@ -355,4 +355,44 @@ class TerminalFactory:
             "pagbank": ["credit_card", "debit_card", "pix", "contactless", "voucher"]
         }
         
-        return supported_methods.get(terminal_type.lower(), []) 
+        return supported_methods.get(terminal_type.lower(), [])
+
+    # ------------------------------------------------------------------
+    # Integração com Tenant Config
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def create_from_tenant_config(cls, tenant_id: str, tenant_config: Dict[str, Any]) -> TerminalAdapter:
+        """Cria instância de terminal a partir do bloco de configuração de um tenant.
+
+        A função aceita formatos flexíveis:
+        1. {
+              "terminal": {
+                  "type": "stone",
+                  ...
+              }
+           }
+        2. {
+              "type": "mock",
+              ...
+           }
+        """
+
+        # Extrai sub-dict contendo parâmetros do terminal
+        cfg = tenant_config.get("terminal", tenant_config)
+
+        if not isinstance(cfg, dict):
+            raise ValueError("tenant_config deve conter dict 'terminal' ou ser o próprio dict de config do terminal")
+
+        terminal_type = cfg.get("type")
+        if not terminal_type:
+            raise ValueError(f"Tenant {tenant_id} não possui campo 'type' para terminal")
+
+        # Validação opcional
+        if not cls.validate_config(terminal_type, cfg):
+            logger.warning(f"⚠️ Configuração de terminal inválida para tenant {tenant_id}. Usando mesmo assim…")
+
+        return cls.create_terminal(terminal_type, cfg)
+
+# Alias para compatibilidade
+TerminalAdapterFactory = TerminalFactory 

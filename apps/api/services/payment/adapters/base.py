@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, Union
 from datetime import datetime
 import logging
 
-from apps.api.services.printer_service import (
+from services.printer_service import (
     printer_service, ReceiptData, ReceiptType, PrinterConfig, PrinterType, PrinterConnection
 )
+from services.webhook_validator import webhook_validator, WebhookProvider
 
 logger = logging.getLogger(__name__)
 
@@ -211,8 +212,6 @@ class PaymentAdapter(ABC):
         client_ip: Optional[str] = None
     ) -> bool:
         """🔐 Verifica webhook com validação completa de segurança"""
-        
-        from apps.api.services.webhook_validator import webhook_validator, WebhookProvider
         
         # Mapeia classe para provider
         provider_map = {

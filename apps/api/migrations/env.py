@@ -5,6 +5,7 @@ from alembic import context
 import os
 import sys
 from dotenv import load_dotenv
+from apps.api.models import Base, OperationStatusModel  # ajuste o import conforme seu projeto
 
 # Adiciona o diretório raiz ao PYTHONPATH
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -19,8 +20,9 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-from models import Base
+# Não importar modelos nem usar metadata
+# target_metadata = None
+
 target_metadata = Base.metadata
 
 def run_migrations_offline() -> None:

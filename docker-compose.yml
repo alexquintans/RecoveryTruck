@@ -1,8 +1,6 @@
-version: '3.8'
-
 services:
   api:
-    build: 
+    build:
       context: .
       dockerfile: apps/api/Dockerfile
     ports:
@@ -14,6 +12,11 @@ services:
       - SERVICE_NAME=totem-api
       - ENVIRONMENT=development
       - LOG_LEVEL=INFO
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=totem
     depends_on:
       - db
       - jaeger
@@ -32,7 +35,7 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=totem
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -44,7 +47,7 @@ services:
       retries: 3
 
   jaeger:
-    image: jaegertracing/all-in-one:1.42
+    image: jaegertracing/all-in-one:1.46
     ports:
       - "16686:16686"  # UI
       - "4317:4317"    # OTLP gRPC
@@ -64,14 +67,9 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./alert.rules:/etc/prometheus/alert.rules
+      - ./prom_configs:/etc/prometheus:ro
       - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
+    command: ["--config.file=/etc/prometheus/prometheus.yml"]
     networks:
       - totem-network
     healthcheck:
@@ -81,19 +79,20 @@ services:
       retries: 3
 
   alertmanager:
-    image: prom/alertmanager:v0.26.0
+    image: prom/alertmanager:v0.27.0
     ports:
       - "9093:9093"
     volumes:
-      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - ./alertmanager_config:/etc/alertmanager:ro
       - alertmanager_data:/alertmanager
-    command:
-      - '--config.file=/etc/alertmanager/alertmanager.yml'
-      - '--storage.path=/alertmanager'
+    command: ["--config.file=/etc/alertmanager/alertmanager.yml"]
+    environment:
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
     networks:
       - totem-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9093/-/healthy"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9093/-/healthy"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -139,6 +138,41 @@ services:
       timeout: 10s
       retries: 3
 
+  panel:
+    build:
+      context: .
+      dockerfile: apps/panel-client/Dockerfile
+    depends_on: [api]
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    ports:
+      - "5175:80"          # porta externa → porta nginx
+    networks: [totem-network]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  totem:
+    build:
+      context: .
+      dockerfile: apps/totem-client/Dockerfile
+    depends_on: [api]
+    environment:
+      - VITE_API_URL=http://localhost:8000
+      - VITE_TENANT_ID=52c6777f-ee24-433b-8e4b-7185950da52e
+      - VITE_WS_URL=ws://localhost:8000/ws
+      - VITE_MOCK_PAYMENT=true
+    ports:
+      - "5174:80"
+    networks: [totem-network]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
 volumes:
   postgres_data:
   prometheus_data:
@@ -147,4 +181,12 @@ volumes:
 
 networks:
   totem-network:
-    driver: bridge 
+    driver: bridge
+
+configs:
+  prometheus_cfg:
+    file: ./prom_configs/prometheus.yml
+  prometheus_rules:
+    file: ./prom_configs/alert.rules
+  alert_cfg:
+    file: ./alertmanager_config/alertmanager.yml 

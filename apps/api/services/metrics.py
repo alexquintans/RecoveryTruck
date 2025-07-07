@@ -2,9 +2,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
-from ..models.ticket import Ticket
-from ..models.payment import Payment
-from ..models.service import Service
+from models import Ticket, PaymentSession as Payment, Service
 from prometheus_client import Counter, Histogram, Gauge
 import logging
 

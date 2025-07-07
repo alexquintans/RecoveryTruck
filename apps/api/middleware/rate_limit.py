@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 import time
 from typing import Dict, Tuple
 import asyncio
-from ..config import settings
+from ..config.settings import settings
 
 class RateLimiter:
     def __init__(self):

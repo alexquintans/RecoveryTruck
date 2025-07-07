@@ -4,12 +4,11 @@ from typing import List, Optional
 import uuid
 
 from database import get_db
-from models import Service
+from models import Service, Operator
 from schemas import ServiceCreate, Service as ServiceSchema, ServiceList
 from auth import get_current_operator
 
 router = APIRouter(
-    prefix="/services",
     tags=["services"]
 )
 
@@ -26,7 +25,7 @@ async def create_service(
         description=service.description,
         price=service.price,
         duration_minutes=service.duration_minutes,
-        equipment_count=service.equipment_count,
+        equipment_count=getattr(service, 'equipment_count', 1),
         is_active=service.is_active
     )
     
@@ -95,6 +94,8 @@ async def update_service(
         )
         
     for field, value in service.dict().items():
+        if field == 'equipment_count' and value is None:
+            value = 1
         setattr(db_service, field, value)
         
     db.commit()

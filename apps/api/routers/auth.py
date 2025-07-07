@@ -4,16 +4,16 @@ from sqlalchemy.orm import Session
 from datetime import timedelta
 
 from database import get_db
-from schemas import Token, OperatorCreate, Operator
+from schemas import TokenWithOperator, OperatorCreate, Operator
+from models import Operator as DBOperator
 from auth import authenticate_operator, create_operator, update_operator_last_login
 from security import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 
 router = APIRouter(
-    prefix="/auth",
     tags=["authentication"]
 )
 
-@router.post("/token", response_model=Token)
+@router.post("/token", response_model=TokenWithOperator)
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
@@ -35,7 +35,20 @@ async def login_for_access_token(
     
     update_operator_last_login(db, operator)
     
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "operator": {
+            "id": operator.id,
+            "name": operator.name,
+            "email": operator.email,
+            "tenant_id": operator.tenant_id,
+            "is_active": operator.is_active,
+            "last_login_at": operator.last_login_at,
+            "created_at": operator.created_at,
+            "updated_at": operator.updated_at,
+        }
+    }
 
 @router.post("/register", response_model=Operator)
 async def register_operator(
@@ -43,7 +56,7 @@ async def register_operator(
     db: Session = Depends(get_db)
 ):
     """Register new operator."""
-    db_operator = db.query(Operator).filter(Operator.email == operator.email).first()
+    db_operator = db.query(DBOperator).filter(DBOperator.email == operator.email).first()
     if db_operator:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

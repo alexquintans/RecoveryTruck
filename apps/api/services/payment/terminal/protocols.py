@@ -1,12 +1,46 @@
 # 🔌 Protocolos de Comunicação para Terminais
 
 import asyncio
-import serial
 import socket
 import logging
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, Union
 from dataclasses import dataclass
+
+# opcional pyserial
+import asyncio
+import socket
+
+try:
+    import serial  # type: ignore
+except ModuleNotFoundError:
+    class _SerialStubException(Exception):
+        pass
+
+    class _SerialStub:
+        def __init__(self, *args, **kwargs):
+            self.is_open = False
+        def close(self):
+            pass
+        def write(self, *args, **kwargs):
+            pass
+        def flush(self):
+            pass
+        def read(self, *args, **kwargs):
+            return b""
+        @property
+        def in_waiting(self):
+            return 0
+        def reset_input_buffer(self):
+            pass
+
+    class _SerialModuleStub:
+        Serial = _SerialStub
+        SerialException = _SerialStubException
+
+    serial = _SerialModuleStub()  # type: ignore
+    import warnings
+    warnings.warn("Biblioteca 'pyserial' não instalada. Usando stub de conexão serial.")
 
 logger = logging.getLogger(__name__)
 

@@ -1,0 +1,9 @@
+{
+  "service_id": "bf91f3db-7608-405a-9c66-b4dbc1857013",
+  "customer_name": "Teste Cliente",
+  "customer_cpf": "12345678901",
+  "customer_phone": "11999999999",
+  "consent_version": "v1",
+  "payment_method": "pix",
+  "mock": true
+} 

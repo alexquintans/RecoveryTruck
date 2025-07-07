@@ -9,6 +9,8 @@ import CustomerInfoPage from './pages/CustomerInfoPage';
 import TermsPage from './pages/TermsPage';
 import PaymentPage from './pages/PaymentPage';
 import TicketPage from './pages/TicketPage';
+import QueuePage from './pages/QueuePage';
+import SelectExtrasPage from './pages/SelectExtrasPage';
 
 // Componentes de layout
 import Layout from './components/Layout';
@@ -16,6 +18,7 @@ import KioskMode from './components/KioskMode';
 import AdminAccess from './components/AdminAccess';
 import FullscreenButton from './components/FullscreenButton';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
+import { RequireStep } from './components/RequireStep';
 
 function App() {
   // Estado para controlar o modo quiosque
@@ -59,11 +62,37 @@ function App() {
           {/* Rotas públicas */}
           <Route path="/" element={<Layout />}>
             <Route index element={<WelcomePage />} />
-            <Route path="service" element={<SelectServicePage />} />
-            <Route path="customer-info" element={<CustomerInfoPage />} />
-            <Route path="terms" element={<TermsPage />} />
-            <Route path="payment" element={<PaymentPage />} />
-            <Route path="ticket" element={<TicketPage />} />
+            <Route path="service" element={
+              <RequireStep step="service">
+                <SelectServicePage />
+              </RequireStep>
+            } />
+            <Route path="extras" element={
+              <RequireStep step="extras">
+                <SelectExtrasPage />
+              </RequireStep>
+            } />
+            <Route path="customer-info" element={
+              <RequireStep step="customer">
+                <CustomerInfoPage />
+              </RequireStep>
+            } />
+            <Route path="terms" element={
+              <RequireStep step="terms">
+                <TermsPage />
+              </RequireStep>
+            } />
+            <Route path="payment" element={
+              <RequireStep step="payment">
+                <PaymentPage />
+              </RequireStep>
+            } />
+            <Route path="ticket" element={
+              <RequireStep step="ticket">
+                <TicketPage />
+              </RequireStep>
+            } />
+            <Route path="queue" element={<QueuePage />} />
             
             {/* Rota de fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />

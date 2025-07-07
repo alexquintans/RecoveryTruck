@@ -18,7 +18,13 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+
+    "baseUrl": "./",
+    "paths": {
+      "@totem/utils": ["../../packages/utils/src"],
+      "@totem/hooks": ["../../packages/hooks/src"]
+    }
   },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]

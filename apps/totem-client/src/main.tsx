@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
 import './index.css';
 
+console.log('VITE_TENANT_ID:', import.meta.env.VITE_TENANT_ID);
+
 // Cria o cliente de consulta para React Query
 const queryClient = new QueryClient({
   defaultOptions: {

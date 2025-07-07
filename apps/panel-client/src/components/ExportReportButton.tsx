@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useMockPanelStore } from '../store/mockPanelStore';
+import { useTicketQueue } from '../hooks/useTicketQueue';
 import { generateReport, PanelStats, Ticket, Equipment } from '../services/reportService';
 import { ReportFilterModal, ReportFilters } from './ReportFilterModal';
 
@@ -14,30 +14,54 @@ export const ExportReportButton: React.FC<ExportReportButtonProps> = ({
   variant = 'primary',
   size = 'md',
 }) => {
-  const { tickets, equipment, stats } = useMockPanelStore();
+  // Usar hooks reais ao invés do mock
+  const { 
+    tickets, 
+    myTickets, 
+    completedTickets, 
+    cancelledTickets, 
+    equipment, 
+    operationConfig 
+  } = useTicketQueue();
+  
   const [isExporting, setIsExporting] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+
+  // Combinar todos os tickets para o relatório
+  const allTickets = [
+    ...tickets,
+    ...myTickets,
+    ...completedTickets,
+    ...cancelledTickets,
+  ];
 
   // Calcular dados adicionais para o relatório
   const calculateReportData = (filters?: ReportFilters): PanelStats => {
     // Filtrar tickets por data se os filtros estiverem presentes
-    let filteredTickets = [...tickets];
+    let filteredTickets = [...allTickets];
     
     if (filters) {
       const startDate = new Date(filters.startDate);
       const endDate = new Date(filters.endDate);
       endDate.setHours(23, 59, 59, 999); // Fim do dia
       
-      filteredTickets = tickets.filter(ticket => {
+      filteredTickets = allTickets.filter(ticket => {
         const ticketDate = new Date(ticket.createdAt);
         return ticketDate >= startDate && ticketDate <= endDate;
       });
       
       // Filtrar por tipo de serviço
       if (filters.serviceTypes.length > 0) {
-        filteredTickets = filteredTickets.filter(ticket => 
-          ticket.service && filters.serviceTypes.includes(ticket.service.equipmentType || '')
-        );
+        filteredTickets = filteredTickets.filter(ticket => {
+          // Verificar se o ticket tem serviços e se algum deles corresponde aos filtros
+          if (ticket.services && ticket.services.length > 0) {
+            return ticket.services.some(service => 
+              filters.serviceTypes.includes(service.equipmentType || '')
+            );
+          }
+          // Fallback para o formato antigo
+          return ticket.service && filters.serviceTypes.includes(ticket.service.equipmentType || '');
+        });
       }
     }
     
@@ -71,15 +95,29 @@ export const ExportReportButton: React.FC<ExportReportButtonProps> = ({
 
     // Calcular receita média por atendimento
     const calculateAverageRevenue = () => {
-      const completedTickets = filteredTickets.filter(ticket => 
-        ticket.status === 'completed' && ticket.service?.price
-      );
+      const completedTickets = filteredTickets.filter(ticket => {
+        if (ticket.status !== 'completed') return false;
+        
+        // Verificar se tem serviços com preço
+        if (ticket.services && ticket.services.length > 0) {
+          return ticket.services.some(service => service.price);
+        }
+        // Fallback para formato antigo
+        return ticket.service?.price;
+      });
       
       if (completedTickets.length === 0) return 0;
       
-      const totalRevenue = completedTickets.reduce((sum, ticket) => 
-        sum + (ticket.service?.price || 0), 0
-      );
+      const totalRevenue = completedTickets.reduce((sum, ticket) => {
+        // Calcular preço total dos serviços
+        if (ticket.services && ticket.services.length > 0) {
+          return sum + ticket.services.reduce((serviceSum, service) => 
+            serviceSum + (service.price || 0), 0
+          );
+        }
+        // Fallback para formato antigo
+        return sum + (ticket.service?.price || 0);
+      }, 0);
       
       return Math.round((totalRevenue / completedTickets.length) * 100) / 100;
     };
@@ -92,13 +130,27 @@ export const ExportReportButton: React.FC<ExportReportButtonProps> = ({
 
     // Calcular faturamento diário
     const calculateDailyRevenue = () => {
-      const completedTickets = filteredTickets.filter(ticket => 
-        ticket.status === 'completed' && ticket.service?.price
-      );
+      const completedTickets = filteredTickets.filter(ticket => {
+        if (ticket.status !== 'completed') return false;
+        
+        // Verificar se tem serviços com preço
+        if (ticket.services && ticket.services.length > 0) {
+          return ticket.services.some(service => service.price);
+        }
+        // Fallback para formato antigo
+        return ticket.service?.price;
+      });
       
-      return completedTickets.reduce((sum, ticket) => 
-        sum + (ticket.service?.price || 0), 0
-      );
+      return completedTickets.reduce((sum, ticket) => {
+        // Calcular preço total dos serviços
+        if (ticket.services && ticket.services.length > 0) {
+          return sum + ticket.services.reduce((serviceSum, service) => 
+            serviceSum + (service.price || 0), 0
+          );
+        }
+        // Fallback para formato antigo
+        return sum + (ticket.service?.price || 0);
+      }, 0);
     };
 
     return {
@@ -108,7 +160,7 @@ export const ExportReportButton: React.FC<ExportReportButtonProps> = ({
       completedTickets: ticketCounts.completed,
       cancelledTickets: ticketCounts.cancelled,
       totalTickets: ticketCounts.total,
-      averageWaitTime: stats?.averageWaitTime || 0,
+      averageWaitTime: operationConfig?.serviceDuration || 10,
       averageServiceTime: calculateAverageServiceTime(),
       averageRevenue: calculateAverageRevenue(),
       completionRate: calculateCompletionRate(),
@@ -128,10 +180,10 @@ export const ExportReportButton: React.FC<ExportReportButtonProps> = ({
   // Filtrar tickets com base nos filtros
   const filterTickets = (filters?: ReportFilters): Ticket[] => {
     if (!filters) {
-      return tickets;
+      return allTickets;
     }
     
-    let filteredTickets = [...tickets];
+    let filteredTickets = [...allTickets];
     
     // Filtrar por data
     const startDate = new Date(filters.startDate);
@@ -145,9 +197,16 @@ export const ExportReportButton: React.FC<ExportReportButtonProps> = ({
     
     // Filtrar por tipo de serviço
     if (filters.serviceTypes.length > 0) {
-      filteredTickets = filteredTickets.filter(ticket => 
-        ticket.service && filters.serviceTypes.includes(ticket.service.equipmentType || '')
-      );
+      filteredTickets = filteredTickets.filter(ticket => {
+        // Verificar se o ticket tem serviços e se algum deles corresponde aos filtros
+        if (ticket.services && ticket.services.length > 0) {
+          return ticket.services.some(service => 
+            filters.serviceTypes.includes(service.equipmentType || '')
+          );
+        }
+        // Fallback para o formato antigo
+        return ticket.service && filters.serviceTypes.includes(ticket.service.equipmentType || '');
+      });
     }
     
     return filteredTickets;

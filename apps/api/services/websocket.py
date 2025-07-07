@@ -3,8 +3,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from datetime import datetime
 import json
 import asyncio
-from ..models.ticket import Ticket
-from ..models.payment import Payment
+from models import Ticket, PaymentSession as Payment
 
 # Importar o serviço de notificações
 from .notification_service import notification_service, NotificationEvent
@@ -17,6 +16,8 @@ class ConnectionManager:
         self.operator_connections: Dict[str, Set[WebSocket]] = {}
         # Conexões de totens
         self.totem_connections: Dict[str, Set[WebSocket]] = {}
+        # Conexões de displays
+        self.display_connections: Dict[str, Set[WebSocket]] = {}
 
     async def connect(self, websocket: WebSocket, tenant_id: str, client_type: str):
         """Conecta um novo cliente WebSocket"""
@@ -30,6 +31,10 @@ class ConnectionManager:
             if tenant_id not in self.totem_connections:
                 self.totem_connections[tenant_id] = set()
             self.totem_connections[tenant_id].add(websocket)
+        elif client_type == "display":
+            if tenant_id not in self.display_connections:
+                self.display_connections[tenant_id] = set()
+            self.display_connections[tenant_id].add(websocket)
         else:
             if tenant_id not in self.active_connections:
                 self.active_connections[tenant_id] = set()
@@ -43,6 +48,9 @@ class ConnectionManager:
         elif client_type == "totem":
             if tenant_id in self.totem_connections:
                 self.totem_connections[tenant_id].discard(websocket)
+        elif client_type == "display":
+            if tenant_id in self.display_connections:
+                self.display_connections[tenant_id].discard(websocket)
         else:
             if tenant_id in self.active_connections:
                 self.active_connections[tenant_id].discard(websocket)
@@ -80,6 +88,44 @@ class ConnectionManager:
                 except WebSocketDisconnect:
                     self.disconnect(connection, tenant_id, "totem")
 
+        # Envia para displays
+        if tenant_id in self.display_connections:
+            for connection in self.display_connections[tenant_id]:
+                try:
+                    await connection.send_json(message)
+                except WebSocketDisconnect:
+                    self.disconnect(connection, tenant_id, "display")
+
+    async def broadcast_ticket_called(self, tenant_id: str, ticket: Ticket, operator_name: str = None, equipment_name: str = None):
+        """Transmite chamada de ticket para operadores e displays"""
+        message = {
+            "type": "ticket_called",
+            "data": {
+                "id": str(ticket.id),
+                "ticket_number": ticket.ticket_number,
+                "status": ticket.status,
+                "customer_name": ticket.customer_name,
+                "service_name": ", ".join([ts.service.name for ts in ticket.services if ts.service]) or "Serviço",
+                "equipment_name": equipment_name,
+                "operator_name": operator_name,
+                "called_at": datetime.utcnow().isoformat()
+            }
+        }
+        # Envia para operadores
+        if tenant_id in self.operator_connections:
+            for connection in self.operator_connections[tenant_id]:
+                try:
+                    await connection.send_json(message)
+                except WebSocketDisconnect:
+                    self.disconnect(connection, tenant_id, "operator")
+        # Envia para displays
+        if tenant_id in self.display_connections:
+            for connection in self.display_connections[tenant_id]:
+                try:
+                    await connection.send_json(message)
+                except WebSocketDisconnect:
+                    self.disconnect(connection, tenant_id, "display")
+
     async def _handle_ticket_sound_notification(self, tenant_id: str, ticket: Ticket, message: Dict):
         """Processa notificações sonoras baseadas em mudanças de status do ticket"""
         
@@ -102,7 +148,7 @@ class ConnectionManager:
             "customer_name": ticket.customer_name,
             "status": ticket.status,
             "assigned_operator_id": str(ticket.assigned_operator_id) if ticket.assigned_operator_id else None,
-            "service_name": ticket.service.name if ticket.service else "Serviço"
+            "service_name": ", ".join([ts.service.name for ts in ticket.services if ts.service]) or "Serviço"
         }
         
         # Enviar notificação sonora para todos os operadores do tenant
@@ -171,6 +217,14 @@ class ConnectionManager:
                 except WebSocketDisconnect:
                     self.disconnect(connection, tenant_id, "totem")
 
+        # Envia para displays
+        if tenant_id in self.display_connections:
+            for connection in self.display_connections[tenant_id]:
+                try:
+                    await connection.send_json(message)
+                except WebSocketDisconnect:
+                    self.disconnect(connection, tenant_id, "display")
+
     async def _send_payment_sound_notification(self, tenant_id: str, payment: Payment):
         """Envia notificação sonora para pagamento completado"""
         
@@ -209,6 +263,14 @@ class ConnectionManager:
                     await connection.send_json(message)
                 except WebSocketDisconnect:
                     self.disconnect(connection, tenant_id, "totem")
+
+        # Envia para displays
+        if tenant_id in self.display_connections:
+            for connection in self.display_connections[tenant_id]:
+                try:
+                    await connection.send_json(message)
+                except WebSocketDisconnect:
+                    self.disconnect(connection, tenant_id, "display")
 
     async def send_operator_notification(self, tenant_id: str, message: str, operator_id: Optional[str] = None):
         """Envia notificação para operadores"""
@@ -287,5 +349,60 @@ class ConnectionManager:
         # Desconectar
         self.disconnect(websocket, tenant_id, "operator")
 
+    # Novos métodos para serviços e extras -----------------------------
+
+    async def broadcast_service_update(self, tenant_id: str, payload: dict):
+        message = {"type": "service_update", "data": payload}
+        if tenant_id in self.operator_connections:
+            for conn in list(self.operator_connections[tenant_id]):
+                try:
+                    await conn.send_json(message)
+                except WebSocketDisconnect:
+                    self.disconnect(conn, tenant_id, "operator")
+
+    async def broadcast_extra_update(self, tenant_id: str, payload: dict):
+        message = {"type": "extra_update", "data": payload}
+        if tenant_id in self.operator_connections:
+            for conn in list(self.operator_connections[tenant_id]):
+                try:
+                    await conn.send_json(message)
+                except WebSocketDisconnect:
+                    self.disconnect(conn, tenant_id, "operator")
+
+    async def broadcast_to_tenant(self, tenant_id: str, message: dict):
+        """Transmite mensagem para todos os clientes de um tenant"""
+        
+        # Envia para operadores
+        if tenant_id in self.operator_connections:
+            for connection in list(self.operator_connections[tenant_id]):
+                try:
+                    await connection.send_json(message)
+                except WebSocketDisconnect:
+                    self.disconnect(connection, tenant_id, "operator")
+                except Exception as e:
+                    print(f"Error sending to operator: {e}")
+
+        # Envia para totens
+        if tenant_id in self.totem_connections:
+            for connection in list(self.totem_connections[tenant_id]):
+                try:
+                    await connection.send_json(message)
+                except WebSocketDisconnect:
+                    self.disconnect(connection, tenant_id, "totem")
+                except Exception as e:
+                    print(f"Error sending to totem: {e}")
+
+        # Envia para conexões gerais
+        if tenant_id in self.active_connections:
+            for connection in list(self.active_connections[tenant_id]):
+                try:
+                    await connection.send_json(message)
+                except WebSocketDisconnect:
+                    self.disconnect(connection, tenant_id, "general")
+                except Exception as e:
+                    print(f"Error sending to general: {e}")
+
 # Instância global do gerenciador
-manager = ConnectionManager() 
+manager = ConnectionManager()
+# Alias para compatibilidade (routers/tickets.py espera websocket_manager)
+websocket_manager = manager 

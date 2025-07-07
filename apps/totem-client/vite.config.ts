@@ -6,7 +6,9 @@ import path from 'path';
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   // Carregar variáveis de ambiente
-  const env = loadEnv(mode, process.cwd(), '');
+  const env = loadEnv(mode, process.cwd(), 'VITE_');
+  
+  console.log('VITE_TENANT_ID (build):', env.VITE_TENANT_ID);
   
   return {
     plugins: [
@@ -91,10 +93,6 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist',
       sourcemap: mode === 'development'
-    },
-    define: {
-      // Disponibilizar variáveis de ambiente para o cliente
-      'import.meta.env.VITE_DISABLE_KIOSK_MODE': JSON.stringify(env.VITE_DISABLE_KIOSK_MODE || 'false')
     }
   };
 }); 

@@ -17,7 +17,6 @@ from services.notification_service import (
 from services.websocket import manager
 
 router = APIRouter(
-    prefix="/notifications",
     tags=["notifications"]
 )
 

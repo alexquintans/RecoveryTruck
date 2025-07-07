@@ -3,9 +3,8 @@ import json
 import asyncio
 from datetime import datetime
 import logging
-from ..models.ticket import Ticket
-from ..models.payment import Payment
-from ..database import get_db
+from models import Ticket, PaymentSession as Payment
+from database import get_db
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)

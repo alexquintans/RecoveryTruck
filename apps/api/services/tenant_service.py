@@ -5,11 +5,12 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import logging
 
+from models import Equipment, Service, Extra
 from apps.api.models.tenant import (
     Tenant, TenantPaymentLimits, TenantBusinessRules, 
     TenantFallbackConfig, TenantTerminalConfig
 )
-from apps.api.services.payment.factory import PaymentAdapterFactory
+from services.payment.factory import PaymentAdapterFactory
 
 logger = logging.getLogger(__name__)
 

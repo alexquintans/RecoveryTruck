@@ -1,16 +1,8 @@
-# 🔄 Migração: Adicionar Campos do Sistema de Fila Avançado
+"""add queue fields to tickets
 
-"""
-Migração para adicionar campos do sistema de fila avançado ao modelo Ticket.
-
-Campos adicionados:
-- priority: Prioridade do ticket (high, normal, low)
-- queue_position: Posição na fila
-- estimated_wait_minutes: Tempo estimado de espera
-- assigned_operator_id: Operador atribuído
-- reactivation_count: Quantas vezes foi reativado
-
-Executar com: python -m alembic revision --autogenerate -m "add_queue_fields"
+Revision ID: 003
+Revises: 002
+Create Date: 2025-06-28 10:05:00
 """
 
 from alembic import op
@@ -18,8 +10,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers
-revision = 'add_queue_fields'
-down_revision = None  # Substituir pelo hash da migração anterior
+revision = '003'
+down_revision = '002'
 branch_labels = None
 depends_on = None
 

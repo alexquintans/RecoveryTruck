@@ -21,10 +21,10 @@ class ServiceBase(BaseModel):
 class PaymentSessionBase(BaseModel):
     service_id: UUID
     customer_name: str = Field(..., min_length=3, max_length=100)
-    customer_cpf: str = Field(..., min_length=11, max_length=11)
-    customer_phone: str = Field(..., min_length=10, max_length=20)
+    customer_cpf: Optional[str] = Field(None, min_length=11, max_length=11)
+    customer_phone: Optional[str] = Field(None, min_length=10, max_length=20)
     consent_version: str = Field(..., min_length=1, max_length=10)
-    payment_method: str = Field(..., regex="^(credit|debit|pix|tap)$")
+    payment_method: str = Field(..., pattern=r"^(credit|debit|pix|tap)$")
 
 class TicketBase(BaseModel):
     # Ticket não é criado diretamente, apenas através de PaymentSession
@@ -60,6 +60,7 @@ class ConsentBase(BaseModel):
     version: str = Field(..., min_length=1, max_length=10)
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
+    signature: Optional[str] = None
 
 # Create schemas
 class TenantCreate(TenantBase):
@@ -68,14 +69,42 @@ class TenantCreate(TenantBase):
 class ServiceCreate(ServiceBase):
     pass
 
+# NOVO: schema para criação de itens extras
+class ExtraCreate(BaseModel):
+    name: str = Field(..., min_length=3, max_length=100)
+    description: Optional[str] = None
+    price: float = Field(..., gt=0)
+    category: Optional[str] = None
+    stock: int = Field(0, ge=0)
+    is_active: bool = True
+
 class PaymentSessionCreate(PaymentSessionBase):
     pass
 
 class OperatorCreate(OperatorBase):
     password: str = Field(..., min_length=8)
+    # Identificação do tenant: pode vir por UUID ou pelo nome legível
+    tenant_id: Optional[UUID] = None
+    tenant_name: Optional[str] = Field(None, min_length=3, max_length=100)
+
+    @validator('tenant_name', always=True)
+    def validate_tenant_reference(cls, v, values):
+        if not v and not values.get('tenant_id'):
+            raise ValueError('É necessário informar tenant_id ou tenant_name')
+        return v
 
 class ConsentCreate(ConsentBase):
-    pass
+    payment_session_id: UUID
+    tenant_id: UUID
+
+class Consent(ConsentBase):
+    id: UUID
+    payment_session_id: UUID
+    tenant_id: UUID
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 # Read schemas
 class Tenant(TenantBase):
@@ -154,6 +183,7 @@ class TicketWithStatus(Ticket):
     """Ticket com informações detalhadas do status"""
     status_info: dict
     valid_transitions: List[str]
+    service_name: Optional[str] = None
     
     @validator('status_info', pre=True, always=True)
     def set_status_info(cls, v, values):
@@ -212,14 +242,6 @@ class Operator(OperatorBase):
     class Config:
         from_attributes = True
 
-class Consent(ConsentBase):
-    id: UUID
-    tenant_id: UUID
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
 # List schemas
 class TenantList(BaseModel):
     items: List[Tenant]
@@ -263,4 +285,140 @@ class TicketQueue(BaseModel):
     by_status: dict
     by_priority: dict
     queue_stats: dict
-    estimated_total_time: int 
+    estimated_total_time: int
+
+# ---------------------------------
+# Auth schemas
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str 
+
+# Retorna o token juntamente com informações do operador autenticado
+class TokenWithOperator(Token):
+    operator: Optional[Operator] = None
+
+class Equipment(BaseModel):
+    id: UUID
+    tenant_id: UUID
+    service_id: UUID
+    type: str
+    identifier: str
+    location: Optional[str]
+    status: str
+    assigned_operator_id: Optional[UUID]
+
+    class Config:
+        from_attributes = True
+
+class EquipmentAssign(BaseModel):
+    operator_id: UUID
+    equipment_id: UUID
+
+class OperatorSessionStart(BaseModel):
+    operator_id: UUID
+    equipment_id: Optional[UUID] = None
+    config_json: Optional[dict] = None
+
+class OperatorSession(BaseModel):
+    id: UUID
+    operator_id: UUID
+    tenant_id: UUID
+    equipment_id: Optional[UUID]
+    started_at: datetime
+    finished_at: Optional[datetime]
+    config_json: Optional[dict]
+
+    class Config:
+        from_attributes = True
+
+# --- Atualização parcial de Serviço ---
+class ServiceUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    price: Optional[float] = None
+    duration_minutes: Optional[int] = None
+    equipment_count: Optional[int] = None
+    is_active: Optional[bool] = None
+
+# --- Atualização parcial de Item Extra ---
+class ExtraUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    price: Optional[float] = None
+    category: Optional[str] = None
+    stock: Optional[int] = None
+    is_active: Optional[bool] = None
+
+class Extra(BaseModel):
+    id: UUID
+    tenant_id: UUID
+    name: str
+    description: Optional[str] = None
+    price: float
+    category: Optional[str] = None
+    stock: int = 0
+    is_active: bool = True
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class TicketExtraCreate(BaseModel):
+    extra_id: UUID
+    quantity: int = 1
+    price: float
+
+class TicketExtraOut(BaseModel):
+    id: UUID
+    extra_id: UUID
+    quantity: int
+    price: float
+
+# NOVO: Schema para item de serviço em um ticket
+class TicketServiceItem(BaseModel):
+    service_id: UUID
+    price: float
+    # outros campos relevantes podem ser adicionados aqui
+
+class TicketCreate(BaseModel):
+    tenant_id: UUID
+    customer_name: str = Field(..., min_length=3, max_length=100)
+    customer_cpf: str = Field(..., min_length=11, max_length=11)
+    customer_phone: str = Field(..., min_length=10, max_length=20)
+    consent_version: str = Field(..., min_length=1, max_length=10)
+    services: List[TicketServiceItem]  # Agora aceita múltiplos serviços
+    extras: Optional[List[TicketExtraCreate]] = []
+
+class TicketOut(BaseModel):
+    id: UUID
+    tenant_id: UUID
+    ticket_number: int
+    status: str
+    customer_name: str
+    customer_cpf: str
+    customer_phone: str
+    consent_version: str
+    services: List[TicketServiceItem]
+    extras: List[TicketExtraOut] = []
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# Exemplo de schema para extra em configuração de operação:
+class OperationConfigExtra(BaseModel):
+    extra_id: UUID
+    stock: int
+    price: float
+    active: bool = True  # Torna obrigatório e default True
+
+class Customer(BaseModel):
+    name: str
+    cpf: Optional[str] = None
+    phone: Optional[str] = None
+
+    class Config:
+        from_attributes = True 
