@@ -28,4 +28,4 @@ ENV PYTHONPATH=/app
 EXPOSE 8000
 
 # Comando de inicialização com porta dinâmica - usando API de debug
-CMD uvicorn apps.api.debug_api:app --host 0.0.0.0 --port $PORT 
+CMD uvicorn apps.api.debug_api:app --host 0.0.0.0 --port 8000 
