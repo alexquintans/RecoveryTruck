@@ -171,6 +171,7 @@ async def startup_event():
     import os
     
     print("🚀 Iniciando API completa...")
+    print("🔄 VERSÃO: 2025-07-31 18:40 - DEBUG MIGRATIONS")
     
     # Debug: verificar variáveis de ambiente
     print(f"🔍 DEBUG - ENVIRONMENT: {os.getenv('ENVIRONMENT')}")
