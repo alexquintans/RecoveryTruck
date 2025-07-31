@@ -167,7 +167,28 @@ async def websocket_simple_direct(websocket: WebSocket):
 async def startup_event():
     """Evento de startup com delay para garantir inicialização completa."""
     import time
+    import subprocess
+    import os
+    
     print("🚀 Iniciando API completa...")
+    
+    # Executar migrations se estiver em produção
+    if os.getenv("ENVIRONMENT") == "production":
+        try:
+            print("🗄️ Executando migrations do banco de dados...")
+            result = subprocess.run(
+                ["alembic", "upgrade", "head"],
+                cwd="apps/api",
+                capture_output=True,
+                text=True
+            )
+            if result.returncode == 0:
+                print("✅ Migrations executadas com sucesso!")
+            else:
+                print(f"⚠️ Erro nas migrations: {result.stderr}")
+        except Exception as e:
+            print(f"⚠️ Erro ao executar migrations: {e}")
+    
     time.sleep(3)  # Aguarda 3 segundos para garantir inicialização
     print("✅ API completa pronta!")
     

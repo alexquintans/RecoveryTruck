@@ -21,6 +21,10 @@ COPY packages/ ./packages/
 # Copiar apps
 COPY apps/ ./apps/
 
+# Copiar configuração do Alembic
+COPY apps/api/migrations/ ./apps/api/migrations/
+COPY apps/api/alembic.ini ./apps/api/alembic.ini
+
 # Garante que os imports absolutos funcionem
 ENV PYTHONPATH=/app
 

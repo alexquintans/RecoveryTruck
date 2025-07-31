@@ -161,7 +161,7 @@ VITE_TENANT_ID=seu_tenant_id (se você tiver)
 No Railway, vá nas variáveis da API e atualize:
 
 ```env
-CORS_ORIGINS=https://seu-frontend.vercel.app
+CORS_ORIGINS=https://recovery-truck-totem-client-7ynj.vercel.app,https://recovery-truck-panel-client.vercel.app
 ```
 
 ### **Passo 4.2: Testar Conexão**
