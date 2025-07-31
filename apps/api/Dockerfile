@@ -28,4 +28,4 @@ ENV PYTHONPATH=/app
 EXPOSE 8000
 
 # Comando de inicialização com porta dinâmica
-CMD ["sh", "-c", "uvicorn apps.api.full_api:app --host 0.0.0.0 --port ${PORT:-8000}"] 
+CMD uvicorn apps.api.full_api:app --host 0.0.0.0 --port $PORT 
