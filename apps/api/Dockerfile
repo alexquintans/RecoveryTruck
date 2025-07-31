@@ -5,15 +5,21 @@ WORKDIR /app
 # Instalar curl para health checks
 RUN apt-get update && apt-get install -y curl postgresql-client && rm -rf /var/lib/apt/lists/*
 
-# Copiar requirements mínimo primeiro para cache do Docker
-COPY apps/api/requirements_minimal.txt requirements.txt
+# Copiar requirements primeiro para cache do Docker
+COPY apps/api/requirements.txt .
 
-# Instalar dependências Python mínimas
+# Instalar dependências Python
 RUN pip install --upgrade pip && \
     pip install -r requirements.txt
 
-# Copiar apenas a API mínima
-COPY apps/api/minimal_api.py ./apps/api/
+# Copiar workspace pnpm
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+
+# Copiar packages compartilhados
+COPY packages/ ./packages/
+
+# Copiar apps
+COPY apps/ ./apps/
 
 # Garante que os imports absolutos funcionem
 ENV PYTHONPATH=/app
@@ -21,5 +27,5 @@ ENV PYTHONPATH=/app
 # Expor a porta (Railway usa $PORT)
 EXPOSE 8000
 
-# Comando de inicialização com porta dinâmica - usando API mínima
-CMD uvicorn apps.api.minimal_api:app --host 0.0.0.0 --port $PORT 
+# Comando de inicialização com porta dinâmica
+CMD uvicorn apps.api.full_api:app --host 0.0.0.0 --port $PORT 

@@ -6,7 +6,7 @@ from pydantic import field_validator
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore", env_file=".env")
     # Database
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/totem")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "")
     
     # JWT
     JWT_SECRET: str = os.getenv("JWT_SECRET", "your-secret-key")
@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
     
     # OpenTelemetry
-    OTLP_ENDPOINT: str = os.getenv("OTLP_ENDPOINT", "localhost:4317")
+    OTLP_ENDPOINT: str = os.getenv("OTLP_ENDPOINT", "")
     OTLP_INSECURE: bool = os.getenv("OTLP_INSECURE", "True").lower() == "true"
     
     # Printer

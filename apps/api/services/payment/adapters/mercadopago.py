@@ -3,6 +3,7 @@ from mercadopago.config import RequestOptions
 from typing import Dict, Optional, Any
 import logging
 from .base import PaymentAdapter
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -47,9 +48,9 @@ class MercadoPagoAdapter(PaymentAdapter):
                 "surname": " ".join(metadata.get("customer_name", "Cliente").split()[1:]) if metadata.get("customer_name") and len(metadata.get("customer_name", "").split()) > 1 else "",
             },
             "back_urls": {
-                "success": "http://localhost:5173/payment/success",
-                "failure": "http://localhost:5173/payment/failure",
-                "pending": "http://localhost:5173/payment/pending"
+                "success": os.getenv("FRONTEND_URL", "https://seu-frontend.vercel.app") + "/payment/success",
+                "failure": os.getenv("FRONTEND_URL", "https://seu-frontend.vercel.app") + "/payment/failure",
+                "pending": os.getenv("FRONTEND_URL", "https://seu-frontend.vercel.app") + "/payment/pending"
             },
             "expires": False,
             "additional_info": metadata.get("additional_info", f"Serviço: {description}"),
