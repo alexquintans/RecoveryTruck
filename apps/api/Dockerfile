@@ -24,6 +24,7 @@ COPY apps/ ./apps/
 # Copiar configuração do Alembic
 COPY apps/api/migrations/ ./apps/api/migrations/
 COPY apps/api/alembic.ini ./apps/api/alembic.ini
+COPY apps/api/seed_data.sql ./apps/api/seed_data.sql
 
 # Garante que os imports absolutos funcionem
 ENV PYTHONPATH=/app

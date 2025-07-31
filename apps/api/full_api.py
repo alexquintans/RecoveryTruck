@@ -298,6 +298,56 @@ async def migrate_endpoint():
             "error": str(e)
         }
 
+@app.get("/seed", summary="🌱 Inserir dados de seed", description="Inserir tenant e operador de exemplo")
+async def seed_endpoint():
+    """Endpoint para inserir dados de seed."""
+    import os
+    import subprocess
+    
+    try:
+        print("🌱 Inserindo dados de seed...")
+        
+        # Definir variável de ambiente para o psql
+        env = os.environ.copy()
+        env['DATABASE_URL'] = os.getenv('DATABASE_URL', '')
+        
+        # Ler o arquivo seed_data.sql
+        with open('seed_data.sql', 'r', encoding='utf-8') as f:
+            sql_content = f.read()
+        
+        # Executar via psql
+        result = subprocess.run(
+            ["psql", os.getenv('DATABASE_URL', '')],
+            input=sql_content,
+            capture_output=True,
+            text=True,
+            env=env
+        )
+        
+        if result.returncode == 0:
+            return {
+                "message": "Dados de seed inseridos com sucesso!",
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": True,
+                "stdout": result.stdout,
+                "stderr": result.stderr
+            }
+        else:
+            return {
+                "message": "Erro ao inserir dados de seed",
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": False,
+                "stdout": result.stdout,
+                "stderr": result.stderr
+            }
+    except Exception as e:
+        return {
+            "message": f"Erro ao inserir dados de seed: {str(e)}",
+            "timestamp": datetime.utcnow().isoformat(),
+            "success": False,
+            "error": str(e)
+        }
+
 @app.get("/health", summary="🏥 Health check", description="Verificação de saúde da API")
 async def health_check():
     """Health check endpoint simplificado."""
