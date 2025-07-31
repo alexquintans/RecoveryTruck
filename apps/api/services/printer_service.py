@@ -460,14 +460,13 @@ class PrinterService:
         return methods.get(method, method.title())
     
     def _format_status(self, status: str) -> str:
-        """Formata status da transação"""
-        statuses = {
-            "approved": "APROVADA",
-            "pending": "PENDENTE",
-            "failed": "NEGADA",
-            "cancelled": "CANCELADA"
+        status_map = {
+            "paid": "Aprovado",
+            "pending": "Pendente",
+            "failed": "Recusado",
+            "cancelled": "Cancelado"
         }
-        return statuses.get(status, status.upper())
+        return status_map.get(status.lower(), status.capitalize())
 
-# === Instância Global ===
-printer_service = PrinterService()
+# Singleton instance of the printer service
+printer_manager = PrinterService()

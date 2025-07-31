@@ -38,6 +38,22 @@ export function useOperatorActions() {
     },
   });
 
+  const confirmPaymentMutation = useMutation({
+    mutationFn: ({ ticketId }: { ticketId: string }) => ticketService.confirmPayment(ticketId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
+      queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+    },
+  });
+
+  const moveToQueueMutation = useMutation({
+    mutationFn: ({ ticketId }: { ticketId: string }) => ticketService.moveToQueue(ticketId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
+      queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+    },
+  });
+
   return {
     callTicket: callMutation.mutateAsync,
     startService: startMutation.mutateAsync,
@@ -47,5 +63,9 @@ export function useOperatorActions() {
     startLoading: startMutation.status === 'pending',
     completeLoading: completeMutation.status === 'pending',
     cancelLoading: cancelMutation.status === 'pending',
+    confirmPayment: confirmPaymentMutation.mutateAsync,
+    confirmLoading: confirmPaymentMutation.status === 'pending',
+    moveToQueue: moveToQueueMutation.mutateAsync,
+    moveToQueueLoading: moveToQueueMutation.status === 'pending',
   };
 } 

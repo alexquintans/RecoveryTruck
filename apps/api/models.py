@@ -133,8 +133,9 @@ class PaymentSession(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     service_id = Column(UUID(as_uuid=True), ForeignKey("services.id"), nullable=False)
+    ticket_id = Column(UUID(as_uuid=True), ForeignKey("tickets.id"), nullable=True)  # Adicionado
     customer_name = Column(String(100), nullable=False)
-    customer_cpf = Column(String(11), nullable=True)  # Encrypted
+    customer_cpf = Column(String(14), nullable=True)  # Aceita CPF formatado (11 dígitos + formatação)
     customer_phone = Column(String(20), nullable=True)
     consent_version = Column(String(10), nullable=False)
     status = Column(String(20), nullable=False, default="pending")  # pending, paid, failed, expired
@@ -151,7 +152,7 @@ class PaymentSession(Base):
     # Relationships
     tenant = relationship("Tenant", back_populates="payment_sessions")
     service = relationship("Service", back_populates="payment_sessions")
-    ticket = relationship("Ticket", back_populates="payment_session", uselist=False)  # 1:1 after payment
+    ticket = relationship("Ticket", foreign_keys=[ticket_id])  # Removido back_populates
     consent = relationship("Consent", back_populates="payment_session", uselist=False)
     receipt = relationship("Receipt", back_populates="payment_session", uselist=False)
 
@@ -169,7 +170,7 @@ class Ticket(Base):
     
     # Dados do cliente
     customer_name = Column(String(100), nullable=False)
-    customer_cpf = Column(String(11), nullable=True)  # Encrypted
+    customer_cpf = Column(String(14), nullable=True)  # Aceita CPF formatado (11 dígitos + formatação)
     customer_phone = Column(String(20), nullable=True)
     consent_version = Column(String(10), nullable=False)
     
@@ -198,10 +199,13 @@ class Ticket(Base):
     print_attempts = Column(Integer, default=0)            # Tentativas de impressão
     reactivation_count = Column(Integer, default=0)        # Quantas vezes foi reativado
 
+    # Novo: indica se o pagamento foi confirmado manualmente (uso de maquininha física)
+    payment_confirmed = Column(Boolean, default=False)
+
     # Relationships
     tenant = relationship("Tenant", back_populates="tickets")
     services = relationship("TicketService", back_populates="ticket", cascade="all, delete-orphan")
-    payment_session = relationship("PaymentSession", back_populates="ticket")
+    payment_session = relationship("PaymentSession", foreign_keys=[payment_session_id])
     assigned_operator = relationship("Operator", foreign_keys=[assigned_operator_id])
     equipment = relationship("Equipment", foreign_keys=[equipment_id])
     extras = relationship("TicketExtra", back_populates="ticket", cascade="all, delete-orphan")
@@ -278,6 +282,12 @@ class OperationConfig(Base):
     operator_id = Column(UUID(as_uuid=True), ForeignKey('operators.id'), nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    # Lista de métodos de pagamento habilitados para a operação (none, mercadopago, sicredi, etc.)
+    payment_modes = Column(JSONB, default=list)  # Armazenado como array JSON
+    
+    # Configurações de pagamento (Mercado Pago, etc.)
+    payment_config = Column(JSONB, nullable=True)  # Adicionado
 
     equipments = relationship('OperationConfigEquipment', back_populates='operation_config', cascade="all, delete-orphan")
     extras = relationship('OperationConfigExtra', back_populates='operation_config', cascade="all, delete-orphan")

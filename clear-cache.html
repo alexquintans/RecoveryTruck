@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limpar Cache - RecoveryTruck</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #1F526B;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #0A3A4A;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            color: #2e7d32;
+        }
+        .error {
+            background: #ffebee;
+            border: 1px solid #f44336;
+            color: #c62828;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Limpar Cache - RecoveryTruck</h1>
+        <p>Esta página ajuda a limpar o cache do navegador e forçar o carregamento do novo logo.</p>
+        
+        <div>
+            <button onclick="clearCache()">🧹 Limpar Cache</button>
+            <button onclick="reloadPage()">🔄 Recarregar Página</button>
+            <button onclick="openApps()">🚀 Abrir Aplicações</button>
+        </div>
+        
+        <div id="status"></div>
+        
+        <h3>Instruções:</h3>
+        <ol>
+            <li>Clique em "Limpar Cache" para limpar o cache do navegador</li>
+            <li>Clique em "Recarregar Página" para atualizar esta página</li>
+            <li>Clique em "Abrir Aplicações" para abrir as aplicações com cache limpo</li>
+            <li>Se ainda não funcionar, pressione <strong>Ctrl+F5</strong> nas aplicações</li>
+        </ol>
+    </div>
+
+    <script>
+        function showStatus(message, isError = false) {
+            const status = document.getElementById('status');
+            status.innerHTML = message;
+            status.className = 'status ' + (isError ? 'error' : '');
+        }
+
+        async function clearCache() {
+            try {
+                showStatus('🧹 Limpando cache...');
+                
+                // Limpar cache do service worker
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (let registration of registrations) {
+                        await registration.unregister();
+                    }
+                }
+                
+                // Limpar cache do navegador
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    await Promise.all(
+                        cacheNames.map(cacheName => caches.delete(cacheName))
+                    );
+                }
+                
+                // Limpar localStorage e sessionStorage
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                showStatus('✅ Cache limpo com sucesso! Agora recarregue as aplicações.');
+            } catch (error) {
+                showStatus('❌ Erro ao limpar cache: ' + error.message, true);
+            }
+        }
+
+        function reloadPage() {
+            window.location.reload(true);
+        }
+
+        function openApps() {
+            // Abrir aplicações em novas abas
+            window.open('http://localhost:5173', '_blank'); // Panel client
+            window.open('http://localhost:3000', '_blank'); // Totem client
+        }
+
+        // Mostrar status inicial
+        showStatus('🟡 Clique em "Limpar Cache" para começar...');
+    </script>
+</body>
+</html> 

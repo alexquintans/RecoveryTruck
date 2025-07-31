@@ -39,7 +39,15 @@ export const formatCurrency = (value: number, currency = 'R$'): string => {
  * @returns Data formatada
  */
 export const formatDate = (dateString: string): string => {
+  try {
   const date = new Date(dateString);
+    
+    // Verificar se a data é válida
+    if (isNaN(date.getTime())) {
+      console.warn('formatDate: Data inválida recebida:', dateString);
+      return 'Data não disponível';
+    }
+    
   return date.toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: '2-digit',
@@ -47,6 +55,10 @@ export const formatDate = (dateString: string): string => {
     hour: '2-digit',
     minute: '2-digit',
   });
+  } catch (error) {
+    console.error('formatDate: Erro ao formatar data:', dateString, error);
+    return 'Data não disponível';
+  }
 };
 
 /**
@@ -55,12 +67,23 @@ export const formatDate = (dateString: string): string => {
  * @returns Data formatada
  */
 export const formatShortDate = (dateString: string): string => {
+  try {
   const date = new Date(dateString);
+    
+    if (isNaN(date.getTime())) {
+      console.warn('formatShortDate: Data inválida recebida:', dateString);
+      return 'Data não disponível';
+    }
+    
   return date.toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
   });
+  } catch (error) {
+    console.error('formatShortDate: Erro ao formatar data:', dateString, error);
+    return 'Data não disponível';
+  }
 };
 
 /**
@@ -69,9 +92,20 @@ export const formatShortDate = (dateString: string): string => {
  * @returns Horário formatado
  */
 export const formatTime = (dateString: string): string => {
+  try {
   const date = new Date(dateString);
+    
+    if (isNaN(date.getTime())) {
+      console.warn('formatTime: Data inválida recebida:', dateString);
+      return 'Horário não disponível';
+    }
+    
   return date.toLocaleTimeString('pt-BR', {
     hour: '2-digit',
     minute: '2-digit',
   });
+  } catch (error) {
+    console.error('formatTime: Erro ao formatar horário:', dateString, error);
+    return 'Horário não disponível';
+  }
 }; 

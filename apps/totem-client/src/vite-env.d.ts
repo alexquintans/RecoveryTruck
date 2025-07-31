@@ -5,6 +5,7 @@ interface ImportMetaEnv {
   readonly VITE_WS_URL: string;
   readonly VITE_DISABLE_KIOSK_MODE: string;
   readonly VITE_MOCK_PAYMENT?: string;
+  readonly DEV: boolean;
 }
 
 interface ImportMeta {

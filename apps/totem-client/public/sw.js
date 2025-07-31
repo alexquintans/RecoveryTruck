@@ -1,5 +1,5 @@
 // Nome do cache
-const CACHE_NAME = 'recovery-truck-v1';
+const CACHE_NAME = 'recovery-truck-v2';
 
 // Arquivos a serem cacheados inicialmente
 const urlsToCache = [

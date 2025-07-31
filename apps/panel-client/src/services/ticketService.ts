@@ -12,55 +12,81 @@ export interface QueueParams {
 const token = getAuthToken();
 
 export const ticketService = {
-  getQueue(params: QueueParams = {}) {
-    return api.get('/tickets/queue', { params: withTenant(params) });
+  async getQueue(params: QueueParams = {}) {
+    const response = await api.get('/tickets/queue', { params: withTenant(params) });
+    return response.data;
   },
 
-  getMyTickets() {
-    return api.get('/tickets', { 
-      params: withTenant({ 
-        category: 'active'
-      }) 
-    });
+  async getMyTickets() {
+    try {
+      const response = await api.get('/tickets/my-tickets', { params: withTenant() });
+      return response.data;
+    } catch (error) {
+      console.error('❌ ERRO em getMyTickets:', error);
+      throw error;
+    }
   },
 
-  call(ticketId: string, equipmentId: string) {
-    return api.post(`/tickets/${ticketId}/call`, { equipment_id: equipmentId }, { params: withTenant() });
+  async call(ticketId: string, equipmentId: string) {
+    const response = await api.post(`/tickets/${ticketId}/call`, { equipment_id: equipmentId }, { params: withTenant() });
+    return response.data;
   },
 
-  start(ticketId: string) {
-    return api.post(`/tickets/${ticketId}/start`, undefined, { params: withTenant() });
+  async start(ticketId: string) {
+    const response = await api.post(`/tickets/${ticketId}/start`, undefined, { params: withTenant() });
+    return response.data;
   },
 
-  complete(ticketId: string, operatorNotes?: string) {
-    return api.post(`/tickets/${ticketId}/complete`, {
+  async complete(ticketId: string, operatorNotes?: string) {
+    const response = await api.post(`/tickets/${ticketId}/complete`, {
       operator_notes: operatorNotes,
     }, { params: withTenant() });
+    return response.data;
   },
 
-  cancel(ticketId: string, reason: string) {
-    return api.post(
+  async cancel(ticketId: string, reason: string) {
+    const response = await api.post(
       `/tickets/${ticketId}/cancel`,
       undefined,
       { params: { ...withTenant(), cancellation_reason: reason } }
     );
+    return response.data;
   },
 
-  reprint(ticketId: string) {
-    return api.post(`/tickets/${ticketId}/reprint`, undefined, { params: withTenant() });
+  async reprint(ticketId: string) {
+    const response = await api.post(`/tickets/${ticketId}/reprint`, undefined, { params: withTenant() });
+    return response.data;
   },
 
-  get(ticketId: string) {
-    return api.get(`/tickets/${ticketId}`, { params: withTenant() });
+  async get(ticketId: string) {
+    const response = await api.get(`/tickets/${ticketId}`, { params: withTenant() });
+    return response.data;
   },
 
-  getCompletedTickets() {
-    return api.get('/tickets', {
+  async getCompletedTickets() {
+    const response = await api.get('/tickets', {
       params: withTenant({ status: 'completed' })
     });
+    return response.data;
   },
 
   async getTickets(params: any) {
-    return api.get('/tickets', { params: withTenant(params) });
+    const response = await api.get('/tickets', { params: withTenant(params) });
+    return response.data;
+  },
+
+  async confirmPayment(ticketId: string) {
+    const response = await api.post(`/tickets/${ticketId}/confirm-payment`, undefined, { params: withTenant() });
+    return response.data;
+  },
+
+  async moveToQueue(ticketId: string) {
+    const response = await api.post(`/tickets/${ticketId}/move-to-queue`, undefined, { params: withTenant() });
+    return response.data;
+  },
+
+  getPendingPayment: async () => {
+    const response = await api.get('/tickets/status/pending-payment');
+    return response.data;
   },
 }; 

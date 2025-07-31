@@ -30,12 +30,13 @@ export default function DashboardPage() {
     || cancelledTickets[0]?.tenant_id
     || '';
 
-  // Debug logs
-  console.log('🔍 Dashboard - tickets:', tickets.length);
-  console.log('🔍 Dashboard - myTickets:', myTickets.length);
-  console.log('🔍 Dashboard - completedTickets:', completedTickets.length);
-  console.log('🔍 Dashboard - cancelledTickets:', cancelledTickets.length);
-  console.log('🔍 Dashboard - cancelledTickets data:', cancelledTickets);
+  // Debug logs (reduzido)
+  // console.log('🔍 Dashboard - Resumo:', {
+  //   tickets: tickets.length,
+  //   myTickets: myTickets.length,
+  //   completed: completedTickets.length,
+  //   cancelled: cancelledTickets.length
+  // });
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60_000);
@@ -75,6 +76,7 @@ export default function DashboardPage() {
     ...completedTickets,
     ...cancelledTickets,
   ];
+  
   const ticketCounts = {
     inQueue: tickets.filter((t: any) => t.status === 'in_queue').length,
     inProgress: myTickets.filter((t: any) => t.status === 'in_progress').length,
@@ -82,6 +84,8 @@ export default function DashboardPage() {
     completed: completedTickets.length,
     cancelled: cancelledTickets.length,
     total: allTickets.length,
+    // Contagem corrigida para "Em Atendimento" incluir chamados e em progresso
+    inService: myTickets.filter((t: any) => t.status === 'in_progress' || t.status === 'called').length,
   };
 
   const equipmentCounts = {
@@ -181,7 +185,7 @@ export default function DashboardPage() {
             <Stat label="Fila" value={ticketCounts.inQueue} color="blue" />
             <Stat
               label="Em Atendimento"
-              value={ticketCounts.called + ticketCounts.inProgress}
+              value={ticketCounts.inService}
               color="yellow"
             />
             <Stat label="Concluídos" value={ticketCounts.completed} color="green" />
@@ -226,22 +230,33 @@ export default function DashboardPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-2 text-left">Senha</th>
-                <th className="px-4 py-2 text-left">Serviço</th>
+                <th className="px-4 py-2 text-left">Serviços</th>
+                <th className="px-4 py-2 text-left">Extras</th>
                 <th className="px-4 py-2 text-left">Cliente</th>
                 <th className="px-4 py-2 text-left">Status</th>
                 <th className="px-4 py-2 text-left">Horário</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {recentTickets.map((t) => (
+              {recentTickets.map((t: any) => (
                 <tr key={t.id} className="whitespace-nowrap">
                   <td className="px-4 py-2 font-medium">{t.number ?? '--'}</td>
                   <td className="px-4 py-2">
-                    {t.service_name
-                      || (services.find(s => String(s.id) === String(t.service_id || t.serviceId))?.name)
-                      || t.service?.name
-                      || t.service_id
-                      || '--'}
+                    {t.services?.map((s: any) => s.service.name).join(', ') || '--'}
+                  </td>
+                  <td className="px-4 py-2">
+                    {t.extras && t.extras.length > 0 ? (
+                      <div className="relative group flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                        </svg>
+                        <span className="absolute left-1/2 -translate-x-1/2 -top-10 z-10 w-auto p-2 text-xs text-white bg-gray-800 rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                          {t.extras.map((e: any) => `${e.extra.name} (x${e.quantity})`).join(', ')}
+                        </span>
+                      </div>
+                    ) : (
+                      '--'
+                    )}
                   </td>
                   <td className="px-4 py-2">{t.customer_name ?? '--'}</td>
                   <td className="px-4 py-2 capitalize">{t.status.replace('_', ' ')}</td>

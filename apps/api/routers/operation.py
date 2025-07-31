@@ -9,9 +9,12 @@ import threading
 from models import Equipment, Service, Extra, OperationConfig, OperationConfigEquipment, OperationConfigExtra, OperationStatusModel
 from uuid import UUID
 from fastapi import Request
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    tags=["operation"],
+    tags=["operation"]
 )
 
 # Estado global da operação (thread-safe)
@@ -54,12 +57,17 @@ class ExtraConfigIn(BaseModel):
     stock: int
     price: float
 
+# Novo enum/string simples para modos de pagamento
+PaymentMode = str  # 'none' | 'mercadopago' | 'sicredi' — manter flexível
+
 class OperationConfigIn(BaseModel):
     tenant_id: UUID
     operator_id: UUID
     services: list[ServiceConfigIn]
     equipments: list[EquipmentConfigIn]
     extras: list[ExtraConfigIn]
+    payment_modes: Optional[List[PaymentMode]] = None
+    payment_config: Optional[dict] = None
 
 @router.get("", summary="Informações da operação atual")
 async def get_operation_info(request: Request, db: Session = Depends(get_db)):
@@ -180,6 +188,8 @@ async def save_operation_config(
     op_cfg = OperationConfig(
         tenant_id=cfg.tenant_id,
         operator_id=cfg.operator_id,
+        payment_modes=cfg.payment_modes or [],
+        payment_config=cfg.payment_config or {},
     )
     db.add(op_cfg)
     db.commit()
@@ -197,6 +207,14 @@ async def save_operation_config(
 
     # Adicionar extras
     for x in cfg.extras:
+        # Buscar o extra atual para sincronizar o estoque
+        current_extra = db.query(Extra).filter(Extra.id == x.extra_id).first()
+        if current_extra:
+            # Sincronizar o estoque da tabela extras com a configuração
+            current_extra.stock = x.stock
+            db.add(current_extra)
+            logger.info(f"🔍 DEBUG - Sincronizando estoque do extra {current_extra.name}: {x.stock}")
+        
         ex = OperationConfigExtra(
             operation_config_id=op_cfg.id,
             extra_id=x.extra_id,
@@ -268,28 +286,55 @@ async def get_operation_config(
     db: Session = Depends(get_db)
 ):
     op_cfg = db.query(OperationConfig).options(
-        joinedload(OperationConfig.services).joinedload(Service.service),
         joinedload(OperationConfig.equipments).joinedload(OperationConfigEquipment.equipment),
         joinedload(OperationConfig.extras).joinedload(OperationConfigExtra.extra),
     ).filter(OperationConfig.tenant_id == tenant_id).order_by(OperationConfig.created_at.desc()).first()
     if not op_cfg:
         return {"message": "Nenhuma configuração encontrada"}
+    
+    # Importar configurações do Mercado Pago
+    from config.settings import Settings
+    settings = Settings()
+    
+    # Buscar serviços ativos do tenant
+    services = db.query(Service).filter(
+        Service.tenant_id == tenant_id,
+        Service.is_active == True
+    ).all()
+    
+    logger.info(f"🔍 DEBUG - Serviços encontrados: {len(services)}")
+    for s in services:
+        logger.info(f"🔍 DEBUG - Serviço: {s.id} - {s.name}")
+    
     return {
         "id": str(op_cfg.id),
         "tenant_id": str(op_cfg.tenant_id),
         "operator_id": str(op_cfg.operator_id),
         "created_at": op_cfg.created_at.isoformat(),
         "updated_at": op_cfg.updated_at.isoformat(),
+        "payment_modes": op_cfg.payment_modes or [],
+        "payment_config": {
+            "mercado_pago": {
+                "access_token": settings.MERCADOPAGO_ACCESS_TOKEN,
+                "public_key": settings.MERCADOPAGO_PUBLIC_KEY,
+                "webhook_url": settings.MERCADOPAGO_WEBHOOK_URL,
+                "redirect_url_base": "http://localhost:5174"
+            },
+            "mercado_pago_public_key": settings.MERCADOPAGO_PUBLIC_KEY,
+        },
         "services": [
             {
-                "service_id": str(s.service_id),
-                "active": s.active,
-                "duration": s.duration,
+                "id": str(s.id),
+                "name": s.name,
+                "description": s.description,
                 "price": float(s.price),
-                "equipment_count": getattr(s, 'equipment_count', None),
-                "name": s.service.name if s.service else None,
-                "description": s.service.description if s.service else None,
-            } for s in op_cfg.services
+                "duration_minutes": s.duration_minutes,
+                "equipment_count": s.equipment_count,
+                "is_active": s.is_active,
+                "tenant_id": str(s.tenant_id),
+                "created_at": s.created_at.isoformat(),
+                "updated_at": s.updated_at.isoformat(),
+            } for s in services
         ],
         "equipments": [
             {
@@ -302,12 +347,14 @@ async def get_operation_config(
         ],
         "extras": [
             {
+                "id": str(x.extra_id),  # Adicionando o campo id que o totem espera
                 "extra_id": str(x.extra_id),
                 "active": x.active,
+                "is_active": x.active,  # Adicionando compatibilidade com o frontend
                 "stock": x.stock,
                 "price": float(x.price),
-                "name": x.extra.name if x.extra else None,
-                "description": x.extra.description if x.extra else None,
+                "name": x.extra.name if x.extra else f"Extra {x.extra_id}",
+                "description": x.extra.description if x.extra else "",
             } for x in op_cfg.extras
         ]
     } 

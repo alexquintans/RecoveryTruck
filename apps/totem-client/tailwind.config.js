@@ -8,21 +8,21 @@ export default {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#1A3A4A', // Azul escuro da imagem
-          light: '#2A4A5A',
-          dark: '#0A2A3A',
+          DEFAULT: '#1F526B', // Azul Profundo da marca
+          light: '#2A6B8A',
+          dark: '#0A3A4A',
         },
-        secondary: '#8AE65C', // Verde claro da imagem
-        accent: '#FFFFFF', // Branco
-        background: '#F8FAFC', // Fundo claro para melhor legibilidade
+        secondary: '#FFFFFF', // Branco da marca
+        accent: '#D9D9D9', // Cinza Claro da marca
+        background: '#FFFFFF', // Fundo branco para melhor legibilidade
         text: {
-          DEFAULT: '#1A3A4A', // Azul escuro para texto principal
-          light: '#64748B', // Cinza para texto secundário
+          DEFAULT: '#000000', // Preto para texto principal
+          light: '#1F526B', // Azul profundo para texto secundário
         },
         // Cores específicas para serviços
         service: {
-          'banheira-gelo': '#1A3A4A', // Azul escuro para banheira de gelo
-          'bota-compressao': '#8AE65C', // Verde para bota de compressão
+          'banheira-gelo': '#1F526B', // Azul profundo para banheira de gelo
+          'bota-compressao': '#FFFFFF', // Branco para bota de compressão
         }
       },
       fontFamily: {

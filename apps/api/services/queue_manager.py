@@ -1,7 +1,7 @@
 # 🎯 Gerenciador Avançado de Fila de Tickets
 
 from typing import List, Dict, Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 
@@ -27,12 +27,17 @@ class QueueManager:
         service_id: Optional[str] = None,
         priority_filter: Optional[QueuePriority] = None,
         include_called: bool = True,
-        include_in_progress: bool = True
+        include_in_progress: bool = True,
+        include_paid: bool = False
     ) -> List[Ticket]:
         """Retorna tickets da fila com ordenação e filtros"""
         
-        # Estados base da fila
+        # Estados base da fila - apenas tickets que já foram processados
         queue_statuses = [TicketStatus.IN_QUEUE.value]
+        
+        # Incluir 'paid' apenas se especificado
+        if include_paid:
+            queue_statuses.append(TicketStatus.PAID.value)
         
         if include_called:
             queue_statuses.append(TicketStatus.CALLED.value)
@@ -109,7 +114,7 @@ class QueueManager:
                 continue
             
             # Calcular tempo de espera
-            waiting_minutes = (datetime.utcnow() - ticket.queued_at).total_seconds() / 60
+            waiting_minutes = (datetime.now(timezone.utc) - ticket.queued_at).total_seconds() / 60
             
             # Calcular nova prioridade
             new_priority = calculate_priority(
@@ -238,7 +243,7 @@ class QueueManager:
         waiting_times = []
         for ticket in active_tickets:
             if ticket.queued_at and ticket.status == TicketStatus.IN_QUEUE.value:
-                waiting_minutes = (datetime.utcnow() - ticket.queued_at).total_seconds() / 60
+                waiting_minutes = (datetime.now(timezone.utc) - ticket.queued_at).total_seconds() / 60
                 waiting_times.append(waiting_minutes)
         
         avg_waiting_time = sum(waiting_times) / len(waiting_times) if waiting_times else 0
@@ -276,7 +281,7 @@ class QueueManager:
         long_waiting_tickets = len([
             t for t in active_tickets 
             if t.queued_at and 
-            (datetime.utcnow() - t.queued_at).total_seconds() / 60 > QUEUE_TIMINGS["critical_waiting"]
+            (datetime.now(timezone.utc) - t.queued_at).total_seconds() / 60 > QUEUE_TIMINGS["critical_waiting"]
         ])
         
         # Determinar status da fila
@@ -365,7 +370,7 @@ class QueueManager:
         if not QUEUE_CONFIG["auto_expire_enabled"]:
             return 0
         
-        cutoff_time = datetime.utcnow() - timedelta(minutes=QUEUE_TIMINGS["auto_expire"])
+        cutoff_time = datetime.now(timezone.utc) - timedelta(minutes=QUEUE_TIMINGS["auto_expire"])
         
         old_tickets = self.db.query(Ticket).filter(
             Ticket.tenant_id == tenant_id,
@@ -376,7 +381,7 @@ class QueueManager:
         expired_count = 0
         for ticket in old_tickets:
             ticket.status = TicketStatus.EXPIRED.value
-            ticket.expired_at = datetime.utcnow()
+            ticket.expired_at = datetime.now(timezone.utc)
             expired_count += 1
             
             logger.warning(f"⏰ Auto-expired ticket #{ticket.ticket_number} after {QUEUE_TIMINGS['auto_expire']} minutes")

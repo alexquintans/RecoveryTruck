@@ -38,7 +38,7 @@
   }
   
   .ticket-card-in-progress {
-    @apply border-secondary;
+    @apply border-primary;
   }
   
   .ticket-number {

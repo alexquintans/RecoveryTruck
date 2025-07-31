@@ -27,9 +27,11 @@ export function useWebSocket({
 
   const connect = useCallback(() => {
     try {
+      console.log('🔍 Panel WebSocket - Conectando:', url);
       const socket = new WebSocket(url);
       
       socket.onopen = () => {
+        console.log('🔍 Panel WebSocket - Conectado com sucesso');
         setIsConnected(true);
         attemptRef.current = 0;
         if (onOpen) onOpen();
@@ -47,6 +49,7 @@ export function useWebSocket({
       };
 
       socket.onclose = () => {
+        console.log('🔍 Panel WebSocket - Conexão fechada');
         setIsConnected(false);
         if (onClose) onClose();
         
@@ -54,6 +57,7 @@ export function useWebSocket({
         if (attemptRef.current < reconnectAttempts) {
           const timeout = reconnectInterval * Math.pow(1.5, attemptRef.current);
           attemptRef.current++;
+          console.log(`🔍 Panel WebSocket - Tentativa de reconexão ${attemptRef.current}/${reconnectAttempts}`);
           
           if (reconnectTimeoutRef.current) {
             window.clearTimeout(reconnectTimeoutRef.current);
@@ -66,6 +70,7 @@ export function useWebSocket({
       };
 
       socket.onerror = (error) => {
+        console.error('🔍 Panel WebSocket - Erro na conexão:', error);
         if (onError) onError(error);
       };
 
@@ -73,7 +78,7 @@ export function useWebSocket({
     } catch (error) {
       console.error('Erro ao conectar WebSocket:', error);
     }
-  }, [url, reconnectInterval, reconnectAttempts, onMessage, onOpen, onClose, onError]);
+  }, [url, reconnectInterval, reconnectAttempts]);
 
   const disconnect = useCallback(() => {
     if (socketRef.current) {
@@ -96,12 +101,14 @@ export function useWebSocket({
   }, [isConnected]);
 
   useEffect(() => {
+    console.log('🔍 Panel WebSocket - useEffect - Iniciando conexão');
     connect();
     
     return () => {
+      console.log('🔍 Panel WebSocket - useEffect - Limpando conexão');
       disconnect();
     };
-  }, [connect, disconnect]);
+  }, [url]); // Apenas reconectar se a URL mudar
 
   return {
     isConnected,

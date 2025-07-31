@@ -12,6 +12,7 @@ from services.webhook_validator import (
     get_sicredi_config, get_stone_config, get_pagseguro_config,
     get_mercadopago_config, get_safrapay_config, get_pagbank_config
 )
+from services.printer_service import printer_manager, ReceiptData, ReceiptType
 
 logger = logging.getLogger(__name__)
 
@@ -272,8 +273,6 @@ async def handle_payment_approved(
     logger.info(f"✅ Payment approved: {result.transaction_id}")
     
     try:
-        from services.printer_service import printer_service, ReceiptData, ReceiptType
-        
         receipt_data = ReceiptData(
             transaction_id=result.transaction_id or "unknown",
             receipt_type=ReceiptType.CUSTOMER,
@@ -285,7 +284,7 @@ async def handle_payment_approved(
             merchant_cnpj="00000000000000"
         )
         
-        await printer_service.print_receipt(receipt_data)
+        await printer_manager.print_receipt(receipt_data)
         
     except Exception as e:
         logger.warning(f"⚠️ Auto-print failed: {e}")

@@ -38,6 +38,8 @@ export function useOperatorConfig() {
   const tenantId = (user as any)?.tenant_id; // JWT pode ter tenant_id
   const operatorId = user?.id;
 
+  
+
   const [services, setServices] = useState<Service[]>([]);
   const [extras, setExtras] = useState<Extra[]>([]);
   const [equipments, setEquipments] = useState<Equipment[]>([]);
@@ -58,12 +60,31 @@ export function useOperatorConfig() {
 
   // --- WebSocket ---
   useEffect(() => {
-    if (!tenantId) return;
-    const wsUrl = `${API_URL.replace('http', 'ws')}/ws/${tenantId}/panel`;
+    if (!tenantId) {
+      return;
+    }
+    
+    const token = localStorage.getItem('token');
+    
+    const wsUrl = `${API_URL.replace('http', 'ws')}/ws/${tenantId}/operator${token ? `?token=${token}` : ''}`;
     const ws = new WebSocket(wsUrl);
+    
+    ws.onopen = () => {
+      // WebSocket conectado
+    };
+    
+    ws.onerror = (error) => {
+      console.error('Erro no WebSocket:', error);
+    };
+    
+    ws.onclose = () => {
+      // WebSocket desconectado
+    };
+    
     ws.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
+        
         if (msg.type === 'service_update') {
           setServices((prev) => {
             const idx = prev.findIndex((s) => s.id === msg.data.service_id);
@@ -91,8 +112,23 @@ export function useOperatorConfig() {
             return updated;
           });
         }
+        if (msg.type === 'equipment_update') {
+          setEquipments((prev) => {
+            const idx = prev.findIndex((e) => e.id === msg.data.id);
+            if (idx === -1) {
+              return prev;
+            }
+            const updated = [...prev];
+            updated[idx] = { 
+              ...updated[idx], 
+              status: msg.data.status,
+              assigned_operator_id: msg.data.assigned_operator_id 
+            } as any;
+            return updated;
+          });
+        }
       } catch (err) {
-        console.error(err);
+        console.error('Erro ao processar mensagem WebSocket:', err);
       }
     };
     return () => ws.close();

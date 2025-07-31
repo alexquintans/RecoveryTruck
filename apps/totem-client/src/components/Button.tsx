@@ -1,7 +1,7 @@
 import React, { ReactNode } from 'react';
 
 interface ButtonProps {
-  children: ReactNode;
+  children?: ReactNode; // Tornando opcional
   variant?: 'primary' | 'secondary' | 'outline';
   size?: 'sm' | 'md' | 'lg' | 'xl';
   icon?: ReactNode;
@@ -44,7 +44,14 @@ export const Button: React.FC<ButtonProps> = ({
     <button
       type={type}
       className={classes}
-      onClick={onClick}
+      onClick={(e) => {
+        console.log('🔍 DEBUG - Button onClick chamado');
+        console.log('🔍 DEBUG - Evento:', e);
+        console.log('🔍 DEBUG - Target:', e.target);
+        if (onClick) {
+          onClick();
+        }
+      }}
       disabled={disabled}
     >
       {icon && iconPosition === 'left' && (

@@ -12,7 +12,7 @@ from pathlib import Path
 
 # Imports do sistema
 from apps.api.services.printer_service import (
-    printer_service, PrinterConfig, PrinterType, PrinterConnection,
+    printer_manager, PrinterConfig, PrinterType, PrinterConnection,
     ReceiptData, ReceiptType
 )
 
@@ -34,8 +34,8 @@ async def test_printer_service():
         beep=False
     )
     
-    printer_service.register_printer("test_virtual", virtual_config)
-    printer_service.set_default_printer("test_virtual")
+    printer_manager.register_printer("test_virtual", virtual_config)
+    printer_manager.set_default_printer("test_virtual")
     
     print("✅ Impressora virtual configurada")
     
@@ -103,7 +103,7 @@ async def test_printer_service():
     for i, receipt in enumerate(test_receipts, 1):
         print(f"\n📄 Teste {i}: {receipt['name']}")
         
-        success = await printer_service.print_receipt(
+        success = await printer_manager.print_receipt(
             receipt["data"],
             printer_id="test_virtual"
         )
@@ -129,7 +129,7 @@ async def test_printer_service():
         card_last_digits="5678"
     )
     
-    success = await printer_service.print_receipt(merchant_receipt, "test_virtual")
+    success = await printer_manager.print_receipt(merchant_receipt, "test_virtual")
     print("✅ Via do estabelecimento impressa" if success else "❌ Falha na via do estabelecimento")
     
     # 5. Listar arquivos gerados

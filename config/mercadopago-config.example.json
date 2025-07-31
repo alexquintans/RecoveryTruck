@@ -1,0 +1,64 @@
+{
+  "// 💰 CONFIGURAÇÃO MERCADO PAGO CHECKOUT PRO": "Configuração completa para integração",
+  "// 📋 CREDENCIAIS": "Obtenha no painel do Mercado Pago Developers",
+  "// 🔧 AMBIENTE": "sandbox para testes, production para produção",
+  
+  "environment": "sandbox",
+  
+  "credentials": {
+    "access_token": "APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "public_key": "APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "webhook_secret": "YOUR_WEBHOOK_SECRET"
+  },
+  
+  "urls": {
+    "api_url": "https://api.mercadopago.com/v1",
+    "webhook_url": "https://seu-dominio.com/webhooks/mercadopago",
+    "redirect_url_base": "https://seu-dominio.com/payment"
+  },
+  
+  "checkout_config": {
+    "locale": "pt-BR",
+    "currency": "BRL",
+    "auto_return": "approved",
+    "expires": true,
+    "expiration_date_to": "2024-12-31T23:59:59.000-03:00"
+  },
+  
+  "payment_methods": {
+    "credit_card": {
+      "enabled": true,
+      "installments": {
+        "min": 1,
+        "max": 12,
+        "min_amount": 50.0
+      }
+    },
+    "debit_card": {
+      "enabled": true
+    },
+    "pix": {
+      "enabled": true,
+      "expiration_minutes": 30
+    },
+    "boleto": {
+      "enabled": false
+    }
+  },
+  
+  "webhook_events": [
+    "payment.created",
+    "payment.updated",
+    "payment.approved",
+    "payment.rejected",
+    "payment.cancelled"
+  ],
+  
+  "security": {
+    "validate_signature": true,
+    "allowed_ips": [],
+    "max_timestamp_diff": 600
+  },
+  
+  "description": "💰 Configuração Mercado Pago Checkout Pro - Integração completa com SDK JavaScript"
+} 

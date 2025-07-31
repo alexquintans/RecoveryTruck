@@ -1,4 +1,5 @@
 import { getAuthToken, logout } from './auth';
+import axios from 'axios';
 
 /**
  * Configuração base para requisições API
@@ -57,7 +58,7 @@ export async function fetchApi<T = any>(
   // Header de Tenant (se existir)
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore - Tipagem ImportMeta fora do contexto Vite
-  const tenantId = (import.meta as any).env?.VITE_TENANT_ID as string | "52c6777f-ee24-433b-8e4b-7185950da52e";
+  const tenantId = (import.meta as any).env?.VITE_TENANT_ID as string | "38534c9f-accb-4884-9c19-dd37f77d0594";
   if (tenantId && !headers.has('X-Tenant-Id')) {
     headers.set('X-Tenant-Id', tenantId);
   }
@@ -97,33 +98,54 @@ export async function fetchApi<T = any>(
 }
 
 /**
- * Métodos HTTP para facilitar o uso
+ * Instância do axios configurada com interceptors para autenticação
  */
-export const api = {
-  get: <T = any>(endpoint: string, options?: FetchOptions) => 
-    fetchApi<T>(endpoint, { ...options, method: 'GET' }),
+export const api = axios.create({
+  baseURL: API_URL,
+});
+
+// Interceptor para adicionar headers de autenticação e tenant
+api.interceptors.request.use(
+  (config) => {
+    // Adicionar token de autenticação
+    const token = getAuthToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     
-  post: <T = any>(endpoint: string, data?: any, options?: FetchOptions) => 
-    fetchApi<T>(endpoint, { 
-      ...options, 
-      method: 'POST', 
-      body: data ? JSON.stringify(data) : undefined 
-    }),
+    // Adicionar header de tenant
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore - Tipagem ImportMeta fora do contexto Vite
+    const tenantId = (import.meta as any).env?.VITE_TENANT_ID as string | "38534c9f-accb-4884-9c19-dd37f77d0594";
+    if (tenantId && !config.headers['X-Tenant-Id']) {
+      config.headers['X-Tenant-Id'] = tenantId;
+    }
     
-  put: <T = any>(endpoint: string, data?: any, options?: FetchOptions) => 
-    fetchApi<T>(endpoint, { 
-      ...options, 
-      method: 'PUT', 
-      body: data ? JSON.stringify(data) : undefined 
-    }),
+    // Sempre incluir Content-Type se não estiver definido
+    if (!config.headers['Content-Type']) {
+      config.headers['Content-Type'] = 'application/json';
+    }
     
-  patch: <T = any>(endpoint: string, data?: any, options?: FetchOptions) => 
-    fetchApi<T>(endpoint, { 
-      ...options, 
-      method: 'PATCH', 
-      body: data ? JSON.stringify(data) : undefined 
-    }),
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Interceptor para tratamento de erros de autenticação
+api.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    // Logout automático se token inválido/expirado
+    if (error.response?.status === 401) {
+      logout();
+      // Emitir evento para redirecionar
+      window.dispatchEvent(new CustomEvent('auth:logout'));
+    }
     
-  delete: <T = any>(endpoint: string, options?: FetchOptions) => 
-    fetchApi<T>(endpoint, { ...options, method: 'DELETE' }),
-}; 
+    return Promise.reject(error);
+  }
+); 

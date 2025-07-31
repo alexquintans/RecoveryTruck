@@ -64,9 +64,9 @@ export const ServiceCountdown: React.FC<ServiceCountdownProps> = ({
   
   // Determinar cor da barra de progresso
   const getProgressColor = (): string => {
-    if (progress < 50) return 'bg-green-500';
-    if (progress < 80) return 'bg-yellow-500';
-    return 'bg-red-500';
+    if (progress < 50) return 'bg-[#3B82F6]';
+    if (progress < 80) return 'bg-[#F59E0B]';
+    return 'bg-[#EF4444]';
   };
   
   return (

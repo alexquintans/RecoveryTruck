@@ -29,6 +29,7 @@ export interface Customer {
  * Tipos para os tickets
  */
 export type TicketStatus = 
+  | 'pending_payment'
   | 'paid'
   | 'printing'
   | 'in_queue'
@@ -71,7 +72,9 @@ export type PaymentMethod =
   | 'credit_card'
   | 'debit_card'
   | 'pix'
-  | 'cash';
+  | 'cash'
+  | 'mercadopago'
+  | 'sicredi';
 
 export type PaymentStatus = 
   | 'pending'

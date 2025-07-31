@@ -9,7 +9,6 @@ import CustomerInfoPage from './pages/CustomerInfoPage';
 import TermsPage from './pages/TermsPage';
 import PaymentPage from './pages/PaymentPage';
 import TicketPage from './pages/TicketPage';
-import QueuePage from './pages/QueuePage';
 import SelectExtrasPage from './pages/SelectExtrasPage';
 
 // Componentes de layout
@@ -92,7 +91,6 @@ function App() {
                 <TicketPage />
               </RequireStep>
             } />
-            <Route path="queue" element={<QueuePage />} />
             
             {/* Rota de fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />

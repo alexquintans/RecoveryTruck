@@ -45,10 +45,4 @@ declare module 'react-router-dom' {
 declare module 'framer-motion' {
   export const motion: any;
   export const AnimatePresence: any;
-}
-
-declare module '@tanstack/react-query' {
-  export const useQuery: any;
-  export const QueryClient: any;
-  export const QueryClientProvider: any;
 } 

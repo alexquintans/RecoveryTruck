@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
@@ -9,17 +9,48 @@ import { api } from '../utils/api';
 import { useTotemStore } from '../store/totemStore';
 import type { Service } from '../types';
 
+// O tipo de retorno da API para um serviço
+interface ApiService {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  duration: number; // Corrigido de duration_minutes para duration
+  is_active: boolean;
+  color?: string;
+  // Adicione outros campos que a API retorna, se houver
+}
+
+
 const SelectServicePage: React.FC = () => {
   const navigate = useNavigate();
   const { selectedService, setService, setStep } = useTotemStore();
-  const [selected, setSelected] = useState<Service[]>(selectedService ? [selectedService] : []);
+  const [selected, setSelected] = useState<Service[]>([]);
 
-  const tenantId = (import.meta as any).env?.VITE_TENANT_ID || '52c6777f-ee24-433b-8e4b-7185950da52e';
-  const { data: operationConfig, isLoading, error } = useQuery({
-    queryKey: ['operationConfig', tenantId],
-    queryFn: () => api.getOperationConfig(tenantId),
+  // Sincronizar o estado local com o estado global quando a página carrega
+  useEffect(() => {
+    if (selectedService) {
+      // Se selectedService é um array, use-o diretamente
+      if (Array.isArray(selectedService)) {
+        setSelected(selectedService);
+      } else {
+        // Se selectedService é um único serviço, coloque-o em um array
+        setSelected([selectedService]);
+      }
+    } else {
+      // Se não há serviço selecionado, limpe o estado local
+      setSelected([]);
+    }
+  }, [selectedService]);
+
+  const tenantId = (import.meta as any).env?.VITE_TENANT_ID || '38534c9f-accb-4884-9c19-dd37f77d0594';
+  
+  const { data: services = [], isLoading, error } = useQuery<ApiService[]>({
+    queryKey: ['services', tenantId],
+    queryFn: () => api.getServices(tenantId),
   });
-  const services = (operationConfig?.services || []).filter((s: any) => s.active);
+  
+  const activeServices = services.filter((s: ApiService) => s.is_active);
 
   // Selecionar/deselecionar múltiplos serviços
   const handleSelectService = (service: Service) => {
@@ -44,6 +75,9 @@ const SelectServicePage: React.FC = () => {
 
   // Voltar para a página inicial
   const handleBack = () => {
+    // Limpar o estado quando voltar para a página inicial
+    setService(null);
+    setSelected([]);
     navigate('/');
   };
 
@@ -84,34 +118,89 @@ const SelectServicePage: React.FC = () => {
         {!isLoading && !error && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              {services.map((service) => (
-                <ServiceCard
-                  key={service.service_id}
-                  service={{
-                    id: service.service_id,
+              {activeServices.map((service) => {
+                // Mapeia o objeto da API para o tipo do frontend
+                const serviceForCard: Service = {
+                  id: service.id,
                     name: service.name,
                     description: service.description,
                     price: service.price,
-                    duration: service.duration,
+                  duration: service.duration, // Corrigido para usar a propriedade correta
                     slug: service.name?.toLowerCase().replace(/\s+/g, '-') || '',
                     color: service.color || 'blue',
-                  }}
+                };
+                return (
+                  <ServiceCard
+                    service={serviceForCard}
                   onClick={handleSelectService}
-                  isSelected={selected.some((s) => s.id === service.service_id)}
+                    isSelected={selected.some((s) => s.id === service.id)}
                 />
-              ))}
+                );
+              })}
             </div>
 
-            {/* Mensagem promocional melhorada */}
-            <div className="flex justify-center mb-8 mt-2">
-              <div
-                className="flex items-center gap-2 px-8 py-3 rounded-full bg-gradient-to-r from-secondary to-primary/80 shadow-lg border-2 border-secondary text-white font-extrabold text-base md:text-lg uppercase tracking-wider animate-pulse-slow drop-shadow-lg"
-                style={{ letterSpacing: 1.5 }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white drop-shadow" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8V4m0 0a4 4 0 110 8m0-8a4 4 0 100 8m0 8v-4m0 4a4 4 0 110-8m0 8a4 4 0 100-8" />
-                </svg>
-                CONTRATE MAIS DE UMA TERAPIA E GANHE DESCONTO!
+            {/* Promoção atrativa e elegante */}
+            <div className="flex justify-center mb-6">
+              <div className="relative group cursor-pointer">
+                {/* Efeito de brilho animado */}
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 rounded-2xl blur-sm group-hover:blur-md transition-all duration-500 animate-pulse"></div>
+                
+                {/* Card principal */}
+                <div className="relative bg-gradient-to-r from-primary via-primary/90 to-primary rounded-2xl p-6 shadow-xl border border-primary/30 transform group-hover:scale-105 transition-all duration-300">
+                  <div className="flex items-center justify-between">
+                    {/* Lado esquerdo - Ícone e texto */}
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                        </div>
+                        {/* Badge de desconto */}
+                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full flex items-center justify-center">
+                          <span className="text-primary text-xs font-bold">%</span>
+                        </div>
+                      </div>
+                      
+                      <div className="text-white">
+                        <p className="text-xl font-bold mb-1">
+                          Ganhe desconto progressivo!
+                        </p>
+                        <p className="text-white/90 text-sm">
+                          Quanto mais terapias, maior o desconto
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Lado direito - Call to action */}
+                    <div className="text-right">
+                      <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/30">
+                        <p className="text-white font-bold text-lg">
+                          +{selected.length > 1 ? (selected.length - 1) * 10 : 0}%
+                        </p>
+                        <p className="text-white/80 text-xs">
+                          desconto
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Indicador de progresso */}
+                  {selected.length > 0 && (
+                    <div className="mt-4">
+                      <div className="flex justify-between text-white/80 text-sm mb-1">
+                        <span>Progresso do desconto</span>
+                        <span>{selected.length}/4 terapias</span>
+                      </div>
+                      <div className="w-full bg-white/20 rounded-full h-2">
+                        <div 
+                          className="bg-white h-2 rounded-full transition-all duration-500 ease-out"
+                          style={{ width: `${Math.min((selected.length / 4) * 100, 100)}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -123,13 +212,13 @@ const SelectServicePage: React.FC = () => {
                   {selected.map((s) => (
                     <li key={s.id} className="flex justify-between py-2 text-text">
                       <span>{s.name}</span>
-                      <span>R$ {s.price.toFixed(2).replace('.', ',')}</span>
+                      <span>R$ {(s.price || 0).toFixed(2).replace('.', ',')}</span>
                     </li>
                   ))}
                 </ul>
                 <div className="flex justify-between font-semibold text-primary mt-2">
                   <span>Total</span>
-                  <span>R$ {selected.reduce((acc, s) => acc + s.price, 0).toFixed(2).replace('.', ',')}</span>
+                  <span>R$ {selected.reduce((acc, s) => acc + (s.price || 0), 0).toFixed(2).replace('.', ',')}</span>
                 </div>
                 {/* Cálculo do desconto progressivo */}
                 {selected.length > 1 && (
@@ -141,7 +230,7 @@ const SelectServicePage: React.FC = () => {
                 <div className="flex justify-between font-bold text-lg mt-2 border-t pt-2 border-gray-200">
                   <span>Valor final</span>
                   <span>
-                    R$ {(selected.reduce((acc, s) => acc + s.price, 0) - (selected.length > 1 ? (selected.length - 1) * 10 : 0)).toFixed(2).replace('.', ',')}
+                    R$ {(selected.reduce((acc, s) => acc + (s.price || 0), 0) - (selected.length > 1 ? (selected.length - 1) * 10 : 0)).toFixed(2).replace('.', ',')}
                   </span>
                 </div>
               </div>

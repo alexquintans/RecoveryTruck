@@ -241,7 +241,7 @@ async def create_extra(
     db.refresh(extra)
     return extra
 
-@router.get("/operation/config", response_model=dict)
+@router.get("/config", response_model=dict)
 async def get_operation_config(
     tenant_id: UUID,
     db: Session = Depends(get_db)
@@ -259,10 +259,11 @@ async def get_operation_config(
                 "duration": s.duration,
                 "price": float(s.price),
                 "equipment_count": s.equipment_count,
-                "name": s.equipment.name if s.equipment else None,
+                "identifier": s.equipment.identifier if s.equipment else None,
                 "description": s.equipment.description if s.equipment else None,
             } for s in op_cfg.services
         ],
+        "payment_modes": op_cfg.payment_modes or [],
         "equipments": [
             {
                 "equipment_id": str(e.equipment_id),
@@ -270,7 +271,7 @@ async def get_operation_config(
                 "duration": e.duration,
                 "price": float(e.price),
                 "equipment_count": e.equipment_count,
-                "name": e.equipment.name if e.equipment else None,
+                "identifier": e.equipment.identifier if e.equipment else None,
                 "description": e.equipment.description if e.equipment else None,
             } for e in op_cfg.equipments
         ],

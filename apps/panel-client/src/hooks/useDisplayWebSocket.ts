@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useWebSocket } from '@totem/hooks';
 import { useSoundNotifications } from '@totem/hooks';
 
@@ -73,7 +73,7 @@ export function useDisplayWebSocket({
     if (onQueueUpdate) {
       onQueueUpdate(data);
     }
-  }, [onQueueUpdate, onTicketCalled]);
+  }, [onQueueUpdate]);
 
   // Handler para ticket chamado
   const handleTicketCalled = useCallback((data: DisplayUpdate) => {

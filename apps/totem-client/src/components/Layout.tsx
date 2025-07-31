@@ -6,16 +6,13 @@ const Layout = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <header className="bg-primary text-white py-4">
-        <div className="container mx-auto px-4 flex items-center justify-between">
-          <div className="flex items-center">
-            <img 
-              src="/logo.png" 
-              alt="RecoveryTruck Logo" 
-              className="h-10 w-10 mr-2"
-            />
-            <h1 className="text-2xl font-bold">RecoveryTruck</h1>
-          </div>
+      <header className="bg-white border-b-2 border-gray-200 py-4">
+        <div className="container mx-auto px-4 flex items-center justify-center">
+          <img 
+            src="/logo192.png?v=2" 
+            alt="RecoveryTruck Logo" 
+            className="h-16 w-auto"
+          />
         </div>
       </header>
       

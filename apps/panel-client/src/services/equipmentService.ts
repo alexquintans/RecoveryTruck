@@ -2,13 +2,16 @@ import { api } from '@totem/utils';
 import { withTenant } from '../utils/withTenant';
 
 export const equipmentService = {
-  list() {
-    return api.get('/operation/equipment');
+  async list() {
+    const response = await api.get('/operation/equipment');
+    return response.data;
   },
-  getOperation() {
-    return api.get('/operation', { params: withTenant() });
+  async getOperation() {
+    const response = await api.get('/operation', { params: withTenant() });
+    return response.data;
   },
-  stopOperation() {
-    return api.post('/operation/stop', {}, { params: withTenant() });
+  async stopOperation() {
+    const response = await api.post('/operation/stop', {}, { params: withTenant() });
+    return response.data;
   },
 }; 

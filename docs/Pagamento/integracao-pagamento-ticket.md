@@ -68,19 +68,18 @@ async def payment_webhook(request: Request, db: Session):
 ### **5. 🎫 TICKET CRIADO AUTOMATICAMENTE**
 ```python
 async def create_ticket_from_payment_session(payment_session, db):
-    # Criar ticket com status PAID
+    # Criar ticket com status IN_QUEUE (pagamento já confirmado)
     ticket = Ticket(
-        status=TicketStatus.PAID.value,
+        status=TicketStatus.IN_QUEUE.value,  # Direto para fila
         payment_session_id=payment_session.id,
         # ... dados do cliente
     )
     
-    # 🖨️ IMPRESSÃO AUTOMÁTICA
-    await printer_manager.queue_print_job("default", "ticket", print_data)
+    # ⏸️ IMPRESSÃO TEMPORARIAMENTE DESATIVADA
+    # await printer_manager.queue_print_job("default", "ticket", print_data)
     
     # 🔄 TRANSIÇÃO DE ESTADOS
-    ticket.status = TicketStatus.PRINTING.value
-    # → PRINTING → IN_QUEUE → CALLED → IN_PROGRESS → COMPLETED
+    # → IN_QUEUE → CALLED → IN_PROGRESS → COMPLETED
 ```
 
 ## 🛠️ Implementação Técnica
@@ -120,7 +119,7 @@ PENDING → PAID → (ticket criado)
     FAILED/CANCELLED/EXPIRED (sem ticket)
 
 # Ticket Status (após pagamento confirmado)
-PAID → PRINTING → IN_QUEUE → CALLED → IN_PROGRESS → COMPLETED
+IN_QUEUE → CALLED → IN_PROGRESS → COMPLETED
 ```
 
 ### **Tratamento de Erros**

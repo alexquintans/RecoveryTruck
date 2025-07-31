@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from datetime import datetime
 import asyncio
 import traceback
+from fastapi.websockets import WebSocket, WebSocketDisconnect
 
 # Lista de routers disponíveis para carregar
 AVAILABLE_ROUTERS = [
@@ -34,6 +35,18 @@ for router_name in AVAILABLE_ROUTERS:
         router_errors[router_name] = str(e)
         print(f"⚠️ Erro ao carregar router {router_name}: {e}")
 
+# Importação direta do router websocket para garantir que está disponível
+try:
+    from routers import websocket
+    print("✅ Router websocket importado diretamente")
+    # Garantir que o router websocket está na lista de routers carregados
+    if "websocket" not in loaded_routers:
+        loaded_routers["websocket"] = websocket.router
+        print("✅ Router websocket adicionado manualmente")
+except Exception as e:
+    print(f"❌ Erro ao importar router websocket diretamente: {e}")
+    router_errors["websocket"] = str(e)
+
 # Tentar importar dependências do banco
 try:
     from database import engine, Base, get_db
@@ -43,70 +56,24 @@ except ImportError as e:
     print(f"⚠️ Database não pôde ser importado: {e}")
     DATABASE_AVAILABLE = False
 
-# Configuração da aplicação
+# Configuração da aplicação - VERSÃO SIMPLIFICADA PARA TESTE
 app = FastAPI(
     title="🏪 Sistema de Totem - API Completa",
-    description="""
-    ## API Completa do Sistema de Autoatendimento
-    
-    Esta API fornece todos os endpoints necessários para o funcionamento do sistema de totem:
-    
-    ### 🔐 Autenticação
-    - Login e registro de operadores
-    - Gerenciamento de tokens JWT
-    
-    ### 🎫 Gestão de Tickets  
-    - Criação, consulta e atualização de tickets
-    - Sistema de fila inteligente
-    - Controle de status e prioridades
-    
-    ### 💳 Pagamentos
-    - Sessões de pagamento
-    - Integração com múltiplos provedores
-    - Webhooks para confirmação
-    
-    ### 🖥️ Terminais
-    - Configuração de terminais de pagamento
-    - Gerenciamento de equipamentos
-    
-    ### 📊 Métricas e Monitoramento
-    - Métricas do sistema
-    - Logs e auditoria
-    
-    ### 🔔 Notificações
-    - Sistema de notificações sonoras
-    - Configurações por operador
-    
-    ### 🌐 WebSockets
-    - Comunicação em tempo real
-    - Atualizações da fila
-    """,
+    description="API para sistema de autoatendimento com pagamento integrado",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_tags=[
-        {"name": "authentication", "description": "🔐 Autenticação e autorização"},
-        {"name": "tickets", "description": "🎫 Gestão de tickets e fila"},
-        {"name": "services", "description": "🛠️ Serviços disponíveis"},
-        {"name": "payments", "description": "💳 Sessões de pagamento"},
-        {"name": "webhooks", "description": "🔗 Webhooks de pagamento"},
-        {"name": "terminals", "description": "🖥️ Terminais de pagamento"},
-        {"name": "metrics", "description": "📊 Métricas e monitoramento"},
-        {"name": "websocket", "description": "🌐 Comunicação em tempo real"},
-        {"name": "operation", "description": "⚙️ Operação do sistema"},
-        {"name": "operator-config", "description": "👤 Configurações de operador"},
-        {"name": "notifications", "description": "🔔 Sistema de notificações"},
-        {"name": "customers", "description": "👤 Gestão de clientes"}
-    ]
+    redoc_url="/redoc"
 )
 
-# Configure CORS
+# Configure CORS - DEVE VIR ANTES DOS ROUTERS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Permitir todas as origens para desenvolvimento
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Headers específicos para WebSocket
+    expose_headers=["*"],
 )
 
 # Registrar routers carregados
@@ -119,7 +86,7 @@ router_configs = {
     "webhooks": {"prefix": "/webhooks", "tags": ["webhooks"]},
     "terminals": {"prefix": "/terminals", "tags": ["terminals"]},
     "metrics": {"prefix": "/metrics", "tags": ["metrics"]},
-    "websocket": {"prefix": "/ws", "tags": ["websocket"]},
+    "websocket": {"prefix": "", "tags": ["websocket"]},  # Sem prefixo para evitar /ws/ws
     "operation": {"prefix": "/operation", "tags": ["operation"]},
     "operator_config": {"prefix": "/operator", "tags": ["operator-config"]},
     "notifications": {"prefix": "/notifications", "tags": ["notifications"]},
@@ -134,6 +101,63 @@ for router_name, router in loaded_routers.items():
         print(f"✅ Router {router_name} registrado em {config['prefix']}")
     except Exception as e:
         print(f"❌ Erro ao registrar router {router_name}: {e}")
+
+# Endpoint WebSocket de teste direto na aplicação principal
+@app.websocket("/ws-test")
+async def websocket_test_direct(websocket: WebSocket):
+    """Endpoint WebSocket de teste direto na aplicação principal"""
+    print(f"🔍 DEBUG - Teste WebSocket direto recebido")
+    print(f"🔍 DEBUG - Headers: {websocket.headers}")
+    print(f"🔍 DEBUG - URL: {websocket.url}")
+    print(f"🔍 DEBUG - Client: {websocket.client}")
+    
+    try:
+        await websocket.accept()
+        print(f"🔍 DEBUG - Teste WebSocket direto aceito com sucesso!")
+        
+        while True:
+            data = await websocket.receive_text()
+            print(f"🔍 DEBUG - Teste direto recebeu: {data}")
+            await websocket.send_text(f"Echo direto: {data}")
+    except WebSocketDisconnect:
+        print(f"🔍 DEBUG - Teste direto desconectado")
+    except Exception as e:
+        print(f"🔍 DEBUG - Teste direto erro: {e}")
+        import traceback
+        traceback.print_exc()
+
+# Endpoint WebSocket simples para teste - SEM router
+@app.websocket("/ws")
+async def websocket_simple_direct(websocket: WebSocket):
+    """Endpoint WebSocket simples direto na aplicação para teste"""
+    print(f"🔍 DEBUG - WebSocket simples direto recebido")
+    print(f"🔍 DEBUG - Headers: {websocket.headers}")
+    print(f"🔍 DEBUG - URL: {websocket.url}")
+    print(f"🔍 DEBUG - Query params: {websocket.query_params}")
+    
+    try:
+        await websocket.accept()
+        print(f"🔍 DEBUG - WebSocket simples direto aceito com sucesso!")
+        
+        # Extrair parâmetros da query string
+        tenant_id = websocket.query_params.get("tenant_id")
+        client_type = websocket.query_params.get("client_type")
+        
+        print(f"🔍 DEBUG - tenant_id: {tenant_id}")
+        print(f"🔍 DEBUG - client_type: {client_type}")
+        
+        while True:
+            data = await websocket.receive_text()
+            print(f"🔍 DEBUG - WebSocket simples direto recebeu: {data}")
+            await websocket.send_text(f"Echo simples direto: {data}")
+    except WebSocketDisconnect:
+        print(f"🔍 DEBUG - WebSocket simples direto desconectado")
+    except Exception as e:
+        print(f"🔍 DEBUG - WebSocket simples direto erro: {e}")
+        import traceback
+        traceback.print_exc()
+
+
 
 @app.on_event("startup")
 async def startup_event():

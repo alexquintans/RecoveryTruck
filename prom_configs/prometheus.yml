@@ -29,5 +29,13 @@ scrape_configs:
     scrape_timeout: 4s
     metric_relabel_configs:
       - source_labels: [__name__]
-        regex: 'ticket_.*|payment_.*|queue_.*'
-        action: keep 
+        regex: 'ticket_.*|payment_.*|queue_.*|http_.*|websocket_.*'
+        action: keep
+
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000'] 

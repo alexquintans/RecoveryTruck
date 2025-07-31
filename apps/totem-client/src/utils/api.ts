@@ -14,6 +14,7 @@ export interface PaymentSession {
   payment_link?: string;
   transaction_id?: string;
   ticket_id?: string;
+  preference_id?: string; // Para Mercado Pago
   created_at: string;
   updated_at: string;
 }
@@ -65,21 +66,25 @@ export interface QueueInfo {
   estimated_total_time: number;
 }
 
+// Tipo para os métodos de pagamento aceitos pelo backend
+type BackendPaymentMethod = 'credit' | 'debit' | 'pix' | 'tap' | 'cash';
+
 export const api = {
   /** Listar serviços disponíveis */
-  getServices(): Promise<Service[]> {
-    return baseApi.get('/services', { withAuth: false });
+  async getServices(tenantId: string): Promise<Service[]> {
+    const response = await baseApi.get('/services/public', { params: { tenant_id: tenantId } });
+    return response.data.services; // <-- A CORREÇÃO: extrair a lista de serviços do objeto de resposta.
   },
 
   /** Criar sessão de pagamento (para um serviço) */
-  createPaymentSession(
+  async createPaymentSession(
     serviceId: string,
     customer: Customer,
     paymentMethod: PaymentMethod,
     consentVersion: string = 'v1'
   ): Promise<PaymentSession> {
     const isDev = import.meta.env.VITE_MOCK_PAYMENT === 'true' || window.location.hostname === 'localhost';
-    let backendPaymentMethod = paymentMethod;
+    let backendPaymentMethod: BackendPaymentMethod = paymentMethod as BackendPaymentMethod;
     if (paymentMethod === 'credit_card') backendPaymentMethod = 'credit';
     if (paymentMethod === 'debit_card') backendPaymentMethod = 'debit';
     const payload: any = {
@@ -91,16 +96,19 @@ export const api = {
       ...(customer.phone ? { customer_phone: customer.phone } : {}),
       ...(isDev ? { mock: true } : {})
     };
-    return baseApi.post('/payment_sessions', payload, { withAuth: false });
+    const response = await baseApi.post('/payment_sessions', payload, { withAuth: false });
+    return response.data;
   },
 
   /** Criar ticket diretamente com múltiplos serviços */
-  createTicket(
+  async createTicket(
     services: Array<{ id: string; price: number }>,
     customer: Customer,
     extras?: Array<{ id: string; quantity: number; price: number }>
   ): Promise<Ticket> {
-    return baseApi.post('/tickets', {
+    const tenantId = (import.meta as any).env?.VITE_TENANT_ID || '38534c9f-accb-4884-9c19-dd37f77d0594';
+    const response = await baseApi.post('/tickets', {
+      tenant_id: tenantId, // Adicionado
       services: services.map(s => ({
         service_id: s.id,
         price: s.price
@@ -109,28 +117,52 @@ export const api = {
       customer_cpf: customer.cpf,
       customer_phone: customer.phone,
       consent_version: 'v1',
-      extras: extras || []
+      extras: extras ? extras.map(e => ({ 
+        extra_id: e.id, 
+        quantity: e.quantity, 
+        price: e.price 
+      })) : []
     });
+    
+    // Retornar apenas os dados do ticket, não o objeto Axios completo
+    return response.data;
+  },
+
+  /** Criar sessão de pagamento para um ticket existente */
+  async createPaymentForTicket(ticketId: string, paymentMethod: PaymentMethod): Promise<PaymentSession> {
+    const response = await baseApi.post(`/tickets/${ticketId}/create-payment`, {
+      payment_method: paymentMethod,
+    });
+    return response.data;
   },
 
   /** Buscar status da sessão de pagamento */
-  getPaymentSession(sessionId: string): Promise<PaymentSession> {
-    return baseApi.get(`/payment_sessions/${sessionId}`, { withAuth: false });
+  async getPaymentSession(sessionId: string): Promise<PaymentSession> {
+    const response = await baseApi.get(`/payment_sessions/${sessionId}`, { withAuth: false });
+    return response.data;
   },
 
   /** Obter ticket (após pagamento) */
-  getTicket(ticketId: string): Promise<Ticket> {
-    return baseApi.get(`/tickets/${ticketId}`);
+  async getTicket(ticketId: string): Promise<Ticket> {
+    const response = await baseApi.get(`/tickets/${ticketId}`);
+    return response.data;
   },
 
-  /** Buscar configuração vigente da operação */
-  getOperationConfig(tenantId: string) {
-    return baseApi.get(`/operation/config`, { params: { tenant_id: tenantId } });
+  /** Buscar configuração vigente da operação (serviços e extras públicos) */
+  async getOperationConfig(tenantId: string) {
+    const response = await baseApi.get(`/operation/config`, { params: { tenant_id: tenantId } });
+    // Garante que a resposta sempre tenha arrays, mesmo que a API não os envie.
+    return {
+      ...response.data,
+      services: response.data.services || [],
+      extras: response.data.extras || [],
+      payment_modes: response.data.payment_modes || [],
+    };
   },
 
   /** Buscar fila de tickets (para exibição pública) */
-  getQueue(tenantId: string): Promise<QueueInfo> {
-    return baseApi.get('/tickets/queue/public', { 
+  async getQueue(tenantId: string): Promise<QueueInfo> {
+    const response = await baseApi.get('/tickets/queue/public', { 
       params: { 
         tenant_id: tenantId,
         include_called: true,
@@ -138,23 +170,26 @@ export const api = {
       }, 
       withAuth: false 
     });
+    return response.data;
   },
 
   /** Buscar ticket específico na fila */
-  getTicketInQueue(ticketId: string, tenantId: string): Promise<QueueTicket | null> {
-    return baseApi.get(`/tickets/${ticketId}`, { 
+  async getTicketInQueue(ticketId: string, tenantId: string): Promise<QueueTicket | null> {
+    const response = await baseApi.get(`/tickets/${ticketId}`, { 
       params: { tenant_id: tenantId }
     });
+    return response.data;
   },
 
   /** Buscar cliente na base de dados */
-  searchCustomer(searchTerm: string): Promise<Customer | null> {
-    return baseApi.get('/customers/search', { 
+  async searchCustomer(searchTerm: string): Promise<Customer | null> {
+    const response = await baseApi.get('/customers/search', { 
       params: { 
         q: searchTerm,
-        tenant_id: (import.meta as any).env?.VITE_TENANT_ID || '52c6777f-ee24-433b-8e4b-7185950da52e'
+        tenant_id: (import.meta as any).env?.VITE_TENANT_ID || '38534c9f-accb-4884-9c19-dd37f77d0594'
       }, 
       withAuth: false 
     });
+    return response.data;
   },
 }; 

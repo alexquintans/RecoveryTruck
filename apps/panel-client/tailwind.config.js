@@ -4,13 +4,17 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: '#1A3A4A', // Azul escuro da imagem
-        secondary: '#8AE65C', // Verde claro da imagem
-        accent: '#FFFFFF', // Branco
-        background: '#F8FAFC', // Mantendo um fundo claro para melhor legibilidade
+        primary: '#1F526B', // Azul Profundo da marca
+        secondary: '#FFFFFF', // Branco da marca
+        accent: '#D9D9D9', // Cinza Claro da marca
+        background: '#FFFFFF', // Fundo branco para melhor legibilidade
         text: {
-          DEFAULT: '#1A3A4A', // Azul escuro para texto principal
-          light: '#64748B', // Cinza para texto secundário
+          DEFAULT: '#000000', // Preto para texto principal
+          light: '#1F526B', // Azul profundo para texto secundário
+        },
+        gray: {
+          light: '#D9D9D9', // Cinza claro da marca
+          DEFAULT: '#64748B', // Cinza padrão para elementos neutros
         },
       },
       fontFamily: {

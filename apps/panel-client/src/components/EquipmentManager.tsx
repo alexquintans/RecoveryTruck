@@ -84,7 +84,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({
         
         {/* Informações do ticket em uso */}
         {ticket && ticket.status === 'in_progress' && ticket.startedAt && (
-          <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="mt-3 p-3 bg-[#F0F8FF] rounded-lg border border-[#3B82F6]">
             <p className="text-sm mb-1">
               <span className="font-medium">Cliente:</span> {ticket.customer?.name}
             </p>
@@ -148,7 +148,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({
                 <span className="text-sm mr-2">minutos</span>
                 <button
                   onClick={handleUpdateServiceDuration}
-                  className="px-2 py-1 text-xs bg-primary text-white rounded hover:bg-primary/80"
+                  className="px-2 py-1 text-xs bg-[#3B82F6] text-white rounded hover:bg-[#2563EB]"
                 >
                   Salvar
                 </button>
@@ -161,7 +161,7 @@ export const EquipmentManager: React.FC<EquipmentManagerProps> = ({
                     setServiceDurationInput(operationConfig.serviceDuration);
                     setEditingServiceTime(true);
                   }}
-                  className="ml-2 text-xs text-blue-600 hover:underline"
+                  className="ml-2 text-xs text-[#3B82F6] hover:underline"
                 >
                   Editar
                 </button>

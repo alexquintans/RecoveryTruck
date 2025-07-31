@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import case
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import logging
 from pydantic import BaseModel
 from uuid import UUID
 
-from models import Ticket, Service, PaymentSession, Consent, Equipment, TicketExtra, EquipmentStatus, TicketService
+from models import Ticket, Service, PaymentSession, Consent, Equipment, TicketExtra, EquipmentStatus, TicketService, Operator, Extra, OperationConfigExtra
 from schemas import (
     Ticket as TicketSchema, 
     TicketList, 
@@ -17,18 +18,36 @@ from schemas import (
     TicketListWithStatus,
     TicketCreate,
     TicketOut,
-    TicketInQueue
+    TicketInQueue,
+    PaymentForTicket,
+    PaymentSessionWithQR,
+    TicketForPanel,
+    TicketExtraOut,
+    ServiceForTicket,
+    TicketServiceWithDetails,
+    ExtraForTicket,
+    TicketExtraWithDetails
 )
 from auth import get_current_operator
 from services.websocket import websocket_manager
-from services.printer import printer_manager
+from services.printer_service import printer_manager
 from database import get_db
 from constants import (
     TicketStatus, can_transition, get_valid_transitions, 
     TICKET_STATE_CATEGORIES, TICKET_STATUS_DESCRIPTIONS, TICKET_STATUS_COLORS,
-    QueueSortOrder, QueuePriority, get_status_info as get_status_info_func
+    QueueSortOrder, QueuePriority, get_status_info as get_status_info_func,
+    get_waiting_time_status, PRIORITY_DESCRIPTIONS, PRIORITY_COLORS
 )
 from services.queue_manager import get_queue_manager
+from services.payment.factory import PaymentAdapterFactory
+from services.payment.terminal_manager import TerminalManager
+from services.notification_service import OperatorNotificationService as NotificationService
+from services.logging import setup_logging
+from models import Extra
+from models import Tenant
+from models import OperationConfig
+
+# Import do MercadoPagoAdapter será feito localmente quando necessário
 
 logger = logging.getLogger(__name__)
 
@@ -39,57 +58,148 @@ router = APIRouter(
 class CallTicketRequest(BaseModel):
     equipment_id: str
 
-@router.get("", response_model=TicketListWithStatus)
-async def list_tickets(
-    status: Optional[str] = Query(None, alias="status"),
-    category: Optional[str] = None,  # pending_service, waiting, active, finished
-    skip: int = 0,
-    limit: int = 100,
+@router.get("/my-tickets", response_model=List[TicketForPanel], tags=["operator"])
+async def get_my_tickets(
     db: Session = Depends(get_db),
     current_operator = Depends(get_current_operator)
 ):
-    """Lista tickets com filtros avançados por status e categoria"""
+    """Lista os tickets atribuídos ao operador logado."""
+    logger.info(f"🔍 DEBUG - Buscando tickets para operador {current_operator.id}")
+    logger.info(f"🔍 DEBUG - Tenant ID: {current_operator.tenant_id}")
+    logger.info(f"🔍 DEBUG - Operador nome: {current_operator.name}")
     
+    # Buscar tickets do operador
+    tickets = db.query(Ticket).options(
+        joinedload(Ticket.services).joinedload(TicketService.service),
+        joinedload(Ticket.extras).joinedload(TicketExtra.extra)
+    ).filter(
+        Ticket.tenant_id == current_operator.tenant_id,
+        Ticket.assigned_operator_id == current_operator.id,
+        Ticket.status.in_(['called', 'in_progress'])
+    ).order_by(Ticket.called_at.desc()).all()
+    
+    logger.info(f"🔍 DEBUG - Tickets encontrados: {len(tickets)}")
+    
+    result = []
+    for ticket in tickets:
+        logger.info(f"🔍 DEBUG - Processando ticket {ticket.id} (status: {ticket.status})")
+        
+        # Converter serviços
+        services_with_details = []
+        if ticket.services:
+            for ts in ticket.services:
+                service_for_ticket = ServiceForTicket(
+                    id=ts.service.id,
+                    name=ts.service.name,
+                    price=ts.service.price
+                )
+                service_with_details = TicketServiceWithDetails(
+                    price=ts.price,
+                    service=service_for_ticket
+                )
+                services_with_details.append(service_with_details)
+                logger.info(f"🔍 DEBUG - Serviço adicionado: {ts.service.name} (R$ {ts.price})")
+        
+        # Converter extras
+        extras_with_details = []
+        if ticket.extras:
+            for te in ticket.extras:
+                extra_for_ticket = ExtraForTicket(
+                    id=te.extra.id,
+                    name=te.extra.name,
+                    price=te.extra.price
+                )
+                extra_with_details = TicketExtraWithDetails(
+                    quantity=te.quantity,
+                    price=te.price,
+                    extra=extra_for_ticket
+                )
+                extras_with_details.append(extra_with_details)
+                logger.info(f"🔍 DEBUG - Extra adicionado: {te.extra.name} x{te.quantity} (R$ {te.price})")
+        
+        # Criar TicketForPanel
+        ticket_for_panel = TicketForPanel(
+            id=ticket.id,
+            tenant_id=ticket.tenant_id,
+            payment_session_id=ticket.payment_session_id,
+            ticket_number=ticket.ticket_number,
+            status=ticket.status,
+            customer_name=ticket.customer_name,
+            customer_cpf=ticket.customer_cpf,
+            customer_phone=ticket.customer_phone,
+            consent_version=ticket.consent_version,
+            priority=ticket.priority,
+            queue_position=ticket.queue_position,
+            estimated_wait_minutes=ticket.estimated_wait_minutes,
+            assigned_operator_id=ticket.assigned_operator_id,
+            equipment_id=ticket.equipment_id,
+            created_at=ticket.created_at,
+            updated_at=ticket.updated_at,
+            printed_at=ticket.printed_at,
+            queued_at=ticket.queued_at,
+            called_at=ticket.called_at,
+            started_at=ticket.started_at,
+            completed_at=ticket.completed_at,
+            cancelled_at=ticket.cancelled_at,
+            expired_at=ticket.expired_at,
+            reprinted_at=ticket.reprinted_at,
+            operator_notes=ticket.operator_notes,
+            cancellation_reason=ticket.cancellation_reason,
+            print_attempts=ticket.print_attempts,
+            reactivation_count=ticket.reactivation_count,
+            payment_confirmed=ticket.payment_confirmed,
+            services=services_with_details,
+            extras=extras_with_details
+        )
+        
+        result.append(ticket_for_panel)
+        logger.info(f"🔍 DEBUG - Ticket {ticket.id} processado com {len(services_with_details)} serviços e {len(extras_with_details)} extras")
+    
+    logger.info(f"🔍 DEBUG - Retornando {len(result)} tickets")
+    return result
+
+@router.get("/completed", response_model=List[TicketForPanel], tags=["operator"])
+async def get_completed_tickets(
+    db: Session = Depends(get_db),
+    current_operator: Operator = Depends(get_current_operator)
+):
+    """Lista os tickets concluídos pelo operador logado nos últimos 30 minutos."""
+    since = datetime.now(timezone.utc) - timedelta(minutes=30)
+    return db.query(Ticket).options(
+        joinedload(Ticket.services).joinedload(TicketService.service),
+        joinedload(Ticket.extras).joinedload(TicketExtra.extra)
+    ).filter(
+        Ticket.tenant_id == current_operator.tenant_id,
+        Ticket.assigned_operator_id == current_operator.id,
+        Ticket.status == 'completed',
+        Ticket.completed_at >= since
+    ).order_by(Ticket.completed_at.desc()).all()
+
+
+@router.get("", response_model=List[TicketForPanel], tags=["operator"])
+async def list_tickets(
+    status: Optional[str] = Query(None, description="Filtrar por status"),
+    category: Optional[str] = Query(None, description="Filtrar por categoria"),
+    db: Session = Depends(get_db),
+    current_operator: Operator = Depends(get_current_operator)
+):
+    """Lista tickets com base em filtros. Usado para cancelados, etc."""
     query = db.query(Ticket).options(
-        joinedload(Ticket.services).joinedload(TicketService.service)
+        joinedload(Ticket.services).joinedload(TicketService.service),
+        joinedload(Ticket.extras).joinedload(TicketExtra.extra)
     ).filter(Ticket.tenant_id == current_operator.tenant_id)
-    
-    # Filtro por status específico
+
     if status:
-        # Aceitar múltiplos status separados por vírgula
-        status_list = [s.strip() for s in status.split(',')]
-        valid_statuses = []
-        
-        for status_item in status_list:
-            try:
-                ticket_status = TicketStatus(status_item)
-                valid_statuses.append(ticket_status.value)
-            except ValueError:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"Status inválido: {status_item}"
-            )
-        
-        if valid_statuses:
-            query = query.filter(Ticket.status.in_(valid_statuses))
+        query = query.filter(Ticket.status == status)
     
-    # Filtro por categoria
     if category:
-        if category not in TICKET_STATE_CATEGORIES:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Categoria inválida: {category}. Opções: {list(TICKET_STATE_CATEGORIES.keys())}"
-            )
-        
-        category_statuses = TICKET_STATE_CATEGORIES[category]
-        status_values = [s.value for s in category_statuses]
-        query = query.filter(Ticket.status.in_(status_values))
-        
-    total = query.count()
-    tickets = query.order_by(Ticket.created_at.desc()).offset(skip).limit(limit).all()
-    ticket_schemas = [ticket_to_with_status(t) for t in tickets]
-    
-    return TicketListWithStatus(items=ticket_schemas, total=total)
+        # Usar a função get_tickets_by_category para obter os status da categoria
+        from constants import get_tickets_by_category
+        category_statuses = get_tickets_by_category(category)
+        if category_statuses:
+            query = query.filter(Ticket.status.in_([s.value for s in category_statuses]))
+
+    return query.order_by(Ticket.updated_at.desc()).limit(50).all()
 
 @router.get("/queue", response_model=TicketQueue)
 async def get_ticket_queue(
@@ -121,29 +231,52 @@ async def get_ticket_queue(
         # Calcular tempo de espera
         waiting_minutes = 0
         if ticket.queued_at:
-            waiting_minutes = (datetime.utcnow() - ticket.queued_at).total_seconds() / 60
+            waiting_minutes = (datetime.now(timezone.utc) - ticket.queued_at).total_seconds() / 60
         
         # Criar ticket enriquecido (usando dict básico por enquanto)
         data = ticket.__dict__.copy()
-        for field in ["service", "waiting_time_minutes", "waiting_status", "priority_info", "estimated_service_time"]:
+        for field in ["service", "waiting_time_minutes", "waiting_status", "priority_info", "estimated_service_time", "services", "extras"]:
             data.pop(field, None)
         
-        # Obter todos os serviços associados
-        services_list = [ts.service for ts in ticket.services] if ticket.services else []
-        data["services"] = services_list
+        # Converter serviços para o formato esperado pelo schema
+        services_with_details = []
+        if ticket.services:
+            for ts in ticket.services:
+                service_for_ticket = ServiceForTicket(
+                    id=ts.service.id,
+                    name=ts.service.name,
+                    price=ts.service.price
+                )
+                service_with_details = TicketServiceWithDetails(
+                    price=ts.price,
+                    service=service_for_ticket
+                )
+                services_with_details.append(service_with_details)
         
-        # Obter serviço principal (primeiro)
-        service = services_list[0] if services_list else None
-        service_id = service.id if service else None
+        # Converter extras para o formato esperado pelo schema
+        extras_with_details = []
+        if ticket.extras:
+            for te in ticket.extras:
+                extra_for_ticket = ExtraForTicket(
+                    id=te.extra.id,
+                    name=te.extra.name,
+                    price=te.extra.price
+                )
+                extra_with_details = TicketExtraWithDetails(
+                    quantity=te.quantity,
+                    price=te.price,
+                    extra=extra_for_ticket
+                )
+                extras_with_details.append(extra_with_details)
         
+        # Criar o TicketInQueue com os dados corretos
         queue_ticket = TicketInQueue(
             **data,
-            service=service,
-            service_id=service_id,
+            services=services_with_details,
+            extras=extras_with_details,
             waiting_time_minutes=waiting_minutes,
             waiting_status="normal",
-            priority_info={},
-            estimated_service_time=service.duration_minutes if service else 10
+            priority_info={}
         )
         queue_tickets.append(queue_ticket)
     
@@ -154,7 +287,9 @@ async def get_ticket_queue(
     
     for ticket in queue_tickets:
         # Por serviço
-        service_name = ticket.service.name if ticket.service else "Sem serviço"
+        service_name = "Sem serviço"
+        if ticket.services and len(ticket.services) > 0:
+            service_name = ticket.services[0].service.name
         if service_name not in by_service:
             by_service[service_name] = []
         by_service[service_name].append(ticket)
@@ -190,60 +325,108 @@ async def get_ticket_queue(
         estimated_total_time=estimated_total_time
     )
 
-@router.get("/queue/public", response_model=TicketQueue)
+@router.get("/queue/public", response_model=TicketQueue, tags=["queue"])
 async def get_public_queue(
-    tenant_id: str = Query(..., description="ID do tenant"),
-    sort_order: QueueSortOrder = QueueSortOrder.FIFO,
-    service_id: Optional[str] = None,
-    priority_filter: Optional[QueuePriority] = None,
-    include_called: bool = True,
-    include_in_progress: bool = True,
+    tenant_id: UUID,
+    include_called: bool = Query(True, description="Incluir tickets já chamados (últimos 5 min)"),
+    include_in_progress: bool = Query(True, description="Incluir tickets em atendimento"),
     db: Session = Depends(get_db)
 ):
-    """Retorna a fila de tickets para exibição pública (sem autenticação)"""
-    
+    """Retorna a fila pública de tickets para exibição."""
     queue_manager = get_queue_manager(db)
     
-    # Buscar tickets da fila
+    # Usar o método correto do QueueManager
     tickets = queue_manager.get_queue_tickets(
-        tenant_id=tenant_id,
-        sort_order=sort_order,
-        service_id=service_id,
-        priority_filter=priority_filter,
+        tenant_id=str(tenant_id),
+        sort_order=QueueSortOrder.FIFO,
         include_called=include_called,
         include_in_progress=include_in_progress
     )
-    
-    # Converter para TicketInQueue com informações adicionais
+
+    if not tickets:
+        return {
+            "items": [], "total": 0, "by_service": {}, "by_status": {}, 
+            "by_priority": {}, "queue_stats": {}, "estimated_total_time": 0
+        }
+
+    # Converter tickets para o formato esperado
     queue_tickets = []
     for ticket in tickets:
         # Calcular tempo de espera
         waiting_minutes = 0
         if ticket.queued_at:
-            waiting_minutes = (datetime.utcnow() - ticket.queued_at).total_seconds() / 60
+            waiting_minutes = (datetime.now(timezone.utc) - ticket.queued_at).total_seconds() / 60
         
-        # Criar ticket enriquecido (usando dict básico por enquanto)
-        data = ticket.__dict__.copy()
-        for field in ["service", "waiting_time_minutes", "waiting_status", "priority_info", "estimated_service_time"]:
-            data.pop(field, None)
+        # Converter serviços para o formato esperado pelo schema
+        services_with_details = []
+        if ticket.services:
+            for ts in ticket.services:
+                service_for_ticket = ServiceForTicket(
+                    id=ts.service.id,
+                    name=ts.service.name,
+                    price=ts.service.price
+                )
+                service_with_details = TicketServiceWithDetails(
+                    price=ts.price,
+                    service=service_for_ticket
+                )
+                services_with_details.append(service_with_details)
+    
+        # Converter extras para o formato esperado pelo schema
+        extras_with_details = []
+        if ticket.extras:
+            for te in ticket.extras:
+                extra_for_ticket = ExtraForTicket(
+                    id=te.extra.id,
+                    name=te.extra.name,
+                    price=te.extra.price
+                )
+                extra_with_details = TicketExtraWithDetails(
+                    quantity=te.quantity,
+                    price=te.price,
+                    extra=extra_for_ticket
+                )
+                extras_with_details.append(extra_with_details)
         
-        # Obter todos os serviços associados
-        services_list = [ts.service for ts in ticket.services] if ticket.services else []
-        data["services"] = services_list
+        # Criar ticket enriquecido
+        ticket_data = {
+            "id": ticket.id,
+            "tenant_id": ticket.tenant_id,
+            "ticket_number": ticket.ticket_number,
+            "status": ticket.status,
+            "priority": ticket.priority,
+            "queue_position": ticket.queue_position,
+            "estimated_wait_minutes": ticket.estimated_wait_minutes,
+            "customer_name": ticket.customer_name,
+            "customer_cpf": ticket.customer_cpf,
+            "customer_phone": ticket.customer_phone,
+            "consent_version": ticket.consent_version,
+            "created_at": ticket.created_at,
+            "updated_at": ticket.updated_at,
+            "queued_at": ticket.queued_at,
+            "called_at": ticket.called_at,
+            "started_at": ticket.started_at,
+            "completed_at": ticket.completed_at,
+            "cancelled_at": ticket.cancelled_at,
+            "expired_at": ticket.expired_at,
+            "reprinted_at": ticket.reprinted_at,
+            "operator_notes": ticket.operator_notes,
+            "cancellation_reason": ticket.cancellation_reason,
+            "print_attempts": ticket.print_attempts,
+            "reactivation_count": ticket.reactivation_count,
+            "payment_confirmed": getattr(ticket, 'payment_confirmed', False),
+            "services": services_with_details,
+            "extras": extras_with_details,
+            "waiting_time_minutes": waiting_minutes,
+            "waiting_status": get_waiting_time_status(waiting_minutes),
+            "priority_info": {
+                "level": ticket.priority,
+                "description": PRIORITY_DESCRIPTIONS.get(QueuePriority(ticket.priority), ""),
+                "color": PRIORITY_COLORS.get(QueuePriority(ticket.priority), "#000000")
+            }
+        }
         
-        # Obter serviço principal (primeiro)
-        service = services_list[0] if services_list else None
-        service_id = service.id if service else None
-        
-        queue_ticket = TicketInQueue(
-            **data,
-            service=service,
-            service_id=service_id,
-            waiting_time_minutes=waiting_minutes,
-            waiting_status="normal",
-            priority_info={},
-            estimated_service_time=service.duration_minutes if service else 10
-        )
+        queue_ticket = TicketInQueue(**ticket_data)
         queue_tickets.append(queue_ticket)
     
     # Agrupar por diferentes critérios
@@ -253,7 +436,9 @@ async def get_public_queue(
     
     for ticket in queue_tickets:
         # Por serviço
-        service_name = ticket.service.name if ticket.service else "Sem serviço"
+        service_name = "Sem serviço"
+        if ticket.services and len(ticket.services) > 0:
+            service_name = ticket.services[0].service.name
         if service_name not in by_service:
             by_service[service_name] = []
         by_service[service_name].append(ticket)
@@ -270,7 +455,7 @@ async def get_public_queue(
         by_priority[priority].append(ticket)
     
     # Obter estatísticas da fila
-    queue_stats = queue_manager.get_queue_statistics(tenant_id)
+    queue_stats = queue_manager.get_queue_statistics(str(tenant_id))
     
     # Calcular tempo total estimado
     estimated_total_time = sum([
@@ -278,11 +463,11 @@ async def get_public_queue(
         for t in queue_tickets 
         if t.status == TicketStatus.IN_QUEUE.value
     ])
-    
+
     return TicketQueue(
         items=queue_tickets,
         total=len(queue_tickets),
-        by_service=by_service,
+        by_service=by_service, 
         by_status=by_status,
         by_priority=by_priority,
         queue_stats=queue_stats,
@@ -308,8 +493,8 @@ async def get_next_ticket(
     # Atualizar status do ticket para 'called'
     old_status = next_ticket.status
     next_ticket.status = TicketStatus.CALLED.value
-    next_ticket.called_at = datetime.utcnow()
-    next_ticket.updated_at = datetime.utcnow()
+    next_ticket.called_at = datetime.now(timezone.utc)
+    next_ticket.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(next_ticket)
     # Buscar informações do equipamento se houver
@@ -317,7 +502,7 @@ async def get_next_ticket(
     if next_ticket.equipment_id:
         equipment = db.query(Equipment).filter(Equipment.id == next_ticket.equipment_id).first()
         if equipment:
-            equipment_name = equipment.name
+            equipment_name = equipment.identifier
     # Broadcast de ticket chamado
     await websocket_manager.broadcast_ticket_called(
         tenant_id=str(current_operator.tenant_id),
@@ -462,9 +647,9 @@ def ticket_to_with_status(ticket):
         logger.error(f"Dados: {data}")
         raise
 
-@router.get("/{ticket_id}", response_model=TicketWithStatus)
+@router.get("/{ticket_id}", response_model=TicketOut)
 async def get_ticket(
-    ticket_id: str,
+    ticket_id: UUID,
     db: Session = Depends(get_db),
     current_operator = Depends(get_current_operator)
 ):
@@ -481,7 +666,47 @@ async def get_ticket(
             detail="Ticket não encontrado"
         )
         
-    return ticket_to_with_status(ticket)
+    # Converter serviços associados
+    services = []
+    if hasattr(ticket, "services") and ticket.services:
+        for ts in ticket.services:
+            services.append({
+                "service_id": ts.service_id,
+                "price": float(ts.price)
+            })
+    
+    # Converter extras com nomes
+    extras_out = []
+    if hasattr(ticket, "extras") and ticket.extras:
+        for te in ticket.extras:
+            # Buscar o extra para obter o nome
+            extra = db.query(Extra).filter(Extra.id == te.extra_id).first()
+            extra_name = extra.name if extra else f"Extra {te.extra_id}"
+            
+            extras_out.append(TicketExtraOut(
+                id=te.id, 
+                extra_id=te.extra_id, 
+                name=extra_name,  # Incluindo o nome do extra
+                quantity=te.quantity, 
+                price=float(te.price)
+            ))
+    
+    return TicketOut(
+        id=ticket.id,
+        tenant_id=ticket.tenant_id,
+        ticket_number=ticket.ticket_number,
+        number=f"#{str(ticket.ticket_number).zfill(3)}",
+        status=ticket.status,
+        customer_name=ticket.customer_name,
+        customer_cpf=ticket.customer_cpf or "",
+        customer_phone=ticket.customer_phone or "",
+        consent_version=ticket.consent_version,
+        services=services,
+        extras=extras_out,
+        created_at=ticket.created_at,
+        updated_at=ticket.updated_at,
+        payment_confirmed=getattr(ticket, 'payment_confirmed', False)
+    )
 
 @router.patch("/{ticket_id}/status", response_model=TicketWithStatus)
 async def update_ticket_status(
@@ -580,38 +805,89 @@ async def call_ticket(
     db: Session = Depends(get_db),
     current_operator = Depends(get_current_operator)
 ):
+    logger.info(f"🔍 DEBUG - Chamando ticket {ticket_id} com equipamento {request.equipment_id}")
+    
     # Buscar ticket e equipamento
     ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
     equipment = db.query(Equipment).filter(Equipment.id == request.equipment_id).first()
+    
+    logger.info(f"🔍 DEBUG - Ticket encontrado: {ticket is not None}")
+    logger.info(f"🔍 DEBUG - Equipamento encontrado: {equipment is not None}")
+    
     if not ticket or not equipment:
         raise HTTPException(status_code=404, detail="Ticket ou equipamento não encontrado")
+    
+    logger.info(f"🔍 DEBUG - Status atual do ticket: {ticket.status}")
+    logger.info(f"🔍 DEBUG - Status atual do equipamento: {equipment.status}")
+    
+    # Verificar se o ticket já foi chamado
+    if ticket.status == TicketStatus.CALLED.value:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Ticket #{ticket.ticket_number} já foi chamado. Status atual: {ticket.status}"
+        )
+    
+    # Verificar se o ticket está na fila
+    if ticket.status != TicketStatus.IN_QUEUE.value:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Ticket #{ticket.ticket_number} não está na fila. Status atual: {ticket.status}. Apenas tickets com status 'in_queue' podem ser chamados."
+        )
+    
     # Validação de compatibilidade: o equipamento deve estar associado ao mesmo serviço do ticket
     ticket_service_ids = [str(ts.service_id) for ts in ticket.services]
     if equipment.service_id and str(equipment.service_id) not in ticket_service_ids:
         raise HTTPException(status_code=400, detail="Equipamento selecionado não é compatível com o serviço do ticket.")
+    
     # Verifica se o equipamento está disponível
     if equipment.status != EquipmentStatus.online:
         raise HTTPException(status_code=400, detail="Equipamento não está disponível para uso.")
+    
+    logger.info(f"🔍 DEBUG - Atualizando status do ticket para CALLED")
+    
     # Atualizar status do ticket
     status_update = TicketStatusUpdate(
         status=TicketStatus.CALLED,
         operator_notes=f"Chamado pelo operador {current_operator.name}"
     )
     result = await update_ticket_status(ticket_id, status_update, db, current_operator)
+    
+    logger.info(f"🔍 DEBUG - Status atualizado. Atualizando equipamento e operador")
+    
     # Atualizar o equipment_id e operator_id do ticket
     ticket.equipment_id = request.equipment_id
     ticket.assigned_operator_id = current_operator.id
+    
+    logger.info(f"🔍 DEBUG - Equipment ID: {ticket.equipment_id}")
+    logger.info(f"🔍 DEBUG - Operator ID: {ticket.assigned_operator_id}")
+    
     # Marcar equipamento como indisponível
     equipment.status = EquipmentStatus.offline
     db.commit()
     db.refresh(ticket)
     db.refresh(equipment)
+    
+    logger.info(f"🔍 DEBUG - Ticket após commit - Status: {ticket.status}, Equipment: {ticket.equipment_id}, Operator: {ticket.assigned_operator_id}")
+    
+    # Broadcast de atualização do equipamento
+    equipment_update_data = {
+        "id": str(equipment.id),
+        "identifier": equipment.identifier,
+        "status": equipment.status.value,
+        "assigned_operator_id": str(current_operator.id),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    await websocket_manager.broadcast_equipment_update(str(current_operator.tenant_id), equipment_update_data)
+    
     # Buscar informações do equipamento
     equipment_name = None
     if ticket.equipment_id:
         equipment = db.query(Equipment).filter(Equipment.id == ticket.equipment_id).first()
         if equipment:
             equipment_name = equipment.identifier
+    
+    logger.info(f"🔍 DEBUG - Enviando broadcast de ticket chamado")
+    
     # Broadcast específico para displays e operadores
     await websocket_manager.broadcast_ticket_called(
             tenant_id=str(current_operator.tenant_id),
@@ -619,10 +895,16 @@ async def call_ticket(
             operator_name=current_operator.name,
             equipment_name=equipment_name
         )
+    
+    logger.info(f"🔍 DEBUG - Enviando broadcast de atualização da fila")
+    
     # Broadcast de atualização da fila para todos os operadores
     queue_manager = get_queue_manager(db)
     queue_data = queue_manager.get_queue_tickets(str(current_operator.tenant_id))
     await websocket_manager.broadcast_queue_update(str(current_operator.tenant_id), queue_data)
+    
+    logger.info(f"🔍 DEBUG - Call ticket concluído com sucesso")
+    
     return result
 
 @router.post("/{ticket_id}/start")
@@ -661,6 +943,16 @@ async def complete_ticket(
         equipment.status = EquipmentStatus.online
         db.commit()
         db.refresh(equipment)
+        
+        # Broadcast de atualização do equipamento
+        equipment_update_data = {
+            "id": str(equipment.id),
+            "identifier": equipment.identifier,
+            "status": equipment.status.value,
+            "assigned_operator_id": None,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        await websocket_manager.broadcast_equipment_update(str(current_operator.tenant_id), equipment_update_data)
     return result
 
 @router.post("/{ticket_id}/cancel")
@@ -680,11 +972,41 @@ async def cancel_ticket(
         operator_notes=f"Cancelado por {current_operator.name}"
     )
     result = await update_ticket_status(ticket_id, status_update, db, current_operator)
+    
+    # Restaurar estoque dos extras se o ticket foi cancelado
+    if ticket and ticket.extras:
+        for ticket_extra in ticket.extras:
+            # Restaurar estoque na tabela extras
+            extra_model = db.query(Extra).filter(Extra.id == ticket_extra.extra_id).first()
+            if extra_model:
+                extra_model.stock += ticket_extra.quantity
+                logger.info(f"🔍 DEBUG - Restaurando estoque do extra {extra_model.name}: {extra_model.stock - ticket_extra.quantity} -> {extra_model.stock}")
+            
+            # Restaurar estoque na tabela operation_config_extras
+            operation_config_extra = db.query(OperationConfigExtra).filter(
+                OperationConfigExtra.extra_id == ticket_extra.extra_id
+            ).first()
+            if operation_config_extra:
+                operation_config_extra.stock += ticket_extra.quantity
+                logger.info(f"🔍 DEBUG - Restaurando estoque na config do extra {ticket_extra.extra_id}: {operation_config_extra.stock - ticket_extra.quantity} -> {operation_config_extra.stock}")
+        
+        db.commit()
+    
     # Liberar equipamento
     if equipment:
         equipment.status = EquipmentStatus.online
         db.commit()
         db.refresh(equipment)
+        
+        # Broadcast de atualização do equipamento
+        equipment_update_data = {
+            "id": str(equipment.id),
+            "identifier": equipment.identifier,
+            "status": equipment.status.value,
+            "assigned_operator_id": None,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        await websocket_manager.broadcast_equipment_update(str(current_operator.tenant_id), equipment_update_data)
     return result
 
 @router.post("/{ticket_id}/reprint")
@@ -848,7 +1170,7 @@ async def get_dashboard_stats(
         ]
     } 
 
-@router.post("/tickets", response_model=TicketOut)
+@router.post("", response_model=TicketOut)
 async def create_ticket(
     ticket_in: TicketCreate,
     db: Session = Depends(get_db)
@@ -860,12 +1182,12 @@ async def create_ticket(
     
     ticket_number = 1 if not last_ticket else last_ticket.ticket_number + 1
     
-    # Create ticket with PAID status
+    # Create ticket with PENDING_PAYMENT status (aguardando confirmação de pagamento)
     ticket = Ticket(
         tenant_id=ticket_in.tenant_id,
         payment_session_id=None,  # Não há payment session neste fluxo
         ticket_number=ticket_number,
-        status=TicketStatus.PAID.value,
+        status=TicketStatus.PENDING_PAYMENT.value,  # Novo status inicial
         customer_name=ticket_in.customer_name,
         customer_cpf=ticket_in.customer_cpf,
         customer_phone=ticket_in.customer_phone,
@@ -897,18 +1219,318 @@ async def create_ticket(
     db.commit()
     db.refresh(ticket)
     
-    # Retornar ticket com serviços e extras
+    # Decrementar estoque dos extras
+    logger.info(f"🔍 DEBUG - Iniciando decremento de estoque para {len(ticket_in.extras)} extras")
+    for extra_item in ticket_in.extras:
+        logger.info(f"🔍 DEBUG - Processando extra: {extra_item.extra_id}, quantidade: {extra_item.quantity}")
+        
+        # Decrementar estoque na tabela extras
+        extra_model = db.query(Extra).filter(Extra.id == extra_item.extra_id).first()
+        if extra_model:
+            old_stock = extra_model.stock
+            extra_model.stock = max(0, extra_model.stock - extra_item.quantity)
+            logger.info(f"🔍 DEBUG - Decrementando estoque do extra {extra_model.name}: {old_stock} -> {extra_model.stock}")
+        else:
+            logger.warning(f"⚠️ WARNING - Extra não encontrado na tabela extras: {extra_item.extra_id}")
+        
+        # Decrementar estoque na tabela operation_config_extras
+        operation_config_extra = db.query(OperationConfigExtra).filter(
+            OperationConfigExtra.extra_id == extra_item.extra_id
+        ).first()
+        if operation_config_extra:
+            old_config_stock = operation_config_extra.stock
+            operation_config_extra.stock = max(0, operation_config_extra.stock - extra_item.quantity)
+            logger.info(f"🔍 DEBUG - Decrementando estoque na config do extra {extra_item.extra_id}: {old_config_stock} -> {operation_config_extra.stock}")
+        else:
+            logger.warning(f"⚠️ WARNING - Extra não encontrado na tabela operation_config_extras: {extra_item.extra_id}")
+    
+    logger.info(f"🔍 DEBUG - Commit das alterações de estoque")
+    db.commit()
+
+    # Broadcast da atualização da fila para todos os clientes
+    try:
+        from ..services.websocket import websocket_manager
+        await websocket_manager.broadcast_queue_update(str(ticket.tenant_id), {
+            "type": "queue_update",
+            "data": {
+                "ticket_id": str(ticket.id),
+                "ticket_number": ticket.ticket_number,
+                "status": ticket.status,
+                "customer_name": ticket.customer_name,
+                "action": "created"
+            }
+        })
+        logger.info(f"🔍 DEBUG - Broadcast de ticket criado enviado para tenant {ticket.tenant_id}")
+    except Exception as e:
+        logger.error(f"❌ ERRO ao enviar broadcast de ticket criado: {e}")
+    
+    # Converter extras para schema de saída
+    extras_out = []
+    for te in ticket.extras:
+        # Buscar o extra para obter o nome
+        extra = db.query(Extra).filter(Extra.id == te.extra_id).first()
+        extra_name = extra.name if extra else f"Extra {te.extra_id}"
+        
+        extras_out.append(TicketExtraOut(
+            id=te.id, 
+            extra_id=te.extra_id, 
+            name=extra_name,  # Incluindo o nome do extra
+            quantity=te.quantity, 
+            price=float(te.price)
+        ))
+
     return TicketOut(
         id=ticket.id,
         tenant_id=ticket.tenant_id,
         ticket_number=ticket.ticket_number,
+        number=f"#{str(ticket.ticket_number).zfill(3)}",  # Usando zfill() em vez de padStart()
         status=ticket.status,
+        customer_name=ticket.customer_name,
+        customer_cpf=ticket.customer_cpf or "",
+        customer_phone=ticket.customer_phone or "",
+        consent_version=ticket.consent_version,
+        services=ticket_in.services,
+        extras=extras_out,
+        created_at=ticket.created_at,
+        updated_at=ticket.updated_at,
+        payment_confirmed=False
+    ) 
+
+@router.post("/{ticket_id}/create-payment", response_model=PaymentSessionWithQR, tags=["payments"])
+async def create_payment_for_ticket(
+    ticket_id: UUID,
+    payload: PaymentForTicket,
+    db: Session = Depends(get_db)
+):
+    """Cria uma sessão de pagamento para um ticket existente."""
+    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket não encontrado")
+
+    # Calcular o valor total a partir dos serviços e extras do ticket
+    total_amount = sum(s.price for s in ticket.services) + sum(e.price * e.quantity for e in ticket.extras)
+
+    # Pegar o service_id do primeiro serviço do ticket
+    service_id = ticket.services[0].service_id if ticket.services else None
+
+    # Criar a sessão de pagamento
+    payment_session = PaymentSession(
+        tenant_id=ticket.tenant_id,
+        service_id=service_id,
+        ticket_id=ticket.id,
         customer_name=ticket.customer_name,
         customer_cpf=ticket.customer_cpf,
         customer_phone=ticket.customer_phone,
         consent_version=ticket.consent_version,
-        services=ticket_in.services,
-        extras=ticket_in.extras,
-        created_at=ticket.created_at,
-        updated_at=ticket.updated_at
+        payment_method=payload.payment_method,
+        amount=total_amount,
+        status="pending",
+        expires_at=datetime.utcnow() + timedelta(minutes=30)
+    )
+    db.add(payment_session)
+    db.commit()
+    db.refresh(payment_session)
+
+    # Integrar com Mercado Pago se o método for mercadopago
+    preference_id = None
+    qr_code = None
+    
+    if payload.payment_method == "mercadopago":
+        try:
+            logger.info(f"🔍 DEBUG - Iniciando criação de preferência Mercado Pago para ticket {ticket_id}")
+            
+            # Buscar configuração do Mercado Pago da tabela operation_config
+            operation_config = db.query(OperationConfig).filter(OperationConfig.tenant_id == ticket.tenant_id).first()
+            logger.info(f"🔍 DEBUG - OperationConfig encontrado: {operation_config is not None}")
+            
+            if not operation_config or not operation_config.payment_config:
+                logger.error(f"❌ Configuração de pagamento não encontrada para tenant {ticket.tenant_id}")
+                raise HTTPException(status_code=400, detail="Configuração de pagamento não encontrada")
+            
+            logger.info(f"🔍 DEBUG - Payment config: {operation_config.payment_config}")
+            
+            mercadopago_config = operation_config.payment_config.get("mercado_pago", {})
+            logger.info(f"🔍 DEBUG - MercadoPago config: {mercadopago_config}")
+            
+            if not mercadopago_config.get("access_token"):
+                logger.error(f"❌ Token de acesso do Mercado Pago não configurado")
+                raise HTTPException(status_code=400, detail="Token de acesso do Mercado Pago não configurado")
+            
+            # Importar e usar o adaptador do Mercado Pago
+            from apps.api.services.payment.adapters.mercadopago import MercadoPagoAdapter
+            
+            adapter = MercadoPagoAdapter(mercadopago_config)
+            logger.info(f"🔍 DEBUG - MercadoPagoAdapter criado com sucesso")
+            
+            # Preparar metadados para a preferência
+            metadata = {
+                "payment_session_id": str(payment_session.id),
+                "ticket_id": str(ticket.id),
+                "service_id": str(service_id),
+                "customer_name": ticket.customer_name,
+                "customer_cpf": ticket.customer_cpf,
+                "customer_phone": ticket.customer_phone,
+                "service_description": "Serviço de Recuperação",
+                "redirect_url_base": mercadopago_config.get("redirect_url_base", "http://localhost:5173")
+            }
+            
+            logger.info(f"🔍 DEBUG - Criando preferência com metadados: {metadata}")
+            
+            # Criar preferência no Mercado Pago
+            preference_result = await adapter.create_payment_preference(
+                amount=float(total_amount),
+                description=f"Serviço - {ticket.services[0].service.name if ticket.services else 'Serviço'}",
+                metadata=metadata
+            )
+            
+            preference_id = preference_result.get("preference_id")
+            logger.info(f"🔍 DEBUG - Preferência criada: {preference_id}")
+            
+            # Atualizar a sessão com o preference_id
+            payment_session.transaction_id = preference_id
+            db.commit()
+            
+            logger.info(f"✅ Preferência Mercado Pago criada: {preference_id}")
+            
+        except Exception as e:
+            logger.error(f"❌ Erro ao criar preferência Mercado Pago: {e}")
+            import traceback
+            logger.error(f"❌ Traceback: {traceback.format_exc()}")
+            # Não falhar completamente, apenas logar o erro
+            preference_id = None
+    
+    elif payload.payment_method == "pix":
+        # Simular QR code para PIX em desenvolvimento
+        qr_code = f"PIX_QR_CODE_FOR_SESSION_{payment_session.id}"
+
+    return PaymentSessionWithQR(
+        id=payment_session.id,
+        tenant_id=payment_session.tenant_id,
+        service_id=payment_session.service_id,
+        ticket_id=payment_session.ticket_id,
+        customer_name=payment_session.customer_name,
+        customer_cpf=payment_session.customer_cpf,
+        customer_phone=payment_session.customer_phone,
+        consent_version=payment_session.consent_version,
+        payment_method=payment_session.payment_method,
+        status=payment_session.status,
+        amount=payment_session.amount,
+        transaction_id=payment_session.transaction_id,
+        payment_link=payment_session.payment_link,
+        webhook_data=payment_session.webhook_data,
+        expires_at=payment_session.expires_at,
+        created_at=payment_session.created_at,
+        updated_at=payment_session.updated_at,
+        completed_at=payment_session.completed_at,
+        qr_code=qr_code,
+        preference_id=preference_id
     ) 
+
+@router.post("/{ticket_id}/confirm-payment")
+async def confirm_payment(
+    ticket_id: str,
+    db: Session = Depends(get_db),
+    current_operator = Depends(get_current_operator)
+):
+    """Confirma manualmente o pagamento de um ticket (uso de maquininha física)."""
+    ticket = db.query(Ticket).filter(
+        Ticket.id == ticket_id,
+        Ticket.tenant_id == current_operator.tenant_id
+    ).first()
+    
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket não encontrado")
+
+    # Verificar se o ticket está no status correto
+    if ticket.status != TicketStatus.PENDING_PAYMENT.value:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Ticket deve ter status 'pending_payment', atual: {ticket.status}"
+        )
+
+    # Já confirmado?
+    if ticket.payment_confirmed:
+        return {"status": "already_confirmed"}
+
+    # Confirmar pagamento e mover para fila
+    ticket.payment_confirmed = True
+    ticket.status = TicketStatus.IN_QUEUE.value
+    ticket.queued_at = datetime.now(timezone.utc)
+    ticket.updated_at = datetime.now(timezone.utc)
+    db.commit()
+
+    logger.info(f"🎯 Ticket #{ticket.ticket_number} pagamento confirmado e movido para fila")
+
+    # Opcional: enviar update pelo websocket
+    try:
+        from ..services.websocket import websocket_manager
+        await websocket_manager.broadcast_queue_update(str(ticket.tenant_id), {
+            "ticket_id": str(ticket.id),
+            "payment_confirmed": True,
+            "status": "in_queue"
+        })
+        logger.info(f"🔍 DEBUG - Broadcast de confirmação de pagamento enviado para tenant {ticket.tenant_id}")
+    except Exception as e:
+        logger.error(f"❌ ERRO ao enviar broadcast de confirmação de pagamento: {e}")
+
+    return {
+        "status": "confirmed",
+        "message": f"Ticket #{ticket.ticket_number} pagamento confirmado e movido para fila",
+        "new_status": ticket.status
+    }
+
+
+@router.post("/{ticket_id}/move-to-queue")
+async def move_ticket_to_queue(
+    ticket_id: str,
+    db: Session = Depends(get_db),
+    current_operator = Depends(get_current_operator)
+):
+    """Move um ticket de 'paid' para 'in_queue' para que apareça na fila do operador."""
+    ticket = db.query(Ticket).filter(
+        Ticket.id == ticket_id,
+        Ticket.tenant_id == current_operator.tenant_id
+    ).first()
+    
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket não encontrado")
+    
+    if ticket.status != TicketStatus.PAID.value:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Ticket deve ter status 'paid', atual: {ticket.status}"
+        )
+    
+    # Mover para in_queue
+    ticket.status = TicketStatus.IN_QUEUE.value
+    ticket.queued_at = datetime.now(timezone.utc)
+    ticket.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    
+    logger.info(f"🎯 Ticket #{ticket.ticket_number} movido para fila (paid -> in_queue)")
+    
+    return {
+        "status": "success",
+        "message": f"Ticket #{ticket.ticket_number} movido para fila",
+        "ticket_id": str(ticket.id),
+        "new_status": ticket.status
+    } 
+
+
+
+@router.get("/status/pending-payment", response_model=List[TicketForPanel], tags=["operator"])
+async def get_pending_payment_tickets(
+    db: Session = Depends(get_db),
+    current_operator: Operator = Depends(get_current_operator)
+):
+    """Retorna tickets aguardando confirmação de pagamento"""
+    
+    tickets = db.query(Ticket).options(
+        joinedload(Ticket.services).joinedload(TicketService.service),
+        joinedload(Ticket.extras).joinedload(TicketExtra.extra)
+    ).filter(
+        Ticket.tenant_id == current_operator.tenant_id,
+        Ticket.status == TicketStatus.PENDING_PAYMENT.value
+    ).order_by(Ticket.created_at.desc()).all()
+    
+    return tickets 

@@ -7,6 +7,7 @@ class TicketStatus(str, Enum):
     """Estados possíveis de um ticket no sistema"""
     
     # Estados iniciais
+    PENDING_PAYMENT = "pending_payment"  # Aguardando confirmação de pagamento
     PAID = "paid"                    # Pago, aguardando impressão
     PRINTING = "printing"            # Sendo impresso
     PRINT_ERROR = "print_error"      # Erro na impressão
@@ -49,6 +50,10 @@ class QueueSortOrder(str, Enum):
 
 # 🔄 Transições válidas entre estados
 TICKET_TRANSITIONS: Dict[TicketStatus, Set[TicketStatus]] = {
+    TicketStatus.PENDING_PAYMENT: {
+        TicketStatus.PAID,           # Pagamento confirmado
+        TicketStatus.CANCELLED       # Cancelado
+    },
     TicketStatus.PAID: {
         TicketStatus.PRINTING,
         TicketStatus.PRINT_ERROR,
@@ -89,6 +94,7 @@ TICKET_TRANSITIONS: Dict[TicketStatus, Set[TicketStatus]] = {
 
 # 📊 Categorias de estados para filtros e dashboards
 TICKET_STATE_CATEGORIES = {
+    "pending_payment": {TicketStatus.PENDING_PAYMENT},
     "pending_service": {TicketStatus.PAID, TicketStatus.PRINTING, TicketStatus.PRINT_ERROR},
     "waiting": {TicketStatus.IN_QUEUE},
     "active": {TicketStatus.CALLED, TicketStatus.IN_PROGRESS},
@@ -151,6 +157,7 @@ PRIORITY_COLORS = {
 
 # 📝 Descrições amigáveis
 TICKET_STATUS_DESCRIPTIONS = {
+    TicketStatus.PENDING_PAYMENT: "Aguardando confirmação de pagamento",
     TicketStatus.PAID: "Pagamento confirmado, aguardando impressão",
     TicketStatus.PRINTING: "Comprovante sendo impresso",
     TicketStatus.PRINT_ERROR: "Erro na impressão do comprovante",

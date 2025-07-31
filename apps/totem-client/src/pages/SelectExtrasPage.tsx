@@ -7,15 +7,33 @@ import { api } from '../utils/api';
 import { useQuery } from '@tanstack/react-query';
 import { formatCurrency } from '../utils';
 
+// Interface para a resposta da API de configuração da operação
+interface OperationConfig {
+  extras: ApiExtra[];
+  // Adicione outros campos da configuração se necessário
+}
+
+// Interface para um item "extra" como vem da API
+interface ApiExtra {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  stock: number;
+  is_active: boolean; // Campo retornado pelo backend
+}
+
 const SelectExtrasPage: React.FC = () => {
   const navigate = useNavigate();
-  const { setStep, setCustomer, customerData, selectedService } = useTotemStore();
-  const tenantId = (import.meta as any).env?.VITE_TENANT_ID || '52c6777f-ee24-433b-8e4b-7185950da52e';
-  const { data: operationConfig, isLoading, error } = useQuery({
+  const { setStep, setCustomer, customerData, selectedService, setService } = useTotemStore();
+  const tenantId = (import.meta as any).env?.VITE_TENANT_ID || '38534c9f-accb-4884-9c19-dd37f77d0594';
+  
+  const { data: operationConfig, isLoading, error } = useQuery<OperationConfig>({
     queryKey: ['operationConfig', tenantId],
     queryFn: () => api.getOperationConfig(tenantId),
   });
-  const extras = (operationConfig?.extras || []).filter((x: any) => x.active && x.stock > 0);
+  
+  const extras = (operationConfig?.extras || []).filter((x) => x.is_active && x.stock > 0);
 
   // Estado local para seleção de extras
   const [selectedExtras, setSelectedExtras] = useState<{ [extraId: string]: number }>({});
@@ -42,10 +60,39 @@ const SelectExtrasPage: React.FC = () => {
         <div className="text-center mb-8 mt-2">
           <h2 className="text-3xl font-extrabold text-primary mb-2 tracking-tight">Personalize sua Experiência</h2>
           <p className="text-text-light text-lg mb-2">Selecione itens para incrementar sua sessão</p>
+          
+          {/* Banner promocional atrativo */}
           {extras.length > 0 && (
-            <div className="flex justify-center mt-2 mb-4">
-              <div className="px-6 py-2 rounded-full bg-gradient-to-r from-secondary to-primary/80 shadow-md border-2 border-secondary text-white font-bold text-sm uppercase tracking-wider animate-pulse-slow drop-shadow" style={{ letterSpacing: 1.2 }}>
-                Adicione extras e torne sua experiência ainda melhor!
+            <div className="flex justify-center mt-6 mb-8">
+              <div className="relative group cursor-pointer">
+                {/* Efeito de brilho animado */}
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 rounded-2xl blur-sm group-hover:blur-md transition-all duration-500 animate-pulse"></div>
+                
+                {/* Card principal */}
+                <div className="relative bg-gradient-to-r from-primary via-primary/90 to-primary rounded-2xl p-6 shadow-xl border border-primary/30 transform group-hover:scale-105 transition-all duration-300">
+                  <div className="flex items-center justify-center gap-4">
+                    <div className="relative">
+                      <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                        </svg>
+                      </div>
+                      {/* Badge de personalização */}
+                      <div className="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full flex items-center justify-center">
+                        <span className="text-primary text-xs font-bold">+</span>
+                      </div>
+                    </div>
+                    
+                    <div className="text-white text-center">
+                      <p className="text-xl font-bold mb-1">
+                        Torne sua experiência única!
+                      </p>
+                      <p className="text-white/90 text-sm">
+                        Adicione extras e maximize seus resultados
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -62,178 +109,304 @@ const SelectExtrasPage: React.FC = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-          {extras.map((extra: any) => (
-            <div key={extra.extra_id} className="border-2 rounded-2xl p-6 flex flex-col gap-3 shadow-md bg-gradient-to-br from-white to-green-50 hover:shadow-xl transition-all duration-200 border-green-300">
-              <div className="flex items-center gap-3 mb-2">
-                <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-green-100 shadow">
-                  <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="3" strokeWidth="2" /></svg>
-                </span>
-                <div>
-                  <h4 className="font-bold text-primary text-lg">{extra.name}</h4>
-                  <span className="text-xs text-gray-500">{extra.description}</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+          {extras.map((extra: ApiExtra) => {
+            const quantity = selectedExtras[extra.id] || 0;
+            const isSelected = quantity > 0;
+            
+            return (
+              <motion.div
+                key={extra.id}
+                className={`
+                  relative group cursor-pointer rounded-2xl p-6 transition-all duration-300 transform hover:scale-105
+                  ${isSelected 
+                    ? 'bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary shadow-xl' 
+                    : 'bg-white border-2 border-accent hover:border-primary/50 shadow-lg hover:shadow-xl'
+                  }
+                `}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                {/* Badge de seleção */}
+                {isSelected && (
+                  <div className="absolute -top-3 -right-3 w-8 h-8 bg-primary rounded-full flex items-center justify-center shadow-lg">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                )}
+
+                {/* Header do card */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`
+                      w-12 h-12 rounded-full flex items-center justify-center shadow-md
+                      ${isSelected ? 'bg-primary text-white' : 'bg-primary/10 text-primary'}
+                    `}>
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className={`font-bold text-lg ${isSelected ? 'text-primary' : 'text-text'}`}>
+                        {extra.name}
+                      </h4>
+                      <p className="text-sm text-text-light">{extra.description}</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <span className="flex items-center gap-1 text-primary font-semibold text-base">
-                  <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 8v4l3 3" strokeWidth="2" /></svg>
-                  R$ {extra.price.toFixed(2)}
-                </span>
-                <span className="flex items-center gap-1 text-gray-500 text-xs">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 12h16" strokeWidth="2" /></svg>
-                  Estoque: {extra.stock}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 mt-3">
-                <span className="text-sm text-gray-700 font-medium">Quantidade</span>
-                <button
-                  onClick={() => handleChange(extra.extra_id, Math.max(0, (selectedExtras[extra.extra_id] || 0) - 1))}
-                  className="w-9 h-9 bg-gray-200 rounded-full flex items-center justify-center text-xl font-bold hover:bg-gray-300 transition-all shadow"
-                  title="Diminuir quantidade"
-                  disabled={selectedExtras[extra.extra_id] === 0}
-                >
-                  -
-                </button>
-                <input
-                  type="number"
-                  value={selectedExtras[extra.extra_id] || 0}
-                  min={0}
-                  max={extra.stock}
-                  onChange={e => handleChange(extra.extra_id, Math.max(0, Math.min(extra.stock, parseInt(e.target.value) || 0)))}
-                  className="w-16 text-center border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-white text-lg font-semibold"
-                />
-                <button
-                  onClick={() => handleChange(extra.extra_id, Math.min(extra.stock, (selectedExtras[extra.extra_id] || 0) + 1))}
-                  className="w-9 h-9 bg-gray-200 rounded-full flex items-center justify-center text-xl font-bold hover:bg-gray-300 transition-all shadow"
-                  title="Aumentar quantidade"
-                  disabled={selectedExtras[extra.extra_id] >= extra.stock}
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          ))}
+
+                {/* Informações do produto */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl font-bold text-primary">
+                      R$ {extra.price.toFixed(2).replace('.', ',')}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 text-text-light text-sm">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                    <span>Estoque: {extra.stock}</span>
+                  </div>
+                </div>
+
+                {/* Controles de quantidade */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-text-light">Quantidade</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleChange(extra.id, Math.max(0, quantity - 1));
+                      }}
+                      className={`
+                        w-10 h-10 rounded-full flex items-center justify-center text-xl font-bold transition-all shadow-md
+                        ${quantity === 0 
+                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                          : 'bg-primary text-white hover:bg-primary-dark hover:scale-110'
+                        }
+                      `}
+                      disabled={quantity === 0}
+                    >
+                      -
+                    </button>
+                    
+                    <div className="w-16 text-center">
+                      <span className={`text-xl font-bold ${isSelected ? 'text-primary' : 'text-text'}`}>
+                        {quantity}
+                      </span>
+                    </div>
+                    
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleChange(extra.id, Math.min(extra.stock, quantity + 1));
+                      }}
+                      className={`
+                        w-10 h-10 rounded-full flex items-center justify-center text-xl font-bold transition-all shadow-md
+                        ${quantity >= extra.stock 
+                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                          : 'bg-primary text-white hover:bg-primary-dark hover:scale-110'
+                        }
+                      `}
+                      disabled={quantity >= extra.stock}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {/* Indicador de valor total */}
+                {isSelected && (
+                  <div className="mt-4 pt-3 border-t border-primary/20">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-text-light">Total:</span>
+                      <span className="text-lg font-bold text-primary">
+                        R$ {(extra.price * quantity).toFixed(2).replace('.', ',')}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
         </div>
 
-        {/* Notinha - Resumo do Pedido */}
-        <div className="bg-white rounded-2xl border-2 border-primary/20 shadow-lg p-6 mb-8">
-          <h3 className="text-xl font-bold text-primary mb-4 text-center">Resumo do Pedido</h3>
+        {/* Resumo do Pedido Atraente */}
+        <div className="bg-gradient-to-br from-white to-primary/5 rounded-2xl border-2 border-primary/20 shadow-xl p-6 mb-8">
+          <div className="text-center mb-6">
+            <h3 className="text-2xl font-bold text-primary mb-2">Resumo do Pedido</h3>
+            <div className="w-16 h-1 bg-primary rounded-full mx-auto"></div>
+          </div>
           
           {/* Serviços Selecionados */}
-          <div className="mb-4">
-            <h4 className="font-semibold text-gray-700 mb-2">Serviços:</h4>
-            {Array.isArray(selectedService) ? selectedService.map((service, index) => (
-              <div key={index} className="flex justify-between items-center py-1">
-                <span className="text-gray-600">{service.name}</span>
-                <span className="font-semibold text-primary">{formatCurrency(service.price)}</span>
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
               </div>
-            )) : selectedService && (
-              <div className="flex justify-between items-center py-1">
-                <span className="text-gray-600">{selectedService.name}</span>
-                <span className="font-semibold text-primary">{formatCurrency(selectedService.price)}</span>
-              </div>
-            )}
+              <h4 className="font-bold text-primary text-lg">Serviços Selecionados</h4>
+            </div>
+            
+            <div className="space-y-2">
+              {Array.isArray(selectedService) ? selectedService.map((service, index) => (
+                <div key={index} className="flex justify-between items-center py-2 px-3 bg-white/50 rounded-lg border border-primary/10">
+                  <span className="text-text font-medium">{service.name}</span>
+                  <span className="font-bold text-primary">{formatCurrency(service.price)}</span>
+                </div>
+              )) : selectedService && (
+                <div className="flex justify-between items-center py-2 px-3 bg-white/50 rounded-lg border border-primary/10">
+                  <span className="text-text font-medium">{selectedService.name}</span>
+                  <span className="font-bold text-primary">{formatCurrency(selectedService.price)}</span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Extras Selecionados */}
           {Object.entries(selectedExtras).some(([_, qty]) => qty > 0) && (
-            <div className="mb-4">
-              <h4 className="font-semibold text-gray-700 mb-2">Extras:</h4>
-              {Object.entries(selectedExtras).map(([extraId, quantity]) => {
-                if (quantity === 0) return null;
-                const extra = extras.find((e: any) => e.extra_id === extraId);
-                if (!extra) return null;
-                
-                return (
-                  <div key={extraId} className="flex justify-between items-center py-1">
-                    <span className="text-gray-600">
-                      {extra.name} (x{quantity})
-                    </span>
-                    <span className="font-semibold text-primary">
-                      {formatCurrency(extra.price * quantity)}
-                    </span>
-                  </div>
-                );
-              })}
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                  </svg>
+                </div>
+                <h4 className="font-bold text-primary text-lg">Extras Adicionados</h4>
+              </div>
+              
+              <div className="space-y-2">
+                {Object.entries(selectedExtras).map(([extraId, quantity]) => {
+                  if (quantity === 0) return null;
+                  const extra = extras.find((e) => e.id === extraId);
+                  if (!extra) return null;
+                  
+                  return (
+                    <div key={extraId} className="flex justify-between items-center py-2 px-3 bg-white/50 rounded-lg border border-primary/10">
+                      <span className="text-text font-medium">
+                        {extra.name} <span className="text-primary/70">(x{quantity})</span>
+                      </span>
+                      <span className="font-bold text-primary">
+                        {formatCurrency(extra.price * quantity)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
-          {/* Cálculos */}
-          <div className="border-t pt-4 space-y-2">
-            {/* Subtotal dos serviços */}
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Subtotal Serviços:</span>
-              <span className="font-semibold text-primary">
-                {formatCurrency(Array.isArray(selectedService) 
-                  ? selectedService.reduce((acc, service) => acc + service.price, 0)
-                  : (selectedService?.price || 0)
-                )}
-              </span>
-            </div>
-
-            {/* Subtotal dos extras */}
-            {Object.entries(selectedExtras).some(([_, qty]) => qty > 0) && (
+          {/* Cálculos com design melhorado */}
+          <div className="bg-white/70 rounded-xl p-4 border border-primary/10">
+            <div className="space-y-3">
+              {/* Subtotal dos serviços */}
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Subtotal Extras:</span>
-                <span className="font-semibold text-primary">
-                  {formatCurrency(
-                    Object.entries(selectedExtras).reduce((acc, [extraId, quantity]) => {
-                      const extra = extras.find((e: any) => e.extra_id === extraId);
-                      return acc + (extra ? extra.price * quantity : 0);
-                    }, 0)
+                <span className="text-text-light font-medium">Subtotal Serviços:</span>
+                <span className="font-bold text-primary">
+                  {formatCurrency(Array.isArray(selectedService) 
+                    ? selectedService.reduce((acc, service) => acc + service.price, 0)
+                    : (selectedService?.price || 0)
                   )}
                 </span>
               </div>
-            )}
 
-            {/* Desconto */}
-            {Array.isArray(selectedService) && selectedService.length > 1 && (
-              <div className="flex justify-between items-center text-green-600">
-                <span className="font-semibold">Desconto (Múltiplos Serviços):</span>
-                <span className="font-bold">
-                  -{formatCurrency((selectedService.length - 1) * 10)}
+              {/* Subtotal dos extras */}
+              {Object.entries(selectedExtras).some(([_, qty]) => qty > 0) && (
+                <div className="flex justify-between items-center">
+                  <span className="text-text-light font-medium">Subtotal Extras:</span>
+                  <span className="font-bold text-primary">
+                    {formatCurrency(
+                      Object.entries(selectedExtras).reduce((acc, [extraId, quantity]) => {
+                        const extra = extras.find((e) => e.id === extraId);
+                        return acc + (extra ? extra.price * quantity : 0);
+                      }, 0)
+                    )}
+                  </span>
+                </div>
+              )}
+
+              {/* Desconto com destaque */}
+              {Array.isArray(selectedService) && selectedService.length > 1 && (
+                <div className="flex justify-between items-center py-2 px-3 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <span className="font-bold text-green-700">Desconto (Múltiplos Serviços):</span>
+                  </div>
+                  <span className="font-bold text-green-700">
+                    -{formatCurrency((selectedService.length - 1) * 10)}
+                  </span>
+                </div>
+              )}
+
+              {/* Total destacado */}
+              <div className="flex justify-between items-center pt-3 border-t-2 border-primary/30">
+                <span className="text-xl font-bold text-primary">Total Final:</span>
+                <span className="text-2xl font-bold text-primary">
+                  {formatCurrency(
+                    (Array.isArray(selectedService) 
+                      ? selectedService.reduce((acc, service) => acc + service.price, 0)
+                      : (selectedService?.price || 0)
+                    ) +
+                    Object.entries(selectedExtras).reduce((acc, [extraId, quantity]) => {
+                      const extra = extras.find((e) => e.id === extraId);
+                      return acc + (extra ? extra.price * quantity : 0);
+                    }, 0) -
+                    (Array.isArray(selectedService) && selectedService.length > 1 
+                      ? (selectedService.length - 1) * 10 
+                      : 0
+                    )
+                  )}
                 </span>
               </div>
-            )}
-
-            {/* Total */}
-            <div className="flex justify-between items-center pt-2 border-t-2 border-primary/30">
-              <span className="text-lg font-bold text-primary">Total:</span>
-              <span className="text-xl font-bold text-primary">
-                {formatCurrency(
-                  (Array.isArray(selectedService) 
-                    ? selectedService.reduce((acc, service) => acc + service.price, 0)
-                    : (selectedService?.price || 0)
-                  ) +
-                  Object.entries(selectedExtras).reduce((acc, [extraId, quantity]) => {
-                    const extra = extras.find((e: any) => e.extra_id === extraId);
-                    return acc + (extra ? extra.price * quantity : 0);
-                  }, 0) -
-                  (Array.isArray(selectedService) && selectedService.length > 1 
-                    ? (selectedService.length - 1) * 10 
-                    : 0
-                  )
-                )}
-              </span>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t mt-8 gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t mt-8 gap-6">
           <Button
             variant="outline"
             size="lg"
-            onClick={() => navigate('/service')}
+            onClick={() => {
+              console.log('🔍 DEBUG - Botão voltar clicado');
+              console.log('🔍 DEBUG - Navegando para /service');
+              try {
+                // Limpar o estado quando voltar para a página de serviços
+                setService(null);
+                setStep('service');
+                navigate('/service');
+                console.log('🔍 DEBUG - Navegação executada com sucesso');
+              } catch (error) {
+                console.error('🔍 DEBUG - Erro na navegação:', error);
+                // Fallback: tentar usar window.location
+                window.location.href = '/service';
+              }
+            }}
+            className="group hover:scale-105 transition-all duration-300"
           >
+            <svg className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
             Voltar
           </Button>
+          
           <Button
             variant="primary"
             size="xl"
-            className="px-10 py-4 text-lg font-bold shadow-lg"
+            className="px-12 py-4 text-lg font-bold shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 group"
             onClick={handleContinue}
           >
             Continuar
+            <svg className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
           </Button>
         </div>
       </motion.div>

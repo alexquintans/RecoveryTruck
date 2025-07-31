@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import FullscreenPrompt from './FullscreenPrompt';
 import IOSFullscreen from './iOSFullscreen';
@@ -50,7 +50,25 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
         setShowPrompt(false);     // Nunca mostrar o prompt em modo PWA
         
         // Forçar modo tela cheia em PWAs
-        document.addEventListener('click', function tryFullscreen() {
+        document.addEventListener('click', function tryFullscreen(e) {
+          // Verificar se o clique foi em um elemento interativo
+          const target = e.target as HTMLElement;
+          const isInteractive = target.tagName === 'BUTTON' || 
+                               target.tagName === 'A' || 
+                               target.tagName === 'INPUT' || 
+                               target.tagName === 'SELECT' || 
+                               target.tagName === 'TEXTAREA' ||
+                               target.closest('button') ||
+                               target.closest('a') ||
+                               target.closest('input') ||
+                               target.closest('select') ||
+                               target.closest('textarea');
+          
+          // Se for um elemento interativo, não tentar entrar em tela cheia
+          if (isInteractive) {
+            return;
+          }
+          
           if (document.documentElement.requestFullscreen) {
             document.documentElement.requestFullscreen().catch(err => console.error('Erro ao entrar em tela cheia:', err));
           } else if ((document.documentElement as any).webkitRequestFullscreen) {
@@ -215,7 +233,32 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
   };
 
   // Detectar interação do usuário para ativar o modo tela cheia
-  const handleUserInteraction = () => {
+  const handleUserInteraction = (e?: Event) => {
+    // Se o evento veio de um elemento interativo (botão, link, etc.), não processar
+    if (e && e.target) {
+      const target = e.target as HTMLElement;
+      console.log('🔍 DEBUG - KioskMode: Evento detectado em:', target.tagName, target.className);
+      
+      const isInteractive = target.tagName === 'BUTTON' || 
+                           target.tagName === 'A' || 
+                           target.tagName === 'INPUT' || 
+                           target.tagName === 'SELECT' || 
+                           target.tagName === 'TEXTAREA' ||
+                           target.closest('button') ||
+                           target.closest('a') ||
+                           target.closest('input') ||
+                           target.closest('select') ||
+                           target.closest('textarea') ||
+                           target.closest('[role="button"]') ||
+                           target.closest('[onclick]');
+      
+      if (isInteractive) {
+        console.log('🔍 DEBUG - KioskMode: Elemento interativo detectado, permitindo evento');
+        // Permitir que o evento continue normalmente para elementos interativos
+        return;
+      }
+    }
+    
     console.log("Interação do usuário detectada");
     
     // Se já estamos em modo PWA, não precisamos fazer nada

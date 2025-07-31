@@ -3,23 +3,29 @@ FROM python:3.9-slim
 WORKDIR /app
 
 # Instalar curl para health checks
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y curl postgresql-client && rm -rf /var/lib/apt/lists/*
 
 # Copiar requirements primeiro para cache do Docker
-COPY requirements.txt .
+COPY apps/api/requirements.txt .
 
-# Instalar dependências
+# Instalar dependências Python
 RUN pip install --upgrade pip && \
     pip install -r requirements.txt
 
-# Copiar o código da aplicação
-COPY . .
+# Copiar workspace pnpm
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+
+# Copiar packages compartilhados
+COPY packages/ ./packages/
+
+# Copiar apps
+COPY apps/ ./apps/
 
 # Garante que os imports absolutos funcionem
 ENV PYTHONPATH=/app
 
-# Expor a porta
+# Expor a porta (Railway usa $PORT)
 EXPOSE 8000
 
-# Comando de inicialização (ajuste o caminho se necessário)
-CMD ["uvicorn", "apps.api.full_api:app", "--host", "0.0.0.0", "--port", "8000"] 
+# Comando de inicialização com porta dinâmica
+CMD ["sh", "-c", "uvicorn apps.api.full_api:app --host 0.0.0.0 --port ${PORT:-8000}"] 

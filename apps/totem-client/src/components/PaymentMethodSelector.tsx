@@ -5,11 +5,13 @@ import type { PaymentMethod } from '../types';
 interface PaymentMethodSelectorProps {
   selectedMethod: PaymentMethod | null;
   onSelect: (method: PaymentMethod) => void;
+  availableMethods?: PaymentMethod[]; // lista permitida segundo config
 }
 
 export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
   selectedMethod,
   onSelect,
+  availableMethods,
 }) => {
   const paymentMethods = [
     {
@@ -48,14 +50,42 @@ export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
       ),
       description: 'Pague instantaneamente com PIX',
     },
+    {
+      id: 'mercadopago',
+      name: 'Mercado Pago',
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <text x="12" y="16" textAnchor="middle" fontSize="8">MP</text>
+        </svg>
+      ),
+      description: 'Checkout Pro do Mercado Pago',
+    },
+    {
+      id: 'sicredi',
+      name: 'Maquininha Sicredi',
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="16" rx="2" />
+          <path d="M8 15h8" />
+          <path d="M9 11h6" />
+        </svg>
+      ),
+      description: 'Pague usando a maquininha física',
+    },
   ];
+
+  // Filtrar métodos pela configuração, se fornecida
+  const methodsToShow = availableMethods && availableMethods.length > 0
+    ? paymentMethods.filter((m) => availableMethods.includes(m.id as PaymentMethod))
+    : paymentMethods;
 
   return (
     <div className="payment-method-selector">
       <h3 className="text-xl font-semibold mb-4">Escolha como deseja pagar:</h3>
       
       <div className="grid grid-cols-1 gap-4">
-        {paymentMethods.map((method) => (
+        {methodsToShow.map((method) => (
           <motion.div
             key={method.id}
             className={`p-4 border-2 rounded-xl cursor-pointer transition-colors ${

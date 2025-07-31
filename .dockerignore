@@ -1,0 +1,19 @@
+# Git
+.git
+.gitignore
+
+# Node
+node_modules
+**/node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+**/dist
+**/.env
+
+# Docker
+Dockerfile
+
+# VSCode
+.vscode 

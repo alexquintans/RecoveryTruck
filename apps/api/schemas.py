@@ -24,7 +24,7 @@ class PaymentSessionBase(BaseModel):
     customer_cpf: Optional[str] = Field(None, min_length=11, max_length=11)
     customer_phone: Optional[str] = Field(None, min_length=10, max_length=20)
     consent_version: str = Field(..., min_length=1, max_length=10)
-    payment_method: str = Field(..., pattern=r"^(credit|debit|pix|tap)$")
+    payment_method: str = Field(..., pattern=r"^(credit|debit|pix|tap|mercadopago)$")
 
 class TicketBase(BaseModel):
     # Ticket não é criado diretamente, apenas através de PaymentSession
@@ -143,13 +143,12 @@ class PaymentSession(PaymentSessionBase):
 class Ticket(BaseModel):
     id: UUID
     tenant_id: UUID
-    service_id: UUID
-    payment_session_id: UUID
+    payment_session_id: Optional[UUID] = None  # Tornando opcional
     ticket_number: int
     status: TicketStatus
     customer_name: str
-    customer_cpf: str
-    customer_phone: str
+    customer_cpf: Optional[str] = None  # Tornando opcional
+    customer_phone: Optional[str] = None  # Tornando opcional
     consent_version: str
     
     # Sistema de fila e priorização
@@ -175,6 +174,7 @@ class Ticket(BaseModel):
     cancellation_reason: Optional[str] = None
     print_attempts: int = 0
     reactivation_count: int = 0
+    payment_confirmed: bool = False
 
     class Config:
         from_attributes = True
@@ -201,19 +201,62 @@ class TicketWithStatus(Ticket):
             return [s.value for s in get_valid_transitions(TicketStatus(status))]
         return []
 
-class TicketInQueue(Ticket):
-    """Ticket na fila com informações adicionais"""
-    service: Service
+
+class ExtraForTicket(BaseModel):
+    id: UUID
+    name: str
+    price: float
+
+    class Config:
+        from_attributes = True
+
+class TicketExtraWithDetails(BaseModel):
+    quantity: int
+    price: float
+    extra: ExtraForTicket
+
+    class Config:
+        from_attributes = True
+
+class ServiceForTicket(BaseModel):
+    id: UUID
+    name: str
+    price: float
+
+    class Config:
+        from_attributes = True
+
+class TicketServiceWithDetails(BaseModel):
+    price: float
+    service: ServiceForTicket
+
+    class Config:
+        from_attributes = True
+
+class TicketForPanel(Ticket):
+    services: List[TicketServiceWithDetails] = []
+    extras: List[TicketExtraWithDetails] = []
+
+
+class TicketInQueue(TicketForPanel):
+    """Ticket na fila com informações adicionais, herdando de TicketForPanel"""
     waiting_time_minutes: float
     waiting_status: str  # normal, warning, critical, expired
     priority_info: dict
-    estimated_service_time: int
     
     @validator('waiting_time_minutes', pre=True, always=True)
     def calculate_waiting_time(cls, v, values):
         queued_at = values.get('queued_at')
         if queued_at:
-            return (datetime.utcnow() - queued_at).total_seconds() / 60
+            # Garantir que ambos os datetimes tenham timezone
+            from datetime import timezone
+            now = datetime.now(timezone.utc)
+            
+            # Se queued_at não tem timezone, assumir UTC
+            if queued_at.tzinfo is None:
+                queued_at = queued_at.replace(tzinfo=timezone.utc)
+            
+            return (now - queued_at).total_seconds() / 60
         return 0
     
     @validator('waiting_status', pre=True, always=True)
@@ -271,9 +314,12 @@ class ConsentList(BaseModel):
     items: List[Consent]
     total: int
 
-# Response schemas com dados relacionados
+class PaymentForTicket(BaseModel):
+    payment_method: str = Field(..., pattern=r"^(credit|debit|pix|tap|mercadopago)$")
+
 class PaymentSessionWithQR(PaymentSession):
     qr_code: Optional[str] = None
+    preference_id: Optional[str] = None
 
 class TicketWithService(Ticket):
     service: Service
@@ -287,14 +333,11 @@ class TicketQueue(BaseModel):
     queue_stats: dict
     estimated_total_time: int
 
-# ---------------------------------
-# Auth schemas
 
 class Token(BaseModel):
     access_token: str
     token_type: str 
 
-# Retorna o token juntamente com informações do operador autenticado
 class TokenWithOperator(Token):
     operator: Optional[Operator] = None
 
@@ -332,7 +375,7 @@ class OperatorSession(BaseModel):
     class Config:
         from_attributes = True
 
-# --- Atualização parcial de Serviço ---
+
 class ServiceUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
@@ -341,7 +384,6 @@ class ServiceUpdate(BaseModel):
     equipment_count: Optional[int] = None
     is_active: Optional[bool] = None
 
-# --- Atualização parcial de Item Extra ---
 class ExtraUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
@@ -376,17 +418,16 @@ class TicketExtraOut(BaseModel):
     quantity: int
     price: float
 
-# NOVO: Schema para item de serviço em um ticket
+
 class TicketServiceItem(BaseModel):
     service_id: UUID
     price: float
-    # outros campos relevantes podem ser adicionados aqui
 
 class TicketCreate(BaseModel):
     tenant_id: UUID
     customer_name: str = Field(..., min_length=3, max_length=100)
-    customer_cpf: str = Field(..., min_length=11, max_length=11)
-    customer_phone: str = Field(..., min_length=10, max_length=20)
+    customer_cpf: Optional[str] = Field(None, min_length=11, max_length=14)  # Aceita CPF formatado
+    customer_phone: Optional[str] = Field(None, min_length=10, max_length=20)
     consent_version: str = Field(..., min_length=1, max_length=10)
     services: List[TicketServiceItem]  # Agora aceita múltiplos serviços
     extras: Optional[List[TicketExtraCreate]] = []
@@ -404,11 +445,12 @@ class TicketOut(BaseModel):
     extras: List[TicketExtraOut] = []
     created_at: datetime
     updated_at: datetime
+    payment_confirmed: bool = False
 
     class Config:
         from_attributes = True
 
-# Exemplo de schema para extra em configuração de operação:
+
 class OperationConfigExtra(BaseModel):
     extra_id: UUID
     stock: int

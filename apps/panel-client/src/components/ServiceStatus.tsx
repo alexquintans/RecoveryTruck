@@ -71,12 +71,12 @@ export const ServiceStatus: React.FC<ServiceStatusProps> = ({
   // Determinar cor do status
   const getStatusColor = (status: string): string => {
     switch (status) {
-      case 'in_queue': return 'bg-blue-100 text-blue-800';
-      case 'called': return 'bg-yellow-100 text-yellow-800';
-      case 'in_progress': return 'bg-purple-100 text-purple-800';
-      case 'completed': return 'bg-green-100 text-green-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'in_queue': return 'bg-[#F0F8FF] text-[#3B82F6]';
+      case 'called': return 'bg-[#FFF8E1] text-[#F59E0B]';
+      case 'in_progress': return 'bg-[#F3E8FF] text-[#8B5CF6]';
+      case 'completed': return 'bg-[#F0FDF4] text-[#16A34A]';
+      case 'cancelled': return 'bg-[#FEF2F2] text-[#EF4444]';
+      default: return 'bg-[#F9FAFB] text-[#6B7280]';
     }
   };
   

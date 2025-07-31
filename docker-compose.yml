@@ -7,21 +7,28 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/totem
-      - JWT_SECRET=your-secret-key
+      - JWT_SECRET=a_very_secret_key_that_should_be_in_a_secret_manager
       - OTLP_ENDPOINT=jaeger:4317
       - SERVICE_NAME=totem-api
       - ENVIRONMENT=development
       - LOG_LEVEL=INFO
-      - POSTGRES_HOST=db
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=totem
+      - APP_ENV=development
+      - CORS_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000
+      - MERCADOPAGO_ACCESS_TOKEN=APP_USR-4562501449641015-072916-9885265dc729abd0dc3f8683e25ce47b-2587380047
+      - MERCADOPAGO_PUBLIC_KEY=APP_USR-16377f98-47c0-412f-98c8-6e87dff2690b
+      - MERCADOPAGO_WEBHOOK_URL=https://b3c5ada464b8.ngrok-free.app/webhooks/mercadopago
     depends_on:
-      - db
-      - jaeger
+      db:
+        condition: service_healthy
+      jaeger:
+        condition: service_started         # opcional
     networks:
       - totem-network
+    command: >
+      sh -c "
+        until pg_isready -h db -U postgres ; do echo 'Aguardando DB...' && sleep 2 ; done &&
+        uvicorn apps.api.full_api:app --host 0.0.0.0 --port 8000 --reload
+      "
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -145,6 +152,8 @@ services:
     depends_on: [api]
     environment:
       - VITE_API_URL=http://localhost:8000
+      - VITE_WS_URL=ws://localhost:8000/ws
+      - VITE_TENANT_ID=38534c9f-accb-4884-9c19-dd37f77d0594
     ports:
       - "5175:80"          # porta externa → porta nginx
     networks: [totem-network]
@@ -161,7 +170,7 @@ services:
     depends_on: [api]
     environment:
       - VITE_API_URL=http://localhost:8000
-      - VITE_TENANT_ID=52c6777f-ee24-433b-8e4b-7185950da52e
+      - VITE_TENANT_ID=38534c9f-accb-4884-9c19-dd37f77d0594
       - VITE_WS_URL=ws://localhost:8000/ws
       - VITE_MOCK_PAYMENT=true
     ports:

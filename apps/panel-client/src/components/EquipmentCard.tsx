@@ -41,25 +41,25 @@ function getEquipmentIcon(type: Equipment['type']): React.ReactElement {
   switch (type) {
     case 'banheira_gelo':
     case 'crioterapia':
-      return <FaSnowflake className="text-blue-400 text-5xl" />;
+      return <FaSnowflake className="text-[#3B82F6] text-5xl" />;
     case 'bota_compressao':
-      return <FaSocks className="text-yellow-400 text-5xl" />;
+      return <FaSocks className="text-[#1F526B] text-5xl" />;
     case 'ofuro':
-      return <FaBath className="text-indigo-400 text-5xl" />;
+      return <FaBath className="text-[#3B82F6] text-5xl" />;
     case 'massoterapia':
-      return <FaSpa className="text-green-400 text-5xl" />;
+      return <FaSpa className="text-[#3B82F6] text-5xl" />;
     default:
-      return <FaTools className="text-gray-400 text-5xl" />;
+      return <FaTools className="text-[#666666] text-5xl" />;
   }
 }
 
 function statusBadge(status: Equipment['status']): React.ReactElement | null {
   if (status === 'available')
-    return <span className="bg-green-50 text-green-600 px-3 py-0.5 rounded-full text-xs font-medium mt-2">Disponível</span>;
+    return <span className="bg-[#F0F8FF] text-[#3B82F6] px-3 py-0.5 rounded-full text-xs font-medium mt-2">Disponível</span>;
   if (status === 'in_use')
-    return <span className="bg-yellow-50 text-yellow-700 px-3 py-0.5 rounded-full text-xs font-medium mt-2">Em uso</span>;
+    return <span className="bg-[#FFF8E1] text-[#F59E0B] px-3 py-0.5 rounded-full text-xs font-medium mt-2">Em uso</span>;
   if (status === 'maintenance')
-    return <span className="bg-red-50 text-red-600 px-3 py-0.5 rounded-full text-xs font-medium mt-2">Manutenção</span>;
+    return <span className="bg-[#FEF2F2] text-[#EF4444] px-3 py-0.5 rounded-full text-xs font-medium mt-2">Manutenção</span>;
   return null;
 }
 
@@ -69,8 +69,8 @@ export const EquipmentCard: React.FC<EquipmentCardProps> = (props: EquipmentCard
     <button
       className={`
         flex flex-col items-center justify-center gap-1 px-6 py-6 min-h-[180px] rounded-2xl border-2 shadow-lg transition-all duration-200
-        ${selecionado ? 'border-blue-600 bg-blue-50 scale-105 shadow-xl' : 'border-gray-200 bg-white hover:border-blue-400 hover:-translate-y-1 hover:shadow-xl'}
-        focus:outline-none focus:ring-2 focus:ring-blue-400
+        ${selecionado ? 'border-[#3B82F6] bg-[#F0F8FF] scale-105 shadow-xl' : 'border-[#D9D9D9] bg-white hover:border-[#3B82F6] hover:-translate-y-1 hover:shadow-xl'}
+        focus:outline-none focus:ring-2 focus:ring-[#3B82F6]
         text-center
         ${className}
       `}

@@ -157,7 +157,7 @@ export const generateReport = (stats: PanelStats, tickets: Ticket[], equipment?:
   const doc = new jsPDF();
   
   // Adicionar logo (representação simples)
-  doc.setFillColor(26, 58, 74); // Cor primária #1A3A4A
+  doc.setFillColor(31, 82, 107); // Cor primária #1F526B
   doc.rect(14, 10, 30, 8, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(12);
@@ -199,7 +199,7 @@ export const generateReport = (stats: PanelStats, tickets: Ticket[], equipment?:
       ['Ticket Médio', formatCurrency(averageRevenue)]
     ],
     theme: 'striped',
-    headStyles: { fillColor: [26, 58, 74] }, // Cor primária #1A3A4A
+    headStyles: { fillColor: [31, 82, 107] }, // Cor primária #1F526B
     styles: { fontSize: 10 }
   });
   
@@ -226,7 +226,7 @@ export const generateReport = (stats: PanelStats, tickets: Ticket[], equipment?:
       head: [['Serviço', 'Quantidade', 'Receita Total', 'Valor Médio']],
       body: serviceData,
       theme: 'striped',
-      headStyles: { fillColor: [138, 230, 92] }, // Cor secundária #8AE65C
+      headStyles: { fillColor: [255, 255, 255] }, // Cor secundária #FFFFFF
       styles: { fontSize: 10 }
     });
   }
@@ -273,7 +273,7 @@ export const generateReport = (stats: PanelStats, tickets: Ticket[], equipment?:
       head: [['Senha', 'Serviço', 'Cliente', 'Concluído em', 'Valor']],
       body: ticketData,
       theme: 'striped',
-      headStyles: { fillColor: [26, 58, 74] }, // Cor primária #1A3A4A
+      headStyles: { fillColor: [31, 82, 107] }, // Cor primária #1F526B
       styles: { fontSize: 9 }
     });
   }

@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     
     MERCADOPAGO_API_URL: str = os.getenv("MERCADOPAGO_API_URL", "https://api.mercadopago.com/v1")
     MERCADOPAGO_ACCESS_TOKEN: str = os.getenv("MERCADOPAGO_ACCESS_TOKEN", "")
+    MERCADOPAGO_PUBLIC_KEY: str = os.getenv("MERCADOPAGO_PUBLIC_KEY", "")
+    MERCADOPAGO_WEBHOOK_URL: str = os.getenv("MERCADOPAGO_WEBHOOK_URL", "")
     
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")

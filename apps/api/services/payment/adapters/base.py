@@ -4,7 +4,7 @@ from datetime import datetime
 import logging
 
 from services.printer_service import (
-    printer_service, ReceiptData, ReceiptType, PrinterConfig, PrinterType, PrinterConnection
+    printer_manager, ReceiptData, ReceiptType, PrinterConfig, PrinterType, PrinterConnection
 )
 from services.webhook_validator import webhook_validator, WebhookProvider
 
@@ -40,7 +40,7 @@ class PaymentAdapter(ABC):
                 beep=printer_config.get("beep", False)
             )
             
-            printer_service.register_printer(printer_id, config)
+            printer_manager.register_printer(printer_id, config)
             self.printer_id = printer_id
         else:
             self.printer_id = None
@@ -85,7 +85,7 @@ class PaymentAdapter(ABC):
             receipt_data = self._create_receipt_data(transaction_id, receipt_type, transaction_data)
             
             # Imprime comprovante
-            success = await printer_service.print_receipt(receipt_data, self.printer_id)
+            success = await printer_manager.print_receipt(receipt_data, self.printer_id)
             
             if success:
                 logger.info(f"✅ Receipt printed successfully: {transaction_id}")

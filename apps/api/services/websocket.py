@@ -21,7 +21,8 @@ class ConnectionManager:
 
     async def connect(self, websocket: WebSocket, tenant_id: str, client_type: str):
         """Conecta um novo cliente WebSocket"""
-        await websocket.accept()
+        # NÃO aceitar a conexão aqui, pois já foi aceita no endpoint
+        # await websocket.accept()
         
         if client_type == "operator":
             if tenant_id not in self.operator_connections:
@@ -64,7 +65,6 @@ class ConnectionManager:
                 "ticket_number": ticket.ticket_number,
                 "status": ticket.status,
                 "customer_name": ticket.customer_name,
-                "service_id": str(ticket.service_id) if ticket.service_id else None,
                 "updated_at": datetime.utcnow().isoformat()
             }
         }
@@ -368,6 +368,37 @@ class ConnectionManager:
                     await conn.send_json(message)
                 except WebSocketDisconnect:
                     self.disconnect(conn, tenant_id, "operator")
+
+    async def broadcast_equipment_update(self, tenant_id: str, equipment_data: dict):
+        """Transmite atualização de status de equipamento para todos os clientes do tenant"""
+        message = {
+            "type": "equipment_update",
+            "data": equipment_data
+        }
+        
+        # Envia para operadores
+        if tenant_id in self.operator_connections:
+            for connection in self.operator_connections[tenant_id]:
+                try:
+                    await connection.send_json(message)
+                except WebSocketDisconnect:
+                    self.disconnect(connection, tenant_id, "operator")
+
+        # Envia para totens
+        if tenant_id in self.totem_connections:
+            for connection in self.totem_connections[tenant_id]:
+                try:
+                    await connection.send_json(message)
+                except WebSocketDisconnect:
+                    self.disconnect(connection, tenant_id, "totem")
+
+        # Envia para displays
+        if tenant_id in self.display_connections:
+            for connection in self.display_connections[tenant_id]:
+                try:
+                    await connection.send_json(message)
+                except WebSocketDisconnect:
+                    self.disconnect(connection, tenant_id, "display")
 
     async def broadcast_to_tenant(self, tenant_id: str, message: dict):
         """Transmite mensagem para todos os clientes de um tenant"""

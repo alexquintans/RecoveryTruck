@@ -14,8 +14,8 @@ interface UseWebSocketOptions {
 
 export function useWebSocket({
   url,
-  reconnectInterval = 3000,
-  maxReconnectAttempts = 5,
+  reconnectInterval = 5000, // Aumentado para 5 segundos
+  maxReconnectAttempts = 10, // Aumentado para 10 tentativas
   onMessage,
   onOpen,
   onClose,
@@ -26,17 +26,27 @@ export function useWebSocket({
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimeoutRef = useRef<number | null>(null);
+  const isConnectingRef = useRef(false);
 
   // Função para conectar ao WebSocket
   const connect = useCallback(() => {
+    if (isConnectingRef.current) {
+      console.log('🔍 WebSocket - Já está tentando conectar, ignorando...');
+      return;
+    }
+
     try {
+      console.log('🔍 WebSocket - Conectando:', url);
+      isConnectingRef.current = true;
       const ws = new WebSocket(url);
       wsRef.current = ws;
       setStatus('connecting');
 
       ws.onopen = () => {
+        console.log('🔍 WebSocket - Conectado com sucesso');
         setStatus('open');
         reconnectAttemptsRef.current = 0;
+        isConnectingRef.current = false;
         if (onOpen) onOpen();
       };
 
@@ -52,13 +62,16 @@ export function useWebSocket({
         }
       };
 
-      ws.onclose = () => {
+      ws.onclose = (event) => {
+        console.log('🔍 WebSocket - Conexão fechada', event.code, event.reason);
         setStatus('closed');
+        isConnectingRef.current = false;
         if (onClose) onClose();
         
-        // Tenta reconectar se não excedeu o número máximo de tentativas
-        if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+        // Só tenta reconectar se não foi um fechamento intencional
+        if (event.code !== 1000 && reconnectAttemptsRef.current < maxReconnectAttempts) {
           reconnectAttemptsRef.current += 1;
+          console.log(`🔍 WebSocket - Tentativa de reconexão ${reconnectAttemptsRef.current}/${maxReconnectAttempts}`);
           reconnectTimeoutRef.current = window.setTimeout(() => {
             connect();
           }, reconnectInterval);
@@ -66,13 +79,15 @@ export function useWebSocket({
       };
 
       ws.onerror = (error) => {
+        console.error('🔍 WebSocket - Erro na conexão:', error);
         setStatus('error');
+        isConnectingRef.current = false;
         if (onError) onError(error);
-        ws.close();
       };
     } catch (error) {
       console.error('Erro ao conectar ao WebSocket:', error);
       setStatus('error');
+      isConnectingRef.current = false;
     }
   }, [url, reconnectInterval, maxReconnectAttempts, onMessage, onOpen, onClose, onError]);
 
@@ -89,7 +104,7 @@ export function useWebSocket({
   // Função para fechar a conexão
   const disconnect = useCallback(() => {
     if (wsRef.current) {
-      wsRef.current.close();
+      wsRef.current.close(1000, 'Disconnect requested'); // Código 1000 = fechamento normal
       wsRef.current = null;
     }
     
@@ -97,14 +112,18 @@ export function useWebSocket({
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
+    
+    isConnectingRef.current = false;
   }, []);
 
   // Conectar ao montar o componente
   useEffect(() => {
+    console.log('🔍 WebSocket - useEffect - Iniciando conexão');
     connect();
     
     // Limpar ao desmontar
     return () => {
+      console.log('🔍 WebSocket - useEffect - Limpando conexão');
       disconnect();
     };
   }, [connect, disconnect]);
@@ -115,5 +134,6 @@ export function useWebSocket({
     sendMessage,
     disconnect,
     reconnect: connect,
+    isConnected: status === 'open',
   };
 } 

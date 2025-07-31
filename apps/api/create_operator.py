@@ -9,6 +9,7 @@ from models import Operator, Tenant
 from security import get_password_hash
 import uuid
 from datetime import datetime
+import argparse
 
 def main():
     db = SessionLocal()
@@ -58,4 +59,20 @@ def main():
         db.close()
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Gerencia operadores no sistema.")
+    parser.add_argument(
+        '--generate-hash', 
+        nargs='?', 
+        const='123456', 
+        default=None,
+        help="Gera um hash para a senha fornecida (padrão: '123456') e sai."
+    )
+    
+    args = parser.parse_args()
+
+    if args.generate_hash:
+        password_to_hash = args.generate_hash
+        password_hash = get_password_hash(password_to_hash)
+        print(f"🔐 Hash gerado para '{password_to_hash}': {password_hash}")
+    else:
     main() 

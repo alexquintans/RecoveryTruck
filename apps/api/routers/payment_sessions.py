@@ -8,15 +8,18 @@ import io
 import base64
 import json
 import logging
+import os
 
 from database import get_db
-from models import PaymentSession, Service, Tenant, Ticket, Consent
-from schemas import PaymentSessionCreate, PaymentSession as PaymentSessionSchema, PaymentSessionWithQR, PaymentSessionList
+from models import PaymentSession, Service, Tenant, Ticket, Consent, TicketService, TicketExtra
+from schemas import PaymentSessionCreate, PaymentSession as PaymentSessionSchema, PaymentSessionWithQR, PaymentSessionList, Ticket as TicketSchema
 from auth import get_current_operator
-from security import encrypt_data
+from security import encrypt_data, decrypt_data
 from services.payment.factory import PaymentAdapterFactory
-from services.printer import printer_manager
+from services.printer_service import printer_manager
 from constants import TicketStatus, PaymentSessionStatus
+from services.queue_manager import get_queue_manager
+from services.websocket import websocket_manager
 
 logger = logging.getLogger(__name__)
 
@@ -164,6 +167,55 @@ async def create_payment_session(
         response.qr_code = generate_qr_code(payment_link)
     
     return response
+
+@router.post("/{session_id}/simulate-payment-success", response_model=TicketSchema, include_in_schema=os.environ.get("APP_ENV") == "development")
+async def simulate_payment_success(
+    session_id: uuid.UUID,
+    db: Session = Depends(get_db)
+):
+    """
+    Simulate a successful payment for a given session.
+    This endpoint is only available in development environments.
+    """
+    if os.environ.get("APP_ENV") != "development":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Endpoint not found"
+        )
+
+    payment_session = db.query(PaymentSession).filter(PaymentSession.id == session_id).first()
+    if not payment_session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment session not found")
+
+    if payment_session.status != PaymentSessionStatus.PENDING.value:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Payment session is not pending")
+
+    # Update session status
+    payment_session.status = PaymentSessionStatus.PAID.value
+    payment_session.completed_at = datetime.utcnow()
+    
+    # Create ticket from session
+    ticket = await create_ticket_from_payment_session(payment_session, db)
+    
+    # Commit changes
+    db.commit()
+    db.refresh(ticket)
+    
+    # Notify via WebSocket
+    await websocket_manager.broadcast_to_tenant(
+        tenant_id=str(payment_session.tenant_id),
+        message={
+            "type": "payment_update",
+            "data": {
+                "id": str(payment_session.id),
+                "status": "paid",
+                "ticket_id": str(ticket.id)
+            }
+        }
+    )
+
+    return ticket
+
 
 @router.post("/webhook")
 async def payment_webhook(
@@ -347,67 +399,26 @@ async def create_ticket_from_payment_session(payment_session: PaymentSession, db
         
         ticket_number = 1 if not last_ticket else last_ticket.ticket_number + 1
         
-        # Create ticket with PAID status (aguardando impressão)
+        # Create ticket with IN_QUEUE status (pagamento já confirmado, ir direto para fila)
         ticket = Ticket(
             tenant_id=payment_session.tenant_id,
             service_id=payment_session.service_id,
             payment_session_id=payment_session.id,
             ticket_number=ticket_number,
-            status=TicketStatus.PAID.value,  # Usar constante
+            status=TicketStatus.IN_QUEUE.value,  # Ir direto para fila
             customer_name=payment_session.customer_name,
             customer_cpf=payment_session.customer_cpf,
             customer_phone=payment_session.customer_phone,
             consent_version=payment_session.consent_version,
-            print_attempts=0
+            print_attempts=0,
+            queued_at=datetime.utcnow()  # Definir queued_at imediatamente
         )
         
         db.add(ticket)
         db.commit()
         db.refresh(ticket)
         
-        # Get service info for printing
-        service = db.query(Service).filter(Service.id == payment_session.service_id).first()
-        
-        # 🖨️ Preparar dados para impressão
-        print_data = {
-            "ticket_number": ticket.ticket_number,
-            "service_name": service.name if service else "Serviço",
-            "customer_name": ticket.customer_name,
-            "customer_cpf": ticket.customer_cpf[-4:] if ticket.customer_cpf else "",
-            "status": "PAGO",
-            "created_at": ticket.created_at.isoformat() if ticket.created_at else datetime.utcnow().isoformat()
-        }
-        
-        # 🖨️ Imprimir ticket automaticamente
-        try:
-            # Atualizar para status PRINTING
-            ticket.status = TicketStatus.PRINTING.value
-            ticket.print_attempts += 1
-            db.commit()
-            
-            await printer_manager.queue_print_job("default", "ticket", print_data)
-            
-            logger.info(f"✅ Ticket #{ticket.ticket_number} queued for printing (attempt #{ticket.print_attempts})")
-            
-            # Simular sucesso da impressão (em produção, isso seria feito pelo callback da impressora)
-            # Por enquanto, vamos assumir que a impressão foi bem-sucedida
-            await _handle_print_success(ticket, db)
-            
-        except Exception as print_error:
-            logger.error(f"❌ Error queuing print job for ticket #{ticket.ticket_number}: {print_error}")
-            
-            # Se falhar a impressão, marcar como PRINT_ERROR
-            ticket.status = TicketStatus.PRINT_ERROR.value
-            db.commit()
-            
-            # Opcionalmente, tentar imprimir erro
-            try:
-                await printer_manager.queue_print_job("default", "error", 
-                    f"Erro ao imprimir ticket #{ticket.ticket_number}. Procure o operador.")
-            except:
-                pass  # Se nem o erro conseguir imprimir, ignore
-        
-        logger.info(f"🎯 Ticket #{ticket.ticket_number} created successfully from payment session {payment_session.id}")
+        logger.info(f"🎯 Ticket #{ticket.ticket_number} created successfully from payment session {payment_session.id} and moved to queue")
         return ticket
         
     except Exception as e:

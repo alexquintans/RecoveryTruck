@@ -2,15 +2,28 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import uuid
+from pydantic import BaseModel
 
 from database import get_db
-from models import Service, Operator
-from schemas import ServiceCreate, Service as ServiceSchema, ServiceList
+from models import Service, Operator, Extra
+from schemas import ServiceCreate, Service as ServiceSchema, ServiceList, Extra as ExtraSchema
 from auth import get_current_operator
 
 router = APIRouter(
     tags=["services"]
 )
+
+class PublicService(ServiceSchema):
+    pass
+
+class PublicExtra(ExtraSchema):
+    pass
+
+class PublicConfig(BaseModel):
+    services: List[PublicService]
+    extras: List[PublicExtra]
+    payment_modes: Optional[List[str]] = []
+
 
 @router.post("", response_model=ServiceSchema)
 async def create_service(
@@ -34,6 +47,37 @@ async def create_service(
     db.refresh(db_service)
     
     return db_service
+
+@router.get("/public", response_model=PublicConfig)
+async def get_public_services_and_extras(
+    tenant_id: uuid.UUID,
+    db: Session = Depends(get_db)
+):
+    """
+    Retorna serviços e extras ativos para exibição pública (totem).
+    """
+    services = db.query(Service).filter(
+        Service.tenant_id == tenant_id,
+        Service.is_active == True
+    ).all()
+
+    extras = db.query(Extra).filter(
+        Extra.tenant_id == tenant_id,
+        Extra.is_active == True,
+        Extra.stock > 0
+    ).all()
+
+    # Tentar obter payment_modes da OperationConfig mais recente
+    from models import OperationConfig  # import inline para evitar import circular no topo
+    op_cfg = db.query(OperationConfig).filter(OperationConfig.tenant_id == tenant_id).order_by(OperationConfig.created_at.desc()).first()
+    payment_modes = op_cfg.payment_modes if op_cfg else []
+
+    return {
+        "services": services,
+        "extras": extras,
+        "payment_modes": payment_modes or []
+    }
+
 
 @router.get("", response_model=ServiceList)
 async def list_services(

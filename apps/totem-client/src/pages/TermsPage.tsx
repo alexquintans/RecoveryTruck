@@ -27,7 +27,7 @@ const TermsPage: React.FC = () => {
     const fetchConsent = async () => {
       setLoadingConsent(true);
       try {
-        const tenantId = (import.meta as any).env?.VITE_TENANT_ID || '52c6777f-ee24-433b-8e4b-7185950da52e';
+        const tenantId = (import.meta as any).env?.VITE_TENANT_ID || '38534c9f-accb-4884-9c19-dd37f77d0594';
         const params: any = { tenant_id: tenantId };
         if (customerData.cpf) params.cpf = customerData.cpf.replace(/\D/g, '');
         else if (customerData.name && customerData.phone) {
@@ -160,7 +160,21 @@ const TermsPage: React.FC = () => {
           <Button
             variant="outline"
             size="lg"
-            onClick={handleBack}
+            onClick={() => {
+              console.log('🔍 DEBUG - Botão voltar clicado (TermsPage)');
+              console.log('🔍 DEBUG - Navegando para /customer-info');
+              try {
+                // Limpar o estado quando voltar para a página de customer-info
+                setCustomer(null);
+                setStep('customer');
+                navigate('/customer-info');
+                console.log('🔍 DEBUG - Navegação executada com sucesso');
+              } catch (error) {
+                console.error('🔍 DEBUG - Erro na navegação:', error);
+                // Fallback: tentar usar window.location
+                window.location.href = '/customer-info';
+              }
+            }}
             icon={
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />

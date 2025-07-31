@@ -295,7 +295,21 @@ const CustomerInfoPage: React.FC = () => {
             <Button
               variant="outline"
               size="lg"
-              onClick={handleBack}
+              onClick={() => {
+                console.log('🔍 DEBUG - Botão voltar clicado (CustomerInfoPage)');
+                console.log('🔍 DEBUG - Navegando para /extras');
+                try {
+                  // Limpar o estado quando voltar para a página de extras
+                  setCustomer(null);
+                  setStep('extras');
+                  navigate('/extras');
+                  console.log('🔍 DEBUG - Navegação executada com sucesso');
+                } catch (error) {
+                  console.error('🔍 DEBUG - Erro na navegação:', error);
+                  // Fallback: tentar usar window.location
+                  window.location.href = '/extras';
+                }
+              }}
               icon={
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />

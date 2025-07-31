@@ -30,16 +30,16 @@ const DeleteIcon = () => (
 
 // Ícones SVG utilitários
 const ServiceIcon = () => (
-  <svg width="28" height="28" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#7ED957" /><path d="M8 12h8" stroke="#18446B" strokeWidth="2" strokeLinecap="round" /></svg>
+  <svg width="28" height="28" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#3B82F6" /><path d="M8 12h8" stroke="white" strokeWidth="2" strokeLinecap="round" /></svg>
 );
 const ExtraIcon = () => (
-  <svg width="28" height="28" fill="none" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="8" rx="4" fill="#7ED957" /><rect x="7" y="11" width="10" height="2" rx="1" fill="#18446B" /></svg>
+  <svg width="28" height="28" fill="none" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="8" rx="4" fill="#3B82F6" /><rect x="7" y="11" width="10" height="2" rx="1" fill="white" /></svg>
 );
 const ClockIcon = () => (
-  <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="#18446B" strokeWidth="2" /><path d="M12 7v5l3 3" stroke="#18446B" strokeWidth="2" strokeLinecap="round" /></svg>
+  <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="#1F526B" strokeWidth="2" /><path d="M12 7v5l3 3" stroke="#1F526B" strokeWidth="2" strokeLinecap="round" /></svg>
 );
 const MoneyIcon = () => (
-  <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2" stroke="#18446B" strokeWidth="2" /><path d="M7 12h10" stroke="#7ED957" strokeWidth="2" strokeLinecap="round" /></svg>
+  <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2" stroke="#1F526B" strokeWidth="2" /><path d="M7 12h10" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" /></svg>
 );
 
 // Tipos para os dados
@@ -85,6 +85,7 @@ interface Ticket {
   createdAt?: string;
   calledAt?: string;
   priority?: string;
+  extras?: { name: string; quantity: number }[]; // Adicionado para extras
 }
 
 // Dicionário de correção para nomes especiais
@@ -103,43 +104,55 @@ function formatEquipmentName(identifier: string) {
     .join(' ');
 }
 
-// Paleta de cores da marca
+// Paleta de cores da marca RecoveryTruck
 const BRAND_COLORS = {
-  blue: '#18446B', // azul escuro do logo
-  green: '#7ED957', // verde limão do logo
-  white: '#FFFFFF',
+  primary: '#1F526B', // Azul Profundo da marca
+  secondary: '#FFFFFF', // Branco da marca
+  accent: '#D9D9D9', // Cinza Claro da marca
+  text: '#000000', // Preto da marca
+  success: '#3B82F6', // Azul para status ativo
+  warning: '#F59E0B', // Amarelo para status de espera
+  danger: '#EF4444', // Vermelho para ações perigosas
 };
 
-// Componente de Resumo Visual
+// Componente de Resumo Visual com cores da marca
 function ResumoVisual({ servicos, equipamentos, extras, tickets }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-      <div className="flex items-center p-4 bg-white rounded-xl shadow gap-3">
-        <FaCogs className="text-blue-500 text-3xl" />
+      <div className="flex items-center p-4 bg-white rounded-xl shadow-lg border border-accent gap-3 hover:shadow-xl transition-all">
+        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+          <FaCogs className="text-primary text-2xl" />
+        </div>
         <div>
-          <div className="text-2xl font-bold">{servicos}</div>
-          <div className="text-sm text-gray-500">Serviços Ativos</div>
+          <div className="text-2xl font-bold text-primary">{servicos}</div>
+          <div className="text-sm text-text/70">Serviços Ativos</div>
         </div>
       </div>
-      <div className="flex items-center p-4 bg-white rounded-xl shadow gap-3">
-        <FaTools className="text-green-500 text-3xl" />
+      <div className="flex items-center p-4 bg-white rounded-xl shadow-lg border border-accent gap-3 hover:shadow-xl transition-all">
+        <div className="w-12 h-12 bg-success/10 rounded-full flex items-center justify-center">
+          <FaTools className="text-success text-2xl" />
+        </div>
         <div>
-          <div className="text-2xl font-bold">{equipamentos}</div>
-          <div className="text-sm text-gray-500">Equipamentos Disponíveis</div>
+          <div className="text-2xl font-bold text-success">{equipamentos}</div>
+          <div className="text-sm text-text/70">Equipamentos Disponíveis</div>
         </div>
       </div>
-      <div className="flex items-center p-4 bg-white rounded-xl shadow gap-3">
-        <FaGift className="text-yellow-500 text-3xl" />
+      <div className="flex items-center p-4 bg-white rounded-xl shadow-lg border border-accent gap-3 hover:shadow-xl transition-all">
+        <div className="w-12 h-12 bg-warning/10 rounded-full flex items-center justify-center">
+          <FaGift className="text-warning text-2xl" />
+        </div>
         <div>
-          <div className="text-2xl font-bold">{extras}</div>
-          <div className="text-sm text-gray-500">Extras Ativos</div>
+          <div className="text-2xl font-bold text-warning">{extras}</div>
+          <div className="text-sm text-text/70">Extras Ativos</div>
         </div>
       </div>
-      <div className="flex items-center p-4 bg-white rounded-xl shadow gap-3">
-        <FaTicketAlt className="text-purple-500 text-3xl" />
+      <div className="flex items-center p-4 bg-white rounded-xl shadow-lg border border-accent gap-3 hover:shadow-xl transition-all">
+        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+          <FaTicketAlt className="text-primary text-2xl" />
+        </div>
         <div>
-          <div className="text-2xl font-bold">{tickets}</div>
-          <div className="text-sm text-gray-500">Tickets em Atendimento</div>
+          <div className="text-2xl font-bold text-primary">{tickets}</div>
+          <div className="text-sm text-text/70">Tickets em Atendimento</div>
         </div>
       </div>
     </div>
@@ -162,6 +175,27 @@ const OperatorPage: React.FC = () => {
   const [services, setServices] = useState<Service[]>([]);
   const [extras, setExtras] = useState<Extra[]>([]);
   const [equipments, setEquipments] = useState<Equipment[]>([]);
+
+  // Métodos de pagamento disponíveis para a operação
+  type PaymentMode = 'none' | 'mercadopago' | 'sicredi';
+  const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
+
+  const togglePaymentMode = (mode: PaymentMode) => {
+    setPaymentModes(prev => {
+      if (mode === 'none') {
+        // "Nenhum" é exclusivo – seleciona / desseleciona e limpa os demais
+        return prev.includes('none') ? [] : ['none'];
+      }
+      // Se algum modo específico for marcado, remova "none" se existir
+      const filtered = prev.filter(m => m !== 'none');
+      if (filtered.includes(mode)) {
+        // Desmarca o modo
+        return filtered.filter(m => m !== mode);
+      }
+      // Marca o modo
+      return [...filtered, mode];
+    });
+  };
 
   const [selectedEquipment, setSelectedEquipment] = useState<string>('');
 
@@ -187,21 +221,54 @@ const OperatorPage: React.FC = () => {
   });
 
   // Dados para operação
-  const { tickets = [], myTickets = [], refetch } = useTicketQueue();
+  const { tickets, myTickets, completedTickets, cancelledTickets, pendingPaymentTickets, equipment, operationConfig, refetch } = useTicketQueue();
   const { 
     callTicket, 
     startService, 
     completeService, 
     cancelTicket,
+    confirmPayment,
+    moveToQueue,
     callLoading,
     startLoading,
     completeLoading,
     cancelLoading,
+    confirmLoading,
+    moveToQueueLoading,
   } = useOperatorActions();
   
   const navigate = useNavigate();
   
   const queryClient = useQueryClient();
+
+  // Obter configuração atual de pagamento
+  const [currentPaymentModes, setCurrentPaymentModes] = useState<string[]>([]);
+  
+  useEffect(() => {
+    const fetchPaymentConfig = async () => {
+      try {
+        const response = await fetch(`/api/operation/config?tenant_id=${tenantId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'X-Tenant-Id': tenantId,
+          }
+        });
+        if (response.ok) {
+          const config = await response.json();
+          setCurrentPaymentModes(config.payment_modes || []);
+        }
+      } catch (error) {
+        console.error('Erro ao buscar configuração de pagamento:', error);
+      }
+    };
+    
+    if (tenantId) {
+      fetchPaymentConfig();
+    }
+  }, [tenantId]);
+
+  // Verificar se o modo de pagamento é "none"
+  const isPaymentNone = currentPaymentModes.includes('none');
   
   // Buscar dados reais da API ao montar o componente
   useEffect(() => {
@@ -217,7 +284,6 @@ const OperatorPage: React.FC = () => {
           isActive: true,
         }));
         setEquipments(list);
-        console.log('Equipamentos carregados:', list);
       }).catch(() => {});
       fetchExtras({ tenant_id: tenantId }).then(data => setExtras(data.items || data)).catch(() => {});
     }
@@ -477,25 +543,25 @@ const OperatorPage: React.FC = () => {
         <header className="flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-800">Painel do Operador</h1>
           <div className="flex items-center gap-4">
-            <button
-              onClick={async () => {
-                if (confirm('Tem certeza que deseja encerrar a operação?')) {
-                  try {
-                    await equipmentService.stopOperation();
-                  } catch (e) {
-                    alert('Falha ao encerrar operação no backend!');
+                          <button
+                onClick={async () => {
+                  if (confirm('Tem certeza que deseja encerrar a operação?')) {
+                    try {
+                      await equipmentService.stopOperation();
+                    } catch (e) {
+                      alert('Falha ao encerrar operação no backend!');
+                    }
+                    alert('Operação encerrada com sucesso!');
+                    setCurrentStep('name');
+                    localStorage.removeItem('operator_config');
+                    navigate('/');
                   }
-                  alert('Operação encerrada com sucesso!');
-                  setCurrentStep('name');
-                  localStorage.removeItem('operator_config');
-                  navigate('/');
-                }
-              }}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg shadow hover:bg-red-700 transition-all font-semibold"
-            >
-              Encerrar Operação
-            </button>
-            <Link to="/" className="text-blue-600 underline text-base">← Dashboard</Link>
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg shadow-lg hover:bg-red-700 transition-all font-semibold hover:scale-105"
+              >
+                Encerrar Operação
+              </button>
+              <Link to="/" className="text-primary underline text-base hover:text-primary/80 transition-colors">← Dashboard</Link>
           </div>
         </header>
 
@@ -522,7 +588,7 @@ const OperatorPage: React.FC = () => {
               <h3 className="text-lg font-semibold text-gray-800">Serviços Disponíveis</h3>
               <button 
                 onClick={openServiceModal}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 active:scale-95 transition-all"
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-semibold shadow-lg hover:bg-primary/90 active:scale-95 transition-all hover:shadow-xl"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                 Adicionar Serviço
@@ -532,10 +598,10 @@ const OperatorPage: React.FC = () => {
               {services.map((service) => (
                 <div 
                   key={service.id}
-                  className={`transition-all duration-200 border-2 rounded-2xl p-5 flex flex-col gap-3 shadow-md bg-white hover:shadow-xl
-                    ${service.isActive ? 'border-[3px] border-[#7ED957] bg-[#F6FFF2]' : 'border-gray-200 bg-gray-50 opacity-60'}
+                  className={`transition-all duration-200 border-2 rounded-2xl p-5 flex flex-col gap-3 shadow-lg bg-white hover:shadow-xl
+                    ${service.isActive ? 'border-2 border-[#3B82F6] bg-[#F0F8FF]' : 'border-[#D9D9D9] bg-[#FAFAFA]'}
                   `}
-                  style={{ boxShadow: service.isActive ? '0 4px 24px 0 #7ED95733' : '0 2px 8px 0 #18446B22' }}
+                  style={{ boxShadow: service.isActive ? '0 4px 20px 0 rgba(59, 130, 246, 0.25)' : '0 2px 12px 0 rgba(0, 0, 0, 0.08)' }}
                 >
                   <div className="flex items-center gap-3 mb-2">
                     <ServiceIcon />
@@ -544,25 +610,25 @@ const OperatorPage: React.FC = () => {
                         type="text"
                         value={service.name}
                         onChange={e => updateServiceField(service.id, 'name', e.target.value)}
-                        className="text-xl font-bold text-[#18446B] bg-transparent border-b border-[#7ED957] focus:outline-none focus:border-[#18446B] transition-all w-full"
+                        className="text-xl font-bold text-[#1F526B] bg-transparent border-b border-[#3B82F6] focus:outline-none focus:border-[#1F526B] transition-all w-full"
                       />
                       <div className="flex items-center gap-2 mt-1">
-                        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${service.isActive ? 'bg-[#7ED957] text-[#18446B]' : 'bg-gray-300 text-gray-600'}`}>{service.isActive ? 'Ativo' : 'Inativo'}</span>
+                        <span className={`text-xs font-semibold px-3 py-1 rounded-full ${service.isActive ? 'bg-[#3B82F6] text-white' : 'bg-[#D9D9D9] text-[#666666]'}`}>{service.isActive ? 'Ativo' : 'Inativo'}</span>
                       </div>
                     </div>
                   </div>
                   <div className="flex gap-4 mt-2">
-                    <span className="flex items-center gap-1 text-sm text-[#18446B]">
+                    <span className="flex items-center gap-1 text-sm text-[#1F526B]">
                       <ClockIcon />
                       <input
                         type="number"
                         min={1}
                         value={service.duration}
                         onChange={e => updateServiceField(service.id, 'duration', Number(e.target.value))}
-                        className="w-14 text-center border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#7ED957] focus:border-[#7ED957] transition-all bg-white"
+                        className="w-14 text-center border border-[#D9D9D9] rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-[#3B82F6] transition-all bg-white"
                       /> min
                     </span>
-                    <span className="flex items-center gap-1 text-sm text-[#18446B]">
+                    <span className="flex items-center gap-1 text-sm text-[#1F526B]">
                       <MoneyIcon />
                       <input
                         type="number"
@@ -570,7 +636,7 @@ const OperatorPage: React.FC = () => {
                         step={0.01}
                         value={service.price}
                         onChange={e => updateServiceField(service.id, 'price', Number(e.target.value))}
-                        className="w-16 text-center border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#7ED957] focus:border-[#7ED957] transition-all bg-white"
+                        className="w-16 text-center border border-[#D9D9D9] rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-[#3B82F6] transition-all bg-white"
                       />
                     </span>
                     </div>
@@ -581,9 +647,9 @@ const OperatorPage: React.FC = () => {
                       onChange={() => toggleService(service.id, service.isActive)}
                       className="sr-only"
                       />
-                    <div className={`w-11 h-6 rounded-full transition-colors duration-200 ${service.isActive ? 'bg-[#7ED957]' : 'bg-gray-300'}`}></div>
+                    <div className={`w-11 h-6 rounded-full transition-colors duration-200 ${service.isActive ? 'bg-[#3B82F6]' : 'bg-[#D9D9D9]'}`}></div>
                     <div className={`absolute ml-1 mt-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${service.isActive ? 'translate-x-5' : ''}`}></div>
-                    <span className="text-sm text-[#18446B] font-medium">Toggle</span>
+                    <span className="text-sm text-[#1F526B] font-medium">Toggle</span>
                     </label>
                 </div>
               ))}
@@ -601,23 +667,23 @@ const OperatorPage: React.FC = () => {
                 .map((equipment) => (
                 <div 
                   key={equipment.id}
-                    className={`transition-all duration-200 border-2 rounded-2xl p-5 flex flex-col gap-3 shadow-md bg-white hover:shadow-xl
-                      ${equipment.isActive ? 'border-[3px] border-[#7ED957] bg-[#F6FFF2]' : 'border-gray-200 bg-gray-50 opacity-60'}
+                    className={`transition-all duration-200 border-2 rounded-2xl p-5 flex flex-col gap-3 shadow-lg bg-white hover:shadow-xl
+                      ${equipment.isActive ? 'border-2 border-[#3B82F6] bg-[#F0F8FF]' : 'border-[#D9D9D9] bg-[#FAFAFA]'}
                     `}
-                    style={{ boxShadow: equipment.isActive ? '0 4px 24px 0 #7ED95733' : '0 2px 8px 0 #18446B22' }}
+                    style={{ boxShadow: equipment.isActive ? '0 4px 20px 0 rgba(59, 130, 246, 0.25)' : '0 2px 12px 0 rgba(0, 0, 0, 0.08)' }}
                 >
                   <div className="flex items-center gap-3 mb-2">
                       {/* Ícone estilizado */}
-                      <div className="w-10 h-10 flex items-center justify-center rounded-full" style={{ background: BRAND_COLORS.blue }}>
+                      <div className="w-10 h-10 flex items-center justify-center rounded-full bg-[#1F526B]">
                         <svg width="28" height="28" fill="none" viewBox="0 0 24 24">
-                          <rect x="4" y="8" width="16" height="8" rx="4" fill="#7ED957" />
-                          <rect x="7" y="11" width="10" height="2" rx="1" fill="#18446B" />
+                          <rect x="4" y="8" width="16" height="8" rx="4" fill="#3B82F6" />
+                          <rect x="7" y="11" width="10" height="2" rx="1" fill="white" />
                         </svg>
                       </div>
                     <div>
-                        <span className="text-xl font-bold text-[#18446B]">{formatEquipmentName(equipment.name)}</span>
+                        <span className="text-xl font-bold text-[#1F526B]">{formatEquipmentName(equipment.name)}</span>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${equipment.isActive ? 'bg-[#7ED957] text-[#18446B]' : 'bg-gray-300 text-gray-600'}`}>{equipment.isActive ? 'Disponível' : 'Indisponível'}</span>
+                          <span className={`text-xs font-semibold px-3 py-1 rounded-full ${equipment.isActive ? 'bg-[#3B82F6] text-white' : 'bg-[#D9D9D9] text-[#666666]'}`}>{equipment.isActive ? 'Disponível' : 'Indisponível'}</span>
                     </div>
                   </div>
                     </div>
@@ -630,9 +696,9 @@ const OperatorPage: React.FC = () => {
                         }}
                         className="sr-only"
                       />
-                      <div className={`w-11 h-6 rounded-full transition-colors duration-200 ${equipment.isActive ? 'bg-[#7ED957]' : 'bg-gray-300'}`}></div>
+                      <div className={`w-11 h-6 rounded-full transition-colors duration-200 ${equipment.isActive ? 'bg-[#3B82F6]' : 'bg-[#D9D9D9]'}`}></div>
                       <div className={`absolute ml-1 mt-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${equipment.isActive ? 'translate-x-5' : ''}`}></div>
-                      <span className="text-sm text-[#18446B] font-medium">Toggle</span>
+                      <span className="text-sm text-[#1F526B] font-medium">Toggle</span>
                     </label>
                 </div>
               ))}
@@ -645,7 +711,7 @@ const OperatorPage: React.FC = () => {
               <h3 className="text-lg font-semibold text-gray-800">Itens Extras Disponíveis</h3>
               <button 
                 onClick={openExtraModal}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 active:scale-95 transition-all"
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-semibold shadow-lg hover:bg-primary/90 active:scale-95 transition-all hover:shadow-xl"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                 Adicionar Item Extra
@@ -655,10 +721,10 @@ const OperatorPage: React.FC = () => {
               {extras.map((extra) => (
                 <div 
                   key={extra.id}
-                  className={`transition-all duration-200 border-2 rounded-2xl p-5 flex flex-col gap-3 shadow-md bg-white hover:shadow-xl
-                    ${extra.isActive ? 'border-[3px] border-[#7ED957] bg-[#F6FFF2]' : 'border-gray-200 bg-gray-50 opacity-60'}
+                  className={`transition-all duration-200 border-2 rounded-2xl p-5 flex flex-col gap-3 shadow-lg bg-white hover:shadow-xl
+                    ${extra.isActive ? 'border-2 border-[#3B82F6] bg-[#F0F8FF]' : 'border-[#D9D9D9] bg-[#FAFAFA]'}
                   `}
-                  style={{ boxShadow: extra.isActive ? '0 4px 24px 0 #7ED95733' : '0 2px 8px 0 #18446B22' }}
+                  style={{ boxShadow: extra.isActive ? '0 4px 20px 0 rgba(59, 130, 246, 0.25)' : '0 2px 12px 0 rgba(0, 0, 0, 0.08)' }}
                 >
                   <div className="flex items-center gap-3 mb-2">
                     <ExtraIcon />
@@ -667,15 +733,15 @@ const OperatorPage: React.FC = () => {
                         type="text"
                         value={extra.name}
                         onChange={e => updateExtraField(extra.id, 'name', e.target.value)}
-                        className="text-xl font-bold text-[#18446B] bg-transparent border-b border-[#7ED957] focus:outline-none focus:border-[#18446B] transition-all w-full"
+                        className="text-xl font-bold text-[#1F526B] bg-transparent border-b border-[#3B82F6] focus:outline-none focus:border-[#1F526B] transition-all w-full"
                       />
                       <div className="flex items-center gap-2 mt-1">
-                        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${extra.isActive ? 'bg-[#7ED957] text-[#18446B]' : 'bg-gray-300 text-gray-600'}`}>{extra.isActive ? 'Ativo' : 'Inativo'}</span>
+                        <span className={`text-xs font-semibold px-3 py-1 rounded-full ${extra.isActive ? 'bg-[#3B82F6] text-white' : 'bg-[#D9D9D9] text-[#666666]'}`}>{extra.isActive ? 'Ativo' : 'Inativo'}</span>
                     </div>
                   </div>
                   </div>
                   <div className="flex gap-4 mt-2">
-                    <span className="flex items-center gap-1 text-sm text-[#18446B]">
+                    <span className="flex items-center gap-1 text-sm text-[#1F526B]">
                       <MoneyIcon />
                       <input
                         type="number"
@@ -683,17 +749,17 @@ const OperatorPage: React.FC = () => {
                         step={0.01}
                         value={extra.price}
                         onChange={e => updateExtraField(extra.id, 'price', Number(e.target.value))}
-                        className="w-16 text-center border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#7ED957] focus:border-[#7ED957] transition-all bg-white"
+                        className="w-16 text-center border border-[#D9D9D9] rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-[#3B82F6] transition-all bg-white"
                       />
                     </span>
-                    <span className="flex items-center gap-1 text-sm text-[#18446B]">
+                    <span className="flex items-center gap-1 text-sm text-[#1F526B]">
                       Estoque:
                       <input
                         type="number"
                         min={0}
                         value={extra.stock}
                         onChange={e => updateExtraField(extra.id, 'stock', Number(e.target.value))}
-                        className="w-14 text-center border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#7ED957] focus:border-[#7ED957] transition-all bg-white"
+                        className="w-14 text-center border border-[#D9D9D9] rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-[#3B82F6] transition-all bg-white"
                       />
                     </span>
                   </div>
@@ -704,12 +770,48 @@ const OperatorPage: React.FC = () => {
                         onChange={() => toggleExtra(extra.id)}
                       className="sr-only"
                       />
-                    <div className={`w-11 h-6 rounded-full transition-colors duration-200 ${extra.isActive ? 'bg-[#7ED957]' : 'bg-gray-300'}`}></div>
+                    <div className={`w-11 h-6 rounded-full transition-colors duration-200 ${extra.isActive ? 'bg-[#3B82F6]' : 'bg-[#D9D9D9]'}`}></div>
                     <div className={`absolute ml-1 mt-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${extra.isActive ? 'translate-x-5' : ''}`}></div>
-                    <span className="text-sm text-[#18446B] font-medium">Toggle</span>
+                    <span className="text-sm text-[#1F526B] font-medium">Toggle</span>
                     </label>
                 </div>
               ))}
+            </div>
+          </section>
+
+          {/* Métodos de Pagamento */}
+          <section>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Métodos de Pagamento</h3>
+            <div className="flex flex-col md:flex-row gap-4">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={paymentModes.includes('none')}
+                  onChange={() => togglePaymentMode('none')}
+                  className="w-5 h-5 text-primary bg-gray-100 border-gray-300 rounded"
+                />
+                Nenhum (Gerenciamento de Tickets)
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={paymentModes.includes('mercadopago')}
+                  onChange={() => togglePaymentMode('mercadopago')}
+                  disabled={paymentModes.includes('none')}
+                  className="w-5 h-5 text-primary bg-gray-100 border-gray-300 rounded"
+                />
+                Mercado&nbsp;Pago
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={paymentModes.includes('sicredi')}
+                  onChange={() => togglePaymentMode('sicredi')}
+                  disabled={paymentModes.includes('none')}
+                  className="w-5 h-5 text-primary bg-gray-100 border-gray-300 rounded"
+                />
+                Sicredi (Maquininha)
+              </label>
             </div>
           </section>
 
@@ -717,7 +819,7 @@ const OperatorPage: React.FC = () => {
           <div className="flex justify-between pt-8 border-t mt-8">
             <button 
               onClick={() => setCurrentStep('name')}
-              className="px-6 py-2 border border-gray-400 text-gray-700 rounded-lg bg-white hover:bg-gray-100 transition-all font-semibold"
+              className="px-6 py-2 border border-accent text-text rounded-lg bg-white hover:bg-accent/50 transition-all font-semibold hover:shadow-md"
             >
               Voltar
             </button>
@@ -745,6 +847,7 @@ const OperatorPage: React.FC = () => {
                     stock: x.stock,
                     price: x.price,
                   })),
+                  payment_modes: paymentModes,
                 };
                 try {
                   await saveOperationConfig(configPayload);
@@ -754,7 +857,7 @@ const OperatorPage: React.FC = () => {
                   alert('Erro ao salvar configuração da operação!');
                 }
               }}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg font-semibold shadow hover:bg-green-700 active:scale-95 transition-all"
+              className="px-6 py-2 bg-[#3B82F6] text-white rounded-lg font-semibold shadow-lg hover:bg-[#2563EB] active:scale-95 transition-all hover:shadow-xl"
             >
               Salvar e Continuar
             </button>
@@ -765,8 +868,7 @@ const OperatorPage: React.FC = () => {
             onClose={closeModal}
             initialData={editingService || undefined}
             onSubmit={async (data)=>{
-              console.log('ServiceModal onSubmit - data recebido:', data);
-              console.log('ServiceModal onSubmit - tenantId:', tenantId);
+              
               
               if(editingService){
                 try {
@@ -788,20 +890,12 @@ const OperatorPage: React.FC = () => {
                   try {
                     const eqData = await fetchEquipments({ tenant_id: tenantId });
                     setEquipments((eqData.items || eqData).map((eq: any)=>({
-                      id:eq.id,
-                      name:eq.name||eq.identifier,
-                      type:eq.type,
+                                              id: eq.id,
+                        name: eq.name || eq.identifier,
+                      type: eq.type,
                       serviceId: eq.service_id,
-                      count:1,
-                      isActive:true,
-                    })));
-                    console.log('Equipamentos carregados:', (eqData.items || eqData).map((eq: any)=>({
-                      id:eq.id,
-                      name:eq.name||eq.identifier,
-                      type:eq.type,
-                      serviceId: eq.service_id,
-                      count:1,
-                      isActive:true,
+                      count: 1,
+                      isActive: true,
                     })));
                   }catch{}
                 } catch(err){
@@ -816,8 +910,7 @@ const OperatorPage: React.FC = () => {
             onClose={closeModal}
             initialData={editingExtra || undefined}
             onSubmit={async (data)=>{
-              console.log('ExtraModal onSubmit - data recebido:', data);
-              console.log('ExtraModal onSubmit - tenantId:', tenantId);
+
               
               if(editingExtra){
                 try {
@@ -849,8 +942,7 @@ const OperatorPage: React.FC = () => {
 
   // Renderizar etapa de operação
   const renderOperationStep = () => {
-    console.log('Tickets recebidos:', tickets);
-    console.log('Tickets com status in_queue:', tickets.filter(t => t.status === 'in_queue'));
+
 
     const queuedTickets = tickets.filter(ticket => ticket.status === 'in_queue');
     // Usar myTickets diretamente do hook ao invés de filtrar manualmente
@@ -923,12 +1015,23 @@ const OperatorPage: React.FC = () => {
           </div>
         </header>
         {/* Resumo visual */}
+        <div className="bg-white p-6 rounded-xl shadow flex flex-col gap-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold mb-2">Resumo Visual</h2>
+            <button
+              onClick={refetch}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              🔄 Atualizar
+            </button>
+          </div>
         <ResumoVisual
           servicos={services.filter(s => s.isActive).length}
           equipamentos={equipments.filter(e => e.isActive).length}
           extras={extras.filter(e => e.isActive).length}
           tickets={myTickets.length}
         />
+        </div>
         {/* Seleção de Equipamentos */}
         <section className="bg-white p-6 rounded-xl shadow flex flex-col gap-4">
           <h2 className="text-xl font-semibold mb-2">Selecione um Equipamento</h2>
@@ -945,14 +1048,66 @@ const OperatorPage: React.FC = () => {
         </section>
 
         {/* Fila e Meus Tickets */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid gap-6">
           {/* Fila */}
           <section className="bg-white p-6 rounded-xl shadow flex flex-col gap-4">
+            <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold mb-2">Fila</h2>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
+                    queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+                  }}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                >
+                  🔄 Atualizar Fila
+                </button>
+                <button
+                  onClick={async () => {
+                    // Teste: chamar o primeiro ticket da fila
+                    if (tickets.length > 0) {
+                      const firstTicket = tickets[0];
+                      console.log('🧪 TESTE - Chamando ticket:', firstTicket.id, 'Status:', firstTicket.status);
+                      
+                      // Verificar se o ticket já foi chamado
+                      if (firstTicket.status === 'called') {
+                        console.log('🧪 TESTE - Ticket já foi chamado, pulando...');
+                        alert('Este ticket já foi chamado!');
+                        return;
+                      }
+                      
+                      // Verificar se o ticket está na fila
+                      if (firstTicket.status !== 'in_queue') {
+                        console.log('🧪 TESTE - Ticket não está na fila, pulando...');
+                        alert('Este ticket não está na fila!');
+                        return;
+                      }
+                      
+                      try {
+                        await callTicket(firstTicket.id, 'crioterapia-1');
+                        console.log('🧪 TESTE - Ticket chamado com sucesso');
+                        // Forçar refresh
+                        queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
+                        queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+                      } catch (error) {
+                        console.error('🧪 TESTE - Erro ao chamar ticket:', error);
+                        alert('Erro ao chamar ticket: ' + (error as any)?.message || 'Erro desconhecido');
+                      }
+                    }
+                  }}
+                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                >
+                  🧪 Teste Chamar
+                </button>
+              </div>
+            </div>
             {/* Debug: Log dos tickets recebidos */}
             {console.log('🔍 DEBUG - Tickets recebidos:', tickets)}
             {console.log('🔍 DEBUG - Tickets com status in_queue:', tickets.filter(t => t.status === 'in_queue'))}
             {console.log('🔍 DEBUG - Outros status encontrados:', [...new Set(tickets.map(t => t.status))])}
+            {console.log('🔍 DEBUG - Ticket #38:', tickets.find(t => t.number === '#038' || t.number === '38' || t.ticket_number === 38))}
+            {console.log('🔍 DEBUG - Todos os tickets com pending_payment:', tickets.filter(t => t.status === 'pending_payment'))}
             {tickets.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-gray-400">
                 <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2" /><path d="M8 12h4l3 6" strokeWidth="2" /></svg>
@@ -1004,13 +1159,42 @@ const OperatorPage: React.FC = () => {
                             <span className="bg-blue-50 text-blue-400 rounded-full px-3 py-0.5 text-xs font-medium">{ticket.service?.name}</span>
                           )}
                         </div>
+                        {/* Chips de extras */}
+                        {ticket.extras && ticket.extras.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            {ticket.extras.map((extra, idx) => (
+                              <span key={extra.id || idx} className="bg-green-100 text-green-700 rounded-full px-3 py-0.5 text-xs font-medium shadow-sm">
+                                {extra.name} {extra.quantity > 1 && `(${extra.quantity}x)`}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         <div className="text-xs text-gray-400 mt-1">{ticket.createdAt && new Date(ticket.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
                       </div>
                       <button
                         disabled={callLoading || !selectedEquipment}
                         onClick={async () => {
+                          console.log('🔍 DEBUG - Chamando ticket:', ticket.id, 'com equipamento:', selectedEquipment);
+                          console.log('🔍 DEBUG - Status do ticket:', ticket.status);
+                          
+                          // Verificar se o ticket já foi chamado
+                          if (ticket.status === 'called') {
+                            console.log('🔍 DEBUG - Ticket já foi chamado, pulando...');
+                            alert('Este ticket já foi chamado!');
+                            return;
+                          }
+                          
+                          // Verificar se o ticket está na fila
+                          if (ticket.status !== 'in_queue') {
+                            console.log('🔍 DEBUG - Ticket não está na fila, pulando...');
+                            alert('Este ticket não está na fila!');
+                            return;
+                          }
+                          
                           await callTicket({ ticketId: ticket.id, equipmentId: selectedEquipment });
+                          console.log('🔍 DEBUG - Ticket chamado, refetching...');
                           await refetch();
+                          console.log('🔍 DEBUG - Refetch concluído');
                         }}
                         className="ml-6 px-7 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-400 focus:outline-none transition-all scale-100 group-hover:scale-105 disabled:bg-gray-300 disabled:text-gray-500"
                         aria-label={`Chamar ticket ${ticket.number}`}
@@ -1026,7 +1210,17 @@ const OperatorPage: React.FC = () => {
 
           {/* Meus Tickets */}
           <section className="bg-white p-6 rounded-xl shadow flex flex-col gap-4">
+            <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold mb-2">Meus Tickets</h2>
+              <button
+                onClick={() => {
+                  queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+                }}
+                className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors"
+              >
+                🔄
+              </button>
+            </div>
             {myTickets.length === 0 ? (
               <div className="text-gray-400 text-center py-8">Nenhum ticket em atendimento</div>
             ) : (
@@ -1064,12 +1258,36 @@ const OperatorPage: React.FC = () => {
                     <div className="flex-1 flex flex-col gap-1 md:gap-2 w-full">
                       <div className="font-semibold text-base md:text-lg text-gray-800 break-words">{ticket.customer_name}</div>
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {ticket.services?.map(s => (
-                          <span key={s.id} className="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full text-xs font-medium">
-                            {s.name}
+                        {ticket.services?.map((s, idx) => (
+                          <span key={s.id || idx} className="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                            {s.service?.name || s.name || 'Serviço'}
                           </span>
                         ))}
                       </div>
+                      {/* Chips de extras */}
+                      {ticket.extras && ticket.extras.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {ticket.extras.map((extra, idx) => (
+                            <span key={extra.id || idx} className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                              {extra.extra?.name || extra.name || 'Extra'} {extra.quantity > 1 && `(${extra.quantity}x)`}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {/* Cálculo do valor total */}
+                      {ticket.services && ticket.extras && (
+                        <div className="mt-2 p-2 bg-blue-50 rounded-lg">
+                          <div className="text-sm font-semibold text-blue-800 mb-1">Valor Total:</div>
+                          <div className="text-xs text-blue-600">
+                            {(() => {
+                              const servicesTotal = ticket.services.reduce((sum, s) => sum + (s.price || 0), 0);
+                              const extrasTotal = ticket.extras.reduce((sum, e) => sum + ((e.price || 0) * (e.quantity || 1)), 0);
+                              const total = servicesTotal + extrasTotal;
+                              return `R$ ${total.toFixed(2).replace('.', ',')}`;
+                            })()}
+                          </div>
+                        </div>
+                      )}
                       <div className="text-xs text-gray-400 mt-1">
                         {ticket.calledAt ? `Chamado há ${formatDistanceToNow(new Date(ticket.calledAt), { addSuffix: true, locale: ptBR })}` : ""}
                       </div>
@@ -1135,9 +1353,120 @@ const OperatorPage: React.FC = () => {
                         Iniciar
                       </button>
                     )}
+                    {ticket.status === 'pending_payment' && ticket.payment_confirmed !== true && (
+                      <button
+                        className="w-full sm:w-auto px-5 py-2 bg-green-500 text-white rounded-lg font-bold shadow hover:bg-green-600 focus:ring-2 focus:ring-green-400 focus:outline-none transition-all disabled:bg-gray-300 disabled:text-gray-500"
+                        aria-label={`Confirmar pagamento do ticket ${ticket.number}`}
+                        disabled={confirmLoading}
+                        onClick={async () => {
+                          await confirmPayment({ ticketId: ticket.id });
+                          await refetch();
+                        }}
+                      >
+                        {confirmLoading ? 'Confirmando...' : 'Confirmar Pagamento'}
+                      </button>
+                    )}
+                    {ticket.status === 'paid' && (
+                      <button
+                        className="mt-4 md:mt-0 w-full md:w-auto px-7 py-3 bg-green-500 text-white rounded-xl font-bold shadow-lg hover:bg-green-600 focus:ring-2 focus:ring-green-400 focus:outline-none transition-all scale-100 group-hover:scale-105 disabled:bg-gray-300 disabled:text-gray-500"
+                        aria-label={`Mover ticket ${ticket.number} para fila`}
+                        disabled={moveToQueueLoading}
+                        onClick={async () => {
+                          await moveToQueue({ ticketId: ticket.id });
+                          await refetch();
+                        }}
+                      >
+                        {moveToQueueLoading ? 'Movendo...' : 'Mover para Fila'}
+                      </button>
+                    )}
                   </div>
                 );
               })
+            )}
+          </section>
+
+          {/* Tickets Aguardando Confirmação de Pagamento */}
+          <section className="bg-white p-6 rounded-xl shadow flex flex-col gap-4">
+            <h2 className="text-xl font-semibold mb-2">Aguardando Confirmação de Pagamento</h2>
+            {pendingPaymentTickets.length === 0 ? (
+              <div className="text-gray-400 text-center py-8">Nenhum ticket aguardando confirmação</div>
+            ) : (
+              <div className="grid gap-4">
+                {pendingPaymentTickets.map(ticket => {
+                  return (
+                    <div
+                      key={ticket.id}
+                      className="flex flex-col md:flex-row md:items-center justify-between rounded-2xl p-4 md:p-5 shadow-md hover:shadow-xl transition-transform hover:-translate-y-1 group focus-within:ring-2 focus-within:ring-orange-400 bg-orange-50 border-2 border-orange-200"
+                      tabIndex={0}
+                      aria-label={`Ticket ${ticket.number}`}
+                    >
+                      <div className="flex flex-row md:flex-col items-center gap-4 md:gap-2 w-full md:w-auto mb-2 md:mb-0">
+                        <div className="flex flex-col items-center">
+                          <span className="text-xl md:text-2xl font-bold flex items-center gap-1 text-orange-700">
+                            <MdConfirmationNumber className="inline text-2xl md:text-3xl" />
+                            {ticket.number}
+                          </span>
+                          <span className="text-xs font-bold px-2 py-1 rounded-full mt-1 bg-orange-200 text-orange-800">
+                            Aguardando Pagamento
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex-1 flex flex-col gap-1 md:gap-2 w-full">
+                        <div className="font-semibold text-base md:text-lg text-gray-800 break-words">{ticket.customer_name}</div>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {ticket.services?.map((s, idx) => (
+                            <span key={s.id || idx} className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                              {s.service?.name || s.name || 'Serviço'}
+                            </span>
+                          ))}
+                        </div>
+                        {/* Chips de extras */}
+                        {ticket.extras && ticket.extras.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {ticket.extras.map((extra, idx) => (
+                              <span key={extra.id || idx} className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                                {extra.extra?.name || extra.name || 'Extra'} {extra.quantity > 1 && `(${extra.quantity}x)`}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {/* Cálculo do valor total */}
+                        {ticket.services && ticket.extras && (
+                          <div className="mt-2 p-2 bg-blue-50 rounded-lg">
+                            <div className="text-sm font-semibold text-blue-800 mb-1">Valor Total:</div>
+                            <div className="text-xs text-blue-600">
+                              {(() => {
+                                const servicesTotal = ticket.services.reduce((sum, s) => sum + (s.price || 0), 0);
+                                const extrasTotal = ticket.extras.reduce((sum, e) => sum + ((e.price || 0) * (e.quantity || 1)), 0);
+                                const total = servicesTotal + extrasTotal;
+                                return `R$ ${total.toFixed(2).replace('.', ',')}`;
+                              })()}
+                            </div>
+                          </div>
+                        )}
+                        <div className="text-xs text-gray-400 mt-1">
+                          {ticket.createdAt && new Date(ticket.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2 mt-4 md:mt-0">
+                        {ticket.status === 'pending_payment' && ticket.payment_confirmed !== true && (
+                          <button
+                            className="w-full sm:w-auto px-5 py-2 bg-green-500 text-white rounded-lg font-bold shadow hover:bg-green-600 focus:ring-2 focus:ring-green-400 focus:outline-none transition-all disabled:bg-gray-300 disabled:text-gray-500"
+                            aria-label={`Confirmar pagamento do ticket ${ticket.number}`}
+                            disabled={confirmLoading}
+                            onClick={async () => {
+                              await confirmPayment({ ticketId: ticket.id });
+                              await refetch();
+                            }}
+                          >
+                            {confirmLoading ? 'Confirmando...' : 'Confirmar Pagamento'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </section>
         </div>

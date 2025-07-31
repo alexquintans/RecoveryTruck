@@ -49,9 +49,9 @@ const WelcomePage: React.FC = () => {
       >
         <motion.div variants={itemVariants}>
           <img 
-            src="/logo.png" 
+            src="/logo.png?v=2" 
             alt="RecoveryTruck Logo" 
-            className="w-48 h-48 mx-auto mb-8"
+            className="w-64 h-auto mx-auto mb-8"
             onError={(e) => {
               e.currentTarget.src = 'https://via.placeholder.com/200?text=RecoveryTruck';
             }}
