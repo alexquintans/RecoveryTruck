@@ -253,6 +253,51 @@ async def debug_endpoint():
         "cors_origins": os.getenv("CORS_ORIGINS", "NOT_SET")
     }
 
+@app.get("/migrate", summary="🗄️ Executar migrations", description="Executar migrations manualmente")
+async def migrate_endpoint():
+    """Endpoint para executar migrations manualmente."""
+    import os
+    import subprocess
+    
+    try:
+        print("🗄️ Executando migrations manualmente...")
+        
+        # Definir variável de ambiente para o Alembic
+        env = os.environ.copy()
+        env['DATABASE_URL'] = os.getenv('DATABASE_URL', '')
+        
+        result = subprocess.run(
+            ["alembic", "upgrade", "head"],
+            cwd="apps/api",
+            capture_output=True,
+            text=True,
+            env=env
+        )
+        
+        if result.returncode == 0:
+            return {
+                "message": "Migrations executadas com sucesso!",
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": True,
+                "stdout": result.stdout,
+                "stderr": result.stderr
+            }
+        else:
+            return {
+                "message": "Erro ao executar migrations",
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": False,
+                "stdout": result.stdout,
+                "stderr": result.stderr
+            }
+    except Exception as e:
+        return {
+            "message": f"Erro ao executar migrations: {str(e)}",
+            "timestamp": datetime.utcnow().isoformat(),
+            "success": False,
+            "error": str(e)
+        }
+
 @app.get("/health", summary="🏥 Health check", description="Verificação de saúde da API")
 async def health_check():
     """Health check endpoint simplificado."""
