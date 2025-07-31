@@ -165,33 +165,21 @@ async def websocket_simple_direct(websocket: WebSocket):
 
 @app.on_event("startup")
 async def startup_event():
-    """Evento executado na inicialização da aplicação"""
-    print("🚀 Iniciando Sistema de Totem API...")
-    print("📄 Arquivos carregados no sys.modules:")
-    for name, module in sys.modules.items():
-        if module and hasattr(module, "__file__") and module.__file__:
-            if "models" in module.__file__:
-                print(f"   {name}: {module.__file__}")
+    """Evento de startup com delay para garantir inicialização completa."""
+    import time
+    print("🚀 Iniciando API completa...")
+    time.sleep(3)  # Aguarda 3 segundos para garantir inicialização
+    print("✅ API completa pronta!")
     
-    print(f"📊 Status dos Routers:")
-    print(f"   ✅ Carregados: {len(loaded_routers)}")
-    print(f"   ❌ Com erro: {len(router_errors)}")
+    # Log dos routers carregados
+    print(f"📊 Routers carregados: {len(loaded_routers)}/{len(AVAILABLE_ROUTERS)}")
+    for router_name in loaded_routers:
+        print(f"  ✅ {router_name}")
     
-    for name in loaded_routers:
-        print(f"   ✅ {name}")
-    
-    for name, error in router_errors.items():
-        print(f"   ❌ {name}: {error}")
-    
-    # Criar tabelas do banco se disponível
-    # if DATABASE_AVAILABLE:
-    #     try:
-    #         Base.metadata.create_all(bind=engine)
-    #         print("✅ Tabelas do banco de dados criadas/verificadas")
-    #     except Exception as e:
-    #         print(f"⚠️ Erro ao criar tabelas: {e}")
-    
-    print("✅ API inicializada com sucesso!")
+    if router_errors:
+        print("⚠️ Routers com erro:")
+        for router_name, error in router_errors.items():
+            print(f"  ❌ {router_name}: {error}")
 
 @app.get("/", summary="🏪 Página inicial", description="Endpoint raiz da API do Sistema de Totem")
 async def root():
