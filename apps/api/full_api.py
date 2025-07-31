@@ -34,6 +34,7 @@ for router_name in AVAILABLE_ROUTERS:
     except Exception as e:
         router_errors[router_name] = str(e)
         print(f"⚠️ Erro ao carregar router {router_name}: {e}")
+        # NÃO FALHAR - apenas continuar
 
 # Importação direta do router websocket para garantir que está disponível
 try:
@@ -44,8 +45,9 @@ try:
         loaded_routers["websocket"] = websocket.router
         print("✅ Router websocket adicionado manualmente")
 except Exception as e:
-    print(f"❌ Erro ao importar router websocket diretamente: {e}")
+    print(f"⚠️ Erro ao importar router websocket diretamente: {e}")
     router_errors["websocket"] = str(e)
+    # NÃO FALHAR - apenas continuar
 
 # Tentar importar dependências do banco
 try:
@@ -55,6 +57,7 @@ try:
 except ImportError as e:
     print(f"⚠️ Database não pôde ser importado: {e}")
     DATABASE_AVAILABLE = False
+    # NÃO FALHAR - apenas continuar
 
 # Configuração da aplicação - VERSÃO SIMPLIFICADA PARA TESTE
 app = FastAPI(
@@ -98,9 +101,10 @@ for router_name, router in loaded_routers.items():
     config = router_configs.get(router_name, {"prefix": f"/{router_name}", "tags": [router_name]})
     try:
         app.include_router(router, prefix=config["prefix"], tags=config["tags"])
-        print(f"✅ Router {router_name} registrado em {config['prefix']}")
+        print(f"✅ Router {router_name} registrado com sucesso")
     except Exception as e:
-        print(f"❌ Erro ao registrar router {router_name}: {e}")
+        print(f"⚠️ Erro ao registrar router {router_name}: {e}")
+        # NÃO FALHAR - apenas continuar
 
 # Endpoint WebSocket de teste direto na aplicação principal
 @app.websocket("/ws-test")
