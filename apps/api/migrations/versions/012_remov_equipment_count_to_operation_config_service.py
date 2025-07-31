@@ -6,7 +6,7 @@ import sqlalchemy as sa
 
 # Revisão e dependências
 revision = '012'
-down_revision = '011'
+down_revision = '010'
 branch_labels = None
 depends_on = None
 
