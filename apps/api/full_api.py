@@ -312,7 +312,7 @@ async def seed_endpoint():
         env['DATABASE_URL'] = os.getenv('DATABASE_URL', '')
         
         # Ler o arquivo seed_data.sql
-        with open('seed_data.sql', 'r', encoding='utf-8') as f:
+        with open('apps/api/seed_data.sql', 'r', encoding='utf-8') as f:
             sql_content = f.read()
         
         # Executar via psql
