@@ -1,5 +1,5 @@
 {
-  "buildCommand": "pnpm install && pnpm --filter totem-client build",
+  "buildCommand": "pnpm install && pnpm --filter panel-client build",
   "outputDirectory": "dist",
   "framework": "vite",
   "installCommand": "pnpm install",
