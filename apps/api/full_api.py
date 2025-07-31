@@ -176,16 +176,23 @@ async def startup_event():
     if os.getenv("ENVIRONMENT") == "production":
         try:
             print("🗄️ Executando migrations do banco de dados...")
+            # Definir variável de ambiente para o Alembic
+            env = os.environ.copy()
+            env['DATABASE_URL'] = os.getenv('DATABASE_URL', '')
+            
             result = subprocess.run(
                 ["alembic", "upgrade", "head"],
                 cwd="apps/api",
                 capture_output=True,
-                text=True
+                text=True,
+                env=env
             )
             if result.returncode == 0:
                 print("✅ Migrations executadas com sucesso!")
+                print(f"📝 Output: {result.stdout}")
             else:
                 print(f"⚠️ Erro nas migrations: {result.stderr}")
+                print(f"📝 Output: {result.stdout}")
         except Exception as e:
             print(f"⚠️ Erro ao executar migrations: {e}")
     
