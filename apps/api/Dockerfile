@@ -27,5 +27,5 @@ ENV PYTHONPATH=/app
 # Expor a porta (Railway usa $PORT)
 EXPOSE 8000
 
-# Comando de inicialização com porta dinâmica
-CMD uvicorn apps.api.full_api:app --host 0.0.0.0 --port 8000 
+# Comando de inicialização com porta dinâmica - usando API simplificada
+CMD uvicorn apps.api.simple_full_api:app --host 0.0.0.0 --port 8000 
