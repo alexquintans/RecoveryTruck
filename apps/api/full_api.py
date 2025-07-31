@@ -240,6 +240,19 @@ async def test_endpoint():
     """Endpoint simples para teste."""
     return {"message": "API is working!", "timestamp": datetime.utcnow().isoformat()}
 
+@app.get("/debug", summary="🔍 Debug endpoint", description="Endpoint para debug das variáveis de ambiente")
+async def debug_endpoint():
+    """Endpoint para debug das variáveis de ambiente."""
+    import os
+    return {
+        "message": "Debug info",
+        "timestamp": datetime.utcnow().isoformat(),
+        "environment": os.getenv("ENVIRONMENT", "NOT_SET"),
+        "database_url": "SET" if os.getenv("DATABASE_URL") else "NOT_SET",
+        "jwt_secret": "SET" if os.getenv("JWT_SECRET") else "NOT_SET",
+        "cors_origins": os.getenv("CORS_ORIGINS", "NOT_SET")
+    }
+
 @app.get("/health", summary="🏥 Health check", description="Verificação de saúde da API")
 async def health_check():
     """Health check endpoint simplificado."""
