@@ -208,40 +208,21 @@ async def root():
         }
     }
 
+@app.get("/test", summary="🧪 Test endpoint", description="Endpoint simples para teste")
+async def test_endpoint():
+    """Endpoint simples para teste."""
+    return {"message": "API is working!", "timestamp": datetime.utcnow().isoformat()}
+
 @app.get("/health", summary="🏥 Health check", description="Verificação de saúde da API")
 async def health_check():
-    """Health check endpoint com informações detalhadas."""
-    
-    status = "healthy"
-    details = {
-        "timestamp": datetime.utcnow().isoformat(),
-        "version": "1.0.0",
-        "environment": "docker-development",
-        "components": {
-            "api": "✅ Running",
-            "routers": f"✅ {len(loaded_routers)}/{len(AVAILABLE_ROUTERS)} loaded",
-            "database": "✅ Available" if DATABASE_AVAILABLE else "⚠️ Not available"
-        },
-        "loaded_routers": list(loaded_routers.keys()),
-        "router_errors": router_errors
-    }
-    
-    # Verificar conexão com banco se disponível
-    if DATABASE_AVAILABLE:
-        try:
-            with engine.connect() as conn:
-                conn.execute("SELECT 1")
-            details["components"]["database"] = "✅ Connected and responsive"
-        except Exception as e:
-            details["components"]["database"] = f"❌ Connection error: {str(e)}"
-            status = "degraded"
-    
-    if router_errors:
-        status = "degraded"
+    """Health check endpoint simplificado."""
     
     return {
-        "status": status,
-        **details
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "version": "1.0.0",
+        "environment": "production",
+        "message": "API is running!"
     }
 
 @app.get("/info", summary="ℹ️ Informações da API", description="Informações detalhadas sobre a API e recursos")
