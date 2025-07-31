@@ -172,8 +172,12 @@ async def startup_event():
     
     print("🚀 Iniciando API completa...")
     
-    # Executar migrations se estiver em produção
-    if os.getenv("ENVIRONMENT") == "production":
+    # Debug: verificar variáveis de ambiente
+    print(f"🔍 DEBUG - ENVIRONMENT: {os.getenv('ENVIRONMENT')}")
+    print(f"🔍 DEBUG - DATABASE_URL: {'SET' if os.getenv('DATABASE_URL') else 'NOT_SET'}")
+    
+    # Executar migrations sempre que DATABASE_URL estiver disponível
+    if os.getenv("DATABASE_URL"):
         try:
             print("🗄️ Executando migrations do banco de dados...")
             # Definir variável de ambiente para o Alembic
@@ -195,6 +199,8 @@ async def startup_event():
                 print(f"📝 Output: {result.stdout}")
         except Exception as e:
             print(f"⚠️ Erro ao executar migrations: {e}")
+    else:
+        print("⚠️ DATABASE_URL não encontrada, pulando migrations")
     
     time.sleep(3)  # Aguarda 3 segundos para garantir inicialização
     print("✅ API completa pronta!")
