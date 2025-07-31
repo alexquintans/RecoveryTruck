@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 import os
+import time
 
 app = FastAPI(
     title="🏪 Sistema de Totem - API Simplificada",
@@ -17,6 +18,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def startup_event():
+    """Delay no startup para garantir que tudo está pronto."""
+    print("🚀 Iniciando aplicação...")
+    time.sleep(5)  # Aguarda 5 segundos
+    print("✅ Aplicação pronta!")
 
 @app.get("/")
 async def root():
