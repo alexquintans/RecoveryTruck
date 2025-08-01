@@ -28,6 +28,24 @@ const DeleteIcon = () => (
   </svg>
 );
 
+const TrashIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      strokeWidth={2} 
+      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" 
+    />
+  </svg>
+);
+
+const ModernDeleteIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 9l-6 6m0-6l6 6" />
+  </svg>
+);
+
 // Ícones SVG utilitários
 const ServiceIcon = () => (
   <svg width="28" height="28" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#3B82F6" /><path d="M8 12h8" stroke="white" strokeWidth="2" strokeLinecap="round" /></svg>
@@ -605,7 +623,7 @@ const OperatorPage: React.FC = () => {
                 >
                   <div className="flex items-center gap-3 mb-2">
                     <ServiceIcon />
-                    <div>
+                    <div className="flex-1">
                       <input
                         type="text"
                         value={service.name}
@@ -616,6 +634,13 @@ const OperatorPage: React.FC = () => {
                         <span className={`text-xs font-semibold px-3 py-1 rounded-full ${service.isActive ? 'bg-[#3B82F6] text-white' : 'bg-[#D9D9D9] text-[#666666]'}`}>{service.isActive ? 'Ativo' : 'Inativo'}</span>
                       </div>
                     </div>
+                    <button
+                      onClick={() => deleteService(service.id)}
+                      className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-all duration-200 group"
+                      title="Excluir serviço"
+                    >
+                      <ModernDeleteIcon />
+                    </button>
                   </div>
                   <div className="flex gap-4 mt-2">
                     <span className="flex items-center gap-1 text-sm text-[#1F526B]">
@@ -728,7 +753,7 @@ const OperatorPage: React.FC = () => {
                 >
                   <div className="flex items-center gap-3 mb-2">
                     <ExtraIcon />
-                    <div>
+                    <div className="flex-1">
                       <input
                         type="text"
                         value={extra.name}
@@ -737,8 +762,15 @@ const OperatorPage: React.FC = () => {
                       />
                       <div className="flex items-center gap-2 mt-1">
                         <span className={`text-xs font-semibold px-3 py-1 rounded-full ${extra.isActive ? 'bg-[#3B82F6] text-white' : 'bg-[#D9D9D9] text-[#666666]'}`}>{extra.isActive ? 'Ativo' : 'Inativo'}</span>
+                      </div>
                     </div>
-                  </div>
+                    <button
+                      onClick={() => deleteExtra(extra.id)}
+                      className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-all duration-200 group"
+                      title="Excluir item extra"
+                    >
+                      <ModernDeleteIcon />
+                    </button>
                   </div>
                   <div className="flex gap-4 mt-2">
                     <span className="flex items-center gap-1 text-sm text-[#1F526B]">
@@ -1059,46 +1091,12 @@ const OperatorPage: React.FC = () => {
                     queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
                     queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
                   }}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                  className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all duration-200 group"
+                  title="Atualizar fila"
                 >
-                  🔄 Atualizar Fila
-                </button>
-                <button
-                  onClick={async () => {
-                    // Teste: chamar o primeiro ticket da fila
-                    if (tickets.length > 0) {
-                      const firstTicket = tickets[0];
-                      console.log('🧪 TESTE - Chamando ticket:', firstTicket.id, 'Status:', firstTicket.status);
-                      
-                      // Verificar se o ticket já foi chamado
-                      if (firstTicket.status === 'called') {
-                        console.log('🧪 TESTE - Ticket já foi chamado, pulando...');
-                        alert('Este ticket já foi chamado!');
-                        return;
-                      }
-                      
-                      // Verificar se o ticket está na fila
-                      if (firstTicket.status !== 'in_queue') {
-                        console.log('🧪 TESTE - Ticket não está na fila, pulando...');
-                        alert('Este ticket não está na fila!');
-                        return;
-                      }
-                      
-                      try {
-                        await callTicket(firstTicket.id, 'crioterapia-1');
-                        console.log('🧪 TESTE - Ticket chamado com sucesso');
-                        // Forçar refresh
-                        queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
-                        queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
-                      } catch (error) {
-                        console.error('🧪 TESTE - Erro ao chamar ticket:', error);
-                        alert('Erro ao chamar ticket: ' + (error as any)?.message || 'Erro desconhecido');
-                      }
-                    }
-                  }}
-                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-                >
-                  🧪 Teste Chamar
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
                 </button>
               </div>
             </div>

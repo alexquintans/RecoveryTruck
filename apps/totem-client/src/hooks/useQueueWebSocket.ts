@@ -37,7 +37,7 @@ export function useQueueWebSocket({
 
   // Construir URL do WebSocket
   const baseWs = (import.meta as any).env?.VITE_WS_URL || 'ws://localhost:8000/ws';
-  const wsUrl = `${baseWs}/${tenantId}/totem`;
+  const wsUrl = `${baseWs}?tenant_id=${tenantId}&client_type=totem`;
 
   // Handler para mensagens do WebSocket
   const handleMessage = useCallback((data: QueueUpdate) => {

@@ -95,8 +95,8 @@ export function useTicketQueue() {
   const tenantId = user?.tenant_id || (import.meta as any).env?.VITE_TENANT_ID || '7f02a566-2406-436d-b10d-90ecddd3fe2d';
   const token = getAuthToken();
   
-  // Corrigir URL do WebSocket para usar a nova estrutura com path parameters
-  const wsUrl = `ws://localhost:8000/ws/${tenantId}/operator${token ? `?token=${token}` : ''}`;
+  // Corrigir URL do WebSocket para usar query parameters
+  const wsUrl = `${baseWs}?tenant_id=${tenantId}&client_type=operator${token ? `&token=${token}` : ''}`;
 
 
 

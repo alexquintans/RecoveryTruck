@@ -91,6 +91,8 @@ app.add_middleware(
     allow_headers=["*"],
     # Headers específicos para WebSocket
     expose_headers=["*"],
+    # Configurações específicas para WebSocket
+    allow_websockets=True,
 )
 
 # Registrar routers carregados
@@ -152,6 +154,8 @@ async def websocket_simple_direct(websocket: WebSocket):
     print(f"🔍 DEBUG - Headers: {websocket.headers}")
     print(f"🔍 DEBUG - URL: {websocket.url}")
     print(f"🔍 DEBUG - Query params: {websocket.query_params}")
+    print(f"🔍 DEBUG - Origin: {websocket.headers.get('origin')}")
+    print(f"🔍 DEBUG - User-Agent: {websocket.headers.get('user-agent')}")
     
     try:
         await websocket.accept()
@@ -163,6 +167,16 @@ async def websocket_simple_direct(websocket: WebSocket):
         
         print(f"🔍 DEBUG - tenant_id: {tenant_id}")
         print(f"🔍 DEBUG - client_type: {client_type}")
+        
+        # Enviar mensagem de confirmação
+        await websocket.send_json({
+            "type": "connection_confirmed",
+            "data": {
+                "tenant_id": tenant_id,
+                "client_type": client_type,
+                "message": "Conexão estabelecida com sucesso"
+            }
+        })
         
         while True:
             data = await websocket.receive_text()
