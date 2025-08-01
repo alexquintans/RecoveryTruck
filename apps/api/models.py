@@ -58,6 +58,7 @@ class Equipment(Base):
 
 class ConfigNotification(Base):
     __tablename__ = "config_notifications"
+    __table_args__ = {'extend_existing': True}
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     slack_webhook = Column(Text)
@@ -67,6 +68,7 @@ class ConfigNotification(Base):
 
 class ConfigWebhook(Base):
     __tablename__ = "config_webhooks"
+    __table_args__ = {'extend_existing': True}
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     target_url = Column(Text, nullable=False)
@@ -76,6 +78,7 @@ class ConfigWebhook(Base):
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
+    __table_args__ = {'extend_existing': True}
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     user_id = Column(UUID(as_uuid=True), ForeignKey("operators.id"))
@@ -91,6 +94,7 @@ class AuditLog(Base):
 
 class Tenant(Base):
     __tablename__ = "tenants"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(100), nullable=False)
@@ -108,6 +112,7 @@ class Tenant(Base):
 
 class Service(Base):
     __tablename__ = "services"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
@@ -129,6 +134,7 @@ class Service(Base):
 class PaymentSession(Base):
     """Sessão de pagamento criada quando cliente escolhe serviço, antes do pagamento ser confirmado"""
     __tablename__ = "payment_sessions"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
@@ -158,6 +164,7 @@ class PaymentSession(Base):
 
 class Ticket(Base):
     __tablename__ = "tickets"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
@@ -212,6 +219,7 @@ class Ticket(Base):
 
 class Operator(Base):
     __tablename__ = "operators"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
@@ -228,6 +236,7 @@ class Operator(Base):
 
 class Consent(Base):
     __tablename__ = "consents"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
@@ -244,6 +253,7 @@ class Consent(Base):
 
 class OperatorSession(Base):
     __tablename__ = "operator_sessions"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     operator_id = Column(UUID(as_uuid=True), ForeignKey("operators.id"), nullable=False)
@@ -259,6 +269,7 @@ class OperatorSession(Base):
 
 class Extra(Base):
     __tablename__ = "extras"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
@@ -277,6 +288,7 @@ class Extra(Base):
 
 class OperationConfig(Base):
     __tablename__ = 'operation_config'
+    __table_args__ = {'extend_existing': True}
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey('tenants.id'), nullable=False)
     operator_id = Column(UUID(as_uuid=True), ForeignKey('operators.id'), nullable=False)
@@ -294,6 +306,7 @@ class OperationConfig(Base):
 
 class OperationConfigEquipment(Base):
     __tablename__ = 'operation_config_equipments'
+    __table_args__ = {'extend_existing': True}
     id = Column(Integer, primary_key=True, autoincrement=True)
     operation_config_id = Column(UUID(as_uuid=True), ForeignKey('operation_config.id'), nullable=False)
     equipment_id = Column(UUID(as_uuid=True), ForeignKey('equipments.id'), nullable=False)
@@ -305,6 +318,7 @@ class OperationConfigEquipment(Base):
 
 class OperationConfigExtra(Base):
     __tablename__ = 'operation_config_extras'
+    __table_args__ = {'extend_existing': True}
     id = Column(Integer, primary_key=True, autoincrement=True)
     operation_config_id = Column(UUID(as_uuid=True), ForeignKey('operation_config.id'), nullable=False)
     extra_id = Column(UUID(as_uuid=True), ForeignKey('extras.id'), nullable=False)
@@ -317,6 +331,7 @@ class OperationConfigExtra(Base):
 
 class TicketExtra(Base):
     __tablename__ = "ticket_extras"
+    __table_args__ = {'extend_existing': True}
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     ticket_id = Column(UUID(as_uuid=True), ForeignKey("tickets.id", ondelete="CASCADE"), nullable=False)
     extra_id = Column(UUID(as_uuid=True), ForeignKey("extras.id"), nullable=False)
@@ -328,6 +343,7 @@ class TicketExtra(Base):
 
 class OperationStatusModel(Base):
     __tablename__ = "operation_status"
+    __table_args__ = {'extend_existing': True}
     id = Column(Integer, primary_key=True)
     is_operating = Column(Boolean, default=False)
     service_duration = Column(Integer, default=10)
@@ -342,6 +358,7 @@ class OperationStatusModel(Base):
 # NOVO: Modelo associativo entre Ticket e Service
 class TicketService(Base):
     __tablename__ = "ticket_services"
+    __table_args__ = {'extend_existing': True}
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     ticket_id = Column(UUID(as_uuid=True), ForeignKey("tickets.id", ondelete="CASCADE"), nullable=False)
     service_id = Column(UUID(as_uuid=True), ForeignKey("services.id"), nullable=False)
