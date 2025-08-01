@@ -478,6 +478,49 @@ WHERE email = 'admin@exemplo.com';
             "error": str(e)
         }
 
+@app.post("/update-password-hash", summary="🔐 Atualizar hash da senha", description="Atualizar hash da senha do operador admin")
+async def update_password_hash_endpoint():
+    """Endpoint para atualizar hash da senha do operador admin."""
+    try:
+        from apps.api.security import get_password_hash
+        from apps.api.database import get_db
+        from apps.api.models import Operator
+        
+        password = "123456"
+        hash_generated = get_password_hash(password)
+        
+        # Atualizar no banco
+        db = next(get_db())
+        operator = db.query(Operator).filter(Operator.email == "admin@exemplo.com").first()
+        
+        if not operator:
+            return {
+                "message": "Operador não encontrado",
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": False,
+                "error": "Operador admin@exemplo.com não encontrado"
+            }
+        
+        # Atualizar hash
+        operator.password_hash = hash_generated
+        db.commit()
+        
+        return {
+            "message": "Hash atualizado com sucesso!",
+            "timestamp": datetime.utcnow().isoformat(),
+            "success": True,
+            "operator_email": "admin@exemplo.com",
+            "hash_updated": hash_generated,
+            "operator_id": str(operator.id)
+        }
+    except Exception as e:
+        return {
+            "message": f"Erro ao atualizar hash: {str(e)}",
+            "timestamp": datetime.utcnow().isoformat(),
+            "success": False,
+            "error": str(e)
+        }
+
 @app.get("/health", summary="🏥 Health check", description="Verificação de saúde da API")
 async def health_check():
     """Health check endpoint simplificado."""
