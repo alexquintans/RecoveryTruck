@@ -17,8 +17,9 @@ from fastapi.websockets import WebSocket, WebSocketDisconnect
 
 # Lista de routers disponíveis para carregar
 AVAILABLE_ROUTERS = [
-    "websocket", "metrics", "terminals", 
-    "operator_config", "webhooks", "notifications", "customers"
+    "auth", "tickets", "services", "payment_sessions", "webhooks", 
+    "terminals", "metrics", "websocket", "operation", 
+    "operator_config", "notifications", "customers"
 ]
 
 # Dicionário para rastrear routers carregados
@@ -36,17 +37,24 @@ for router_name in AVAILABLE_ROUTERS:
         print(f"⚠️ Erro ao carregar router {router_name}: {e}")
         # NÃO FALHAR - apenas continuar
 
-# Importação direta do router websocket para garantir que está disponível
+# Importação direta dos routers principais para garantir que estão disponíveis
 try:
-    from routers import websocket
-    print("✅ Router websocket importado diretamente")
-    # Garantir que o router websocket está na lista de routers carregados
+    from routers import auth, tickets, services, payment_sessions, websocket
+    print("✅ Routers principais importados diretamente")
+    # Garantir que os routers principais estão na lista de routers carregados
+    if "auth" not in loaded_routers:
+        loaded_routers["auth"] = auth.router
+    if "tickets" not in loaded_routers:
+        loaded_routers["tickets"] = tickets.router
+    if "services" not in loaded_routers:
+        loaded_routers["services"] = services.router
+    if "payment_sessions" not in loaded_routers:
+        loaded_routers["payment_sessions"] = payment_sessions.router
     if "websocket" not in loaded_routers:
         loaded_routers["websocket"] = websocket.router
-        print("✅ Router websocket adicionado manualmente")
+    print("✅ Routers principais adicionados manualmente")
 except Exception as e:
-    print(f"⚠️ Erro ao importar router websocket diretamente: {e}")
-    router_errors["websocket"] = str(e)
+    print(f"⚠️ Erro ao importar routers principais diretamente: {e}")
     # NÃO FALHAR - apenas continuar
 
 # Tentar importar dependências do banco
@@ -56,6 +64,10 @@ try:
     print("✅ Database importado com sucesso")
 except ImportError as e:
     print(f"⚠️ Database não pôde ser importado: {e}")
+    DATABASE_AVAILABLE = False
+    # NÃO FALHAR - apenas continuar
+except Exception as e:
+    print(f"⚠️ Erro ao importar database: {e}")
     DATABASE_AVAILABLE = False
     # NÃO FALHAR - apenas continuar
 
@@ -290,7 +302,7 @@ async def migrate_endpoint():
                 "stdout": result.stdout,
                 "stderr": result.stderr
             }
-        except Exception as e:
+    except Exception as e:
         return {
             "message": f"Erro ao executar migrations: {str(e)}",
             "timestamp": datetime.utcnow().isoformat(),
@@ -325,7 +337,7 @@ async def seed_endpoint():
         )
         
         if result.returncode == 0:
-    return {
+            return {
                 "message": "Dados de seed inseridos com sucesso!",
                 "timestamp": datetime.utcnow().isoformat(),
                 "success": True,
@@ -407,8 +419,8 @@ async def check_data_endpoint():
 async def test_auth_endpoint():
     """Endpoint para testar autenticação diretamente."""
     try:
-        from apps.api.auth import authenticate_operator
-        from apps.api.database import get_db
+        from auth import authenticate_operator
+        from database import get_db
         
         # Testar autenticação
         db = next(get_db())
@@ -448,7 +460,7 @@ async def test_auth_endpoint():
 async def generate_hash_endpoint():
     """Endpoint para gerar hash usando o mesmo método do sistema."""
     try:
-        from apps.api.security import get_password_hash, verify_password
+        from security import get_password_hash, verify_password
         
         password = "123456"
         hash_generated = get_password_hash(password)
@@ -485,6 +497,28 @@ async def update_password_hash_endpoint():
         import subprocess
         import os
         
+        # Verificar se bcrypt está disponível
+        try:
+            import bcrypt
+        except ImportError:
+            return {
+                "message": "Módulo bcrypt não está disponível",
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": False,
+                "error": "bcrypt não instalado"
+            }
+        
+        # Verificar se psycopg2 está disponível
+        try:
+            import psycopg2
+        except ImportError:
+            return {
+                "message": "Módulo psycopg2 não está disponível",
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": False,
+                "error": "psycopg2 não instalado"
+            }
+        
         # Gerar hash usando script externo
         password = "123456"
         
@@ -499,11 +533,9 @@ async def update_password_hash_endpoint():
             }
         
         # Gerar hash usando bcrypt
-        import bcrypt
         hash_generated = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         
         # Atualizar via SQL direto
-        import psycopg2
         from urllib.parse import urlparse
         
         parsed = urlparse(db_url)
@@ -555,7 +587,17 @@ async def update_password_hash_endpoint():
 async def get_operation_config(tenant_id: str):
     """Buscar configuração de operação."""
     try:
-        import psycopg2
+        # Verificar se psycopg2 está disponível
+        try:
+            import psycopg2
+        except ImportError:
+            return {
+                "message": "Módulo psycopg2 não está disponível",
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": False,
+                "error": "psycopg2 não instalado"
+            }
+        
         from urllib.parse import urlparse
         import os
         import json
@@ -675,7 +717,17 @@ async def save_operation_config(
 ):
     """Salvar configuração de operação."""
     try:
-        import psycopg2
+        # Verificar se psycopg2 está disponível
+        try:
+            import psycopg2
+        except ImportError:
+            return {
+                "message": "Módulo psycopg2 não está disponível",
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": False,
+                "error": "psycopg2 não instalado"
+            }
+        
         from urllib.parse import urlparse
         import os
         import json
@@ -826,155 +878,23 @@ async def save_operation_config(
             "success": False,
             "error": str(e)
         }
-    """Salvar configuração de operação."""
-    try:
-        import psycopg2
-        from urllib.parse import urlparse
-        import os
-        import json
-        
-        # Conectar ao banco
-        db_url = os.getenv("DATABASE_URL")
-        if not db_url:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="DATABASE_URL não configurada"
-            )
-        
-        parsed = urlparse(db_url)
-        conn = psycopg2.connect(
-            host=parsed.hostname,
-            port=parsed.port,
-            database=parsed.path[1:],
-            user=parsed.username,
-            password=parsed.password
-        )
-        
-        cursor = conn.cursor()
-        
-        # Inserir ou atualizar configuração principal
-        cursor.execute(
-            """
-            INSERT INTO operation_config (tenant_id, operator_id, payment_modes, payment_config, created_at, updated_at)
-            VALUES (%s, %s, %s, %s, NOW(), NOW())
-            ON CONFLICT (tenant_id, operator_id) 
-            DO UPDATE SET 
-                payment_modes = EXCLUDED.payment_modes,
-                payment_config = EXCLUDED.payment_config,
-                updated_at = NOW()
-            RETURNING id
-            """,
-            (
-                tenant_id,
-                operator_id,
-                json.dumps(payment_modes or []),
-                json.dumps(payment_config or {})
-            )
-        )
-        
-        config_result = cursor.fetchone()
-        config_id = config_result[0] if config_result else None
-        
-        # Processar equipamentos se fornecidos (novo formato)
-        if equipments:
-            # Limpar configurações de equipamentos existentes
-            cursor.execute(
-                "DELETE FROM operation_config_equipments WHERE operation_config_id = %s",
-                (config_id,)
-            )
-            
-            # Inserir novas configurações de equipamentos
-            for equipment in equipments:
-                if equipment.get("active"):
-                    cursor.execute(
-                        """
-                        INSERT INTO operation_config_equipments 
-                        (operation_config_id, equipment_id, active, quantity)
-                        VALUES (%s, %s, %s, %s)
-                        """,
-                        (
-                            config_id,
-                            equipment.get("equipment_id"),
-                            equipment.get("active", False),
-                            equipment.get("quantity", 1)
-                        )
-                    )
-        
-        # Processar serviços se fornecidos (formato antigo - mantido para compatibilidade)
-        elif services:
-            # Limpar configurações de equipamentos existentes
-            cursor.execute(
-                "DELETE FROM operation_config_equipments WHERE operation_config_id = %s",
-                (config_id,)
-            )
-            
-            # Inserir novas configurações de equipamentos
-            for service in services:
-                if service.get("active"):
-                    cursor.execute(
-                        """
-                        INSERT INTO operation_config_equipments 
-                        (operation_config_id, equipment_id, active, quantity)
-                        VALUES (%s, %s, %s, %s)
-                        """,
-                        (
-                            config_id,
-                            service.get("service_id"),
-                            service.get("active", False),
-                            service.get("equipment_count", 1)
-                        )
-                    )
-        
-        # Processar extras se fornecidos
-        if extras:
-            # Limpar configurações de extras existentes
-            cursor.execute(
-                "DELETE FROM operation_config_extras WHERE operation_config_id = %s",
-                (config_id,)
-            )
-            
-            # Inserir novas configurações de extras
-            for extra in extras:
-                if extra.get("active"):
-                    cursor.execute(
-                        """
-                        INSERT INTO operation_config_extras 
-                        (operation_config_id, extra_id, active, stock, price)
-                        VALUES (%s, %s, %s, %s, %s)
-                        """,
-                        (
-                            config_id,
-                            extra.get("extra_id"),
-                            extra.get("active", False),
-                            extra.get("stock", 0),
-                            extra.get("price", 0)
-                        )
-                    )
-        
-        conn.commit()
-        cursor.close()
-        conn.close()
-        
-        return {
-            "message": "Configuração salva com sucesso!",
-            "timestamp": datetime.utcnow().isoformat(),
-            "success": True,
-            "config_id": str(config_id) if config_id else None
-        }
-    except Exception as e:
-        return {
-            "message": f"Erro ao salvar configuração: {str(e)}",
-            "timestamp": datetime.utcnow().isoformat(),
-            "success": False,
-            "error": str(e)
-        }
 
 # Endpoint para buscar serviços
 @app.get("/services", summary="📋 Listar serviços", description="Listar serviços do tenant")
 async def get_services(tenant_id: str):
     """Listar serviços do tenant."""
     try:
-        import psycopg2
+        # Verificar se psycopg2 está disponível
+        try:
+            import psycopg2
+        except ImportError:
+            return {
+                "message": "Módulo psycopg2 não está disponível",
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": False,
+                "error": "psycopg2 não instalado"
+            }
+        
         from urllib.parse import urlparse
         import os
         
@@ -1029,7 +949,17 @@ async def get_services(tenant_id: str):
 async def get_my_tickets(tenant_id: str, operator_id: str = None):
     """Listar tickets do operador."""
     try:
-        import psycopg2
+        # Verificar se psycopg2 está disponível
+        try:
+            import psycopg2
+        except ImportError:
+            return {
+                "message": "Módulo psycopg2 não está disponível",
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": False,
+                "error": "psycopg2 não instalado"
+            }
+        
         from urllib.parse import urlparse
         import os
         
@@ -1089,7 +1019,17 @@ async def get_my_tickets(tenant_id: str, operator_id: str = None):
 async def get_tickets_by_status(tenant_id: str, status: str = None):
     """Listar tickets por status."""
     try:
-        import psycopg2
+        # Verificar se psycopg2 está disponível
+        try:
+            import psycopg2
+        except ImportError:
+            return {
+                "message": "Módulo psycopg2 não está disponível",
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": False,
+                "error": "psycopg2 não instalado"
+            }
+        
         from urllib.parse import urlparse
         import os
         
@@ -1149,7 +1089,17 @@ async def get_tickets_by_status(tenant_id: str, status: str = None):
 async def get_pending_payment_tickets(tenant_id: str):
     """Listar tickets pendentes de pagamento."""
     try:
-        import psycopg2
+        # Verificar se psycopg2 está disponível
+        try:
+            import psycopg2
+        except ImportError:
+            return {
+                "message": "Módulo psycopg2 não está disponível",
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": False,
+                "error": "psycopg2 não instalado"
+            }
+        
         from urllib.parse import urlparse
         import os
         
@@ -1204,7 +1154,17 @@ async def get_pending_payment_tickets(tenant_id: str):
 async def get_tickets_queue(tenant_id: str):
     """Listar tickets na fila."""
     try:
-        import psycopg2
+        # Verificar se psycopg2 está disponível
+        try:
+            import psycopg2
+        except ImportError:
+            return {
+                "message": "Módulo psycopg2 não está disponível",
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": False,
+                "error": "psycopg2 não instalado"
+            }
+        
         from urllib.parse import urlparse
         import os
         
@@ -1261,11 +1221,42 @@ async def login_for_access_token(
 ):
     """Login endpoint to get JWT token."""
     try:
-        import bcrypt
-        import psycopg2
+        # Verificar se bcrypt está disponível
+        try:
+            import bcrypt
+        except ImportError:
+            return {
+                "message": "Módulo bcrypt não está disponível",
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": False,
+                "error": "bcrypt não instalado"
+            }
+        
+        # Verificar se psycopg2 está disponível
+        try:
+            import psycopg2
+        except ImportError:
+            return {
+                "message": "Módulo psycopg2 não está disponível",
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": False,
+                "error": "psycopg2 não instalado"
+            }
+        
         from urllib.parse import urlparse
         import os
-        import jwt
+        
+        # Verificar se PyJWT está disponível
+        try:
+            import jwt
+        except ImportError:
+            return {
+                "message": "Módulo PyJWT não está disponível",
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": False,
+                "error": "PyJWT não instalado"
+            }
+        
         from datetime import datetime, timedelta
         
         # Configurações
