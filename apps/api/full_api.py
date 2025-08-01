@@ -18,7 +18,8 @@ from fastapi.websockets import WebSocket, WebSocketDisconnect
 # Lista de routers disponíveis para carregar
 AVAILABLE_ROUTERS = [
     "websocket", "metrics", "terminals", "operation", 
-    "operator_config", "webhooks", "notifications", "customers"
+    "operator_config", "webhooks", "notifications", "customers",
+    "auth", "tickets", "services", "payment_sessions"
 ]
 
 # Dicionário para rastrear routers carregados
