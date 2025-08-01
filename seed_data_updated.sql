@@ -1,3 +1,4 @@
+
 -- Script para recriar dados básicos
 -- Execute no pgAdmin ou via comando
 
@@ -35,4 +36,4 @@ SELECT 'Tenants:' as info;
 SELECT id, name, cnpj FROM tenants;
 
 SELECT 'Operadores:' as info;
-SELECT id, name, email, tenant_id FROM operators; 
+SELECT id, name, email, tenant_id FROM operators;

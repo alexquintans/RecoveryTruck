@@ -13,7 +13,7 @@ VALUES (
 ) ON CONFLICT DO NOTHING;
 
 -- Inserir operador de exemplo (password = "123456")
--- Hash da senha "123456": $2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhgJgxQxG3KqP9ZzQl1Qzu
+-- Hash da senha "123456": $2b$12$Qje30wUn/OOQDMji4agFpews.BwBOUXuUrHzqC7QXnkxuteGLXX2O
 WITH tenant_data AS (
     SELECT id as tenant_id FROM tenants WHERE name = 'Empresa Exemplo' LIMIT 1
 )
@@ -23,7 +23,7 @@ SELECT
     tenant_data.tenant_id,
     'Operador Admin',
     'admin@exemplo.com',
-    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhgJgxQxG3KqP9ZzQl1Qzu',
+    '$2b$12$Qje30wUn/OOQDMji4agFpews.BwBOUXuUrHzqC7QXnkxuteGLXX2O',
     true,
     NOW(),
     NOW()
