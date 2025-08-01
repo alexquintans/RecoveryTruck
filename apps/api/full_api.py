@@ -444,6 +444,40 @@ async def test_auth_endpoint():
             "error": str(e)
         }
 
+@app.get("/generate-hash", summary="🔐 Gerar hash correto", description="Gerar hash usando o mesmo método do sistema")
+async def generate_hash_endpoint():
+    """Endpoint para gerar hash usando o mesmo método do sistema."""
+    try:
+        from apps.api.security import get_password_hash, verify_password
+        
+        password = "123456"
+        hash_generated = get_password_hash(password)
+        
+        # Testar verificação
+        is_valid = verify_password(password, hash_generated)
+        
+        return {
+            "message": "Hash gerado com sucesso!",
+            "timestamp": datetime.utcnow().isoformat(),
+            "success": True,
+            "password": password,
+            "hash_generated": hash_generated,
+            "verification_test": is_valid,
+            "sql_update": f"""
+-- Atualizar hash do operador
+UPDATE operators 
+SET password_hash = '{hash_generated}'
+WHERE email = 'admin@exemplo.com';
+"""
+        }
+    except Exception as e:
+        return {
+            "message": f"Erro ao gerar hash: {str(e)}",
+            "timestamp": datetime.utcnow().isoformat(),
+            "success": False,
+            "error": str(e)
+        }
+
 @app.get("/health", summary="🏥 Health check", description="Verificação de saúde da API")
 async def health_check():
     """Health check endpoint simplificado."""
