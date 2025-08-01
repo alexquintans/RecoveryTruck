@@ -17,9 +17,8 @@ from fastapi.websockets import WebSocket, WebSocketDisconnect
 
 # Lista de routers disponíveis para carregar
 AVAILABLE_ROUTERS = [
-    "websocket", "metrics", "terminals", "operation", 
-    "operator_config", "webhooks", "notifications", "customers",
-    "auth", "tickets", "services", "payment_sessions"
+    "websocket", "metrics", "terminals", 
+    "operator_config", "webhooks", "notifications", "customers"
 ]
 
 # Dicionário para rastrear routers carregados
@@ -291,7 +290,7 @@ async def migrate_endpoint():
                 "stdout": result.stdout,
                 "stderr": result.stderr
             }
-    except Exception as e:
+        except Exception as e:
         return {
             "message": f"Erro ao executar migrations: {str(e)}",
             "timestamp": datetime.utcnow().isoformat(),
@@ -326,7 +325,7 @@ async def seed_endpoint():
         )
         
         if result.returncode == 0:
-            return {
+    return {
                 "message": "Dados de seed inseridos com sucesso!",
                 "timestamp": datetime.utcnow().isoformat(),
                 "success": True,
