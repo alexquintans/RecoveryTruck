@@ -167,6 +167,13 @@ const TicketPage: React.FC = () => {
   console.log('TicketPage - OperationConfig:', operationConfig);
   console.log('TicketPage - PaymentModes:', paymentModes);
   console.log('TicketPage - IsPaymentNone:', isPaymentNone);
+  console.log('TicketPage - currentTicket.services:', currentTicket.services);
+  console.log('TicketPage - selectedService:', selectedService);
+  console.log('TicketPage - Tipo do selectedService:', typeof selectedService);
+  console.log('TicketPage - É array?', Array.isArray(selectedService));
+  console.log('TicketPage - currentTicket.extras:', currentTicket.extras);
+  console.log('TicketPage - customerData.extras:', customerData?.extras);
+  console.log('TicketPage - operationConfig.extras:', operationConfig?.extras);
 
   return (
     <div className="totem-card overflow-y-auto">
@@ -194,45 +201,102 @@ const TicketPage: React.FC = () => {
               <span className="text-xl font-bold">{displayNumber}</span>
             </div>
             
-            {currentTicket.services && currentTicket.services.length > 0 ? (
-              <div className="mb-2">
-                <div className="font-semibold">Serviços:</div>
-                {currentTicket.services.map((service: any, idx: number) => (
-                  <div key={service.service_id || idx} className="mb-1">
-                    <div className="flex justify-between">
-                      <span className="font-medium">{service.name}</span>
-                      <span className="font-bold">{formatCurrency(service.price || 0)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm text-gray-600 ml-2">
-                      <span>Duração: {service.duration || 10} min</span>
-                    </div>
+            {/* Exibir serviços do ticket ou serviços selecionados */}
+            {(() => {
+              // Se o ticket tem serviços definidos, usar eles
+              if (currentTicket.services && currentTicket.services.length > 0) {
+                return (
+                  <div className="mb-2">
+                    <div className="font-semibold">Serviços:</div>
+                    {currentTicket.services.map((service: any, idx: number) => (
+                      <div key={service.service_id || idx} className="mb-1">
+                        <div className="flex justify-between">
+                          <span className="font-medium">{service.name || service.service_name || 'Serviço'}</span>
+                          <span className="font-bold">{formatCurrency(service.price || 0)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm text-gray-600 ml-2">
+                          <span>Duração: {service.duration || 10} min</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex justify-between mb-2">
-                <span className="font-semibold">Serviço:</span>
-                <span>{mainService?.name || 'Não informado'}</span>
-              </div>
-            )}
-            
-            {/* Extras escolhidos pelo cliente */}
-            {currentTicket.extras && currentTicket.extras.length > 0 && (
-              <div className="mb-2">
-                <div className="font-semibold mb-1">Extras:</div>
-                {currentTicket.extras.map((extra: any, index: number) => {
-                  // Usar o nome que vem da API
-                  const extraName = extra.name || `Extra ${index + 1}`;
-                  
+                );
+              }
+              
+              // Se não tem serviços no ticket, usar os serviços selecionados
+              if (selectedService) {
+                const servicesArray = Array.isArray(selectedService) ? selectedService : [selectedService];
+                
+                if (servicesArray.length > 0) {
                   return (
-                    <div key={index} className="flex justify-between text-sm ml-2">
-                      <span>{extra.quantity}x {extraName}</span>
-                      <span>{formatCurrency(extra.price * extra.quantity)}</span>
+                    <div className="mb-2">
+                      <div className="font-semibold">Serviços:</div>
+                      {servicesArray.map((service: Service, idx: number) => (
+                        <div key={service.id || idx} className="mb-1">
+                          <div className="flex justify-between">
+                            <span className="font-medium">{service.name}</span>
+                            <span className="font-bold">{formatCurrency(service.price || 0)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm text-gray-600 ml-2">
+                            <span>Duração: {service.duration || 10} min</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   );
-                })}
-              </div>
-            )}
+                }
+              }
+              
+              // Fallback para um único serviço
+              return (
+                <div className="flex justify-between mb-2">
+                  <span className="font-semibold">Serviço:</span>
+                  <span>{mainService?.name || 'Não informado'}</span>
+                </div>
+              );
+            })()}
+            
+            {/* Extras escolhidos pelo cliente */}
+            {(() => {
+              // Priorizar extras do ticket, depois extras do customerData
+              const extrasToShow = currentTicket.extras && currentTicket.extras.length > 0 
+                ? currentTicket.extras 
+                : customerData?.extras || [];
+              
+              if (extrasToShow.length > 0) {
+                return (
+                  <div className="mb-2">
+                    <div className="font-semibold mb-1">Extras:</div>
+                    {extrasToShow.map((extra: any, index: number) => {
+                      // Buscar informações do extra na configuração da operação
+                      const extraConfig = operationConfig?.extras?.find(e => e.id === extra.id);
+                      
+                      // Usar nome da configuração, depois do extra, depois fallback
+                      const extraName = extraConfig?.name || extra.name || `Extra ${index + 1}`;
+                      const extraPrice = extraConfig?.price || extra.price || 0;
+                      const extraQuantity = extra.quantity || 1;
+                      const totalPrice = extraPrice * extraQuantity;
+                      
+                      return (
+                        <div key={extra.id || index} className="mb-1">
+                          <div className="flex justify-between">
+                            <span className="font-medium">{extraQuantity}x {extraName}</span>
+                            <span className="font-bold">{formatCurrency(totalPrice)}</span>
+                          </div>
+                          {extraQuantity > 1 && (
+                            <div className="flex justify-between text-sm text-gray-600 ml-2">
+                              <span>Unitário: {formatCurrency(extraPrice)}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              }
+              
+              return null;
+            })()}
             
             {customerData?.name && (
               <div className="flex justify-between mb-2">
@@ -245,6 +309,101 @@ const TicketPage: React.FC = () => {
               <span className="font-semibold">Data/Hora:</span>
               <span>{formatDate(currentTicket.created_at || currentTicket.createdAt || new Date().toISOString())}</span>
             </div>
+            
+            {/* Cálculo do total */}
+            {(() => {
+              // Calcular total dos serviços
+              let totalServicos = 0;
+              let servicosDetalhes: Array<{name: string, price: number}> = [];
+              
+              if (currentTicket.services && currentTicket.services.length > 0) {
+                // Usar serviços do ticket
+                currentTicket.services.forEach((service: any) => {
+                  const price = service.price || 0;
+                  totalServicos += price;
+                  servicosDetalhes.push({
+                    name: service.name || service.service_name || 'Serviço',
+                    price: price
+                  });
+                });
+              } else if (selectedService) {
+                // Usar serviços selecionados
+                const servicesArray = Array.isArray(selectedService) ? selectedService : [selectedService];
+                servicesArray.forEach((service: Service) => {
+                  const price = service.price || 0;
+                  totalServicos += price;
+                  servicosDetalhes.push({
+                    name: service.name,
+                    price: price
+                  });
+                });
+              }
+              
+              // Calcular total dos extras
+              const extrasToShow = currentTicket.extras && currentTicket.extras.length > 0 
+                ? currentTicket.extras 
+                : customerData?.extras || [];
+              
+              let totalExtras = 0;
+              let extrasDetalhes: Array<{name: string, quantity: number, unitPrice: number, totalPrice: number}> = [];
+              
+              extrasToShow.forEach((extra: any) => {
+                const extraConfig = operationConfig?.extras?.find(e => e.id === extra.id);
+                const extraName = extraConfig?.name || extra.name || 'Extra';
+                const extraPrice = extraConfig?.price || extra.price || 0;
+                const extraQuantity = extra.quantity || 1;
+                const totalPrice = extraPrice * extraQuantity;
+                
+                totalExtras += totalPrice;
+                extrasDetalhes.push({
+                  name: extraName,
+                  quantity: extraQuantity,
+                  unitPrice: extraPrice,
+                  totalPrice: totalPrice
+                });
+              });
+              
+              const total = totalServicos + totalExtras;
+              
+              // Logs de debug para verificar os cálculos
+              console.log('TicketPage - Cálculo do total:', {
+                servicosDetalhes,
+                extrasDetalhes,
+                totalServicos,
+                totalExtras,
+                total
+              });
+              
+              if (total > 0) {
+                return (
+                  <div className="border-t border-gray-200 pt-2 mt-2">
+                    {/* Subtotal dos serviços */}
+                    {totalServicos > 0 && (
+                      <div className="flex justify-between text-sm text-gray-600 mb-1">
+                        <span>Subtotal Serviços:</span>
+                        <span>{formatCurrency(totalServicos)}</span>
+                      </div>
+                    )}
+                    
+                    {/* Subtotal dos extras */}
+                    {totalExtras > 0 && (
+                      <div className="flex justify-between text-sm text-gray-600 mb-1">
+                        <span>Subtotal Extras:</span>
+                        <span>{formatCurrency(totalExtras)}</span>
+                      </div>
+                    )}
+                    
+                    {/* Total geral */}
+                    <div className="flex justify-between font-bold text-lg border-t border-gray-200 pt-2">
+                      <span>Total:</span>
+                      <span>{formatCurrency(total)}</span>
+                    </div>
+                  </div>
+                );
+              }
+              
+              return null;
+            })()}
           </div>
           
           <div className="text-center mt-4">
