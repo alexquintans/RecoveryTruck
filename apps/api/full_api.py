@@ -550,6 +550,363 @@ async def update_password_hash_endpoint():
             "error": str(e)
         }
 
+# Endpoint para configuração de operação
+@app.post("/operation/config", summary="⚙️ Configurar operação", description="Salvar configuração de operação")
+async def save_operation_config(
+    tenant_id: str,
+    config_data: dict
+):
+    """Salvar configuração de operação."""
+    try:
+        import psycopg2
+        from urllib.parse import urlparse
+        import os
+        import json
+        
+        # Conectar ao banco
+        db_url = os.getenv("DATABASE_URL")
+        if not db_url:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="DATABASE_URL não configurada"
+            )
+        
+        parsed = urlparse(db_url)
+        conn = psycopg2.connect(
+            host=parsed.hostname,
+            port=parsed.port,
+            database=parsed.path[1:],
+            user=parsed.username,
+            password=parsed.password
+        )
+        
+        cursor = conn.cursor()
+        
+        # Inserir ou atualizar configuração
+        cursor.execute(
+            """
+            INSERT INTO operation_config (tenant_id, operator_id, payment_modes, payment_config, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, NOW(), NOW())
+            ON CONFLICT (tenant_id, operator_id) 
+            DO UPDATE SET 
+                payment_modes = EXCLUDED.payment_modes,
+                payment_config = EXCLUDED.payment_config,
+                updated_at = NOW()
+            RETURNING id
+            """,
+            (
+                tenant_id,
+                config_data.get("operator_id"),
+                json.dumps(config_data.get("payment_modes", [])),
+                json.dumps(config_data.get("payment_config", {}))
+            )
+        )
+        
+        result = cursor.fetchone()
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        return {
+            "message": "Configuração salva com sucesso!",
+            "timestamp": datetime.utcnow().isoformat(),
+            "success": True,
+            "config_id": str(result[0]) if result else None
+        }
+    except Exception as e:
+        return {
+            "message": f"Erro ao salvar configuração: {str(e)}",
+            "timestamp": datetime.utcnow().isoformat(),
+            "success": False,
+            "error": str(e)
+        }
+
+# Endpoint para buscar serviços
+@app.get("/services", summary="📋 Listar serviços", description="Listar serviços do tenant")
+async def get_services(tenant_id: str):
+    """Listar serviços do tenant."""
+    try:
+        import psycopg2
+        from urllib.parse import urlparse
+        import os
+        
+        db_url = os.getenv("DATABASE_URL")
+        if not db_url:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="DATABASE_URL não configurada"
+            )
+        
+        parsed = urlparse(db_url)
+        conn = psycopg2.connect(
+            host=parsed.hostname,
+            port=parsed.port,
+            database=parsed.path[1:],
+            user=parsed.username,
+            password=parsed.password
+        )
+        
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, name, description, price, duration_minutes, equipment_count, is_active FROM services WHERE tenant_id = %s AND is_active = true",
+            (tenant_id,)
+        )
+        
+        services = []
+        for row in cursor.fetchall():
+            services.append({
+                "id": str(row[0]),
+                "name": row[1],
+                "description": row[2],
+                "price": float(row[3]),
+                "duration_minutes": row[4],
+                "equipment_count": row[5],
+                "is_active": row[6]
+            })
+        
+        cursor.close()
+        conn.close()
+        
+        return services
+    except Exception as e:
+        return {
+            "message": f"Erro ao buscar serviços: {str(e)}",
+            "timestamp": datetime.utcnow().isoformat(),
+            "success": False,
+            "error": str(e)
+        }
+
+# Endpoint para buscar tickets
+@app.get("/tickets/my-tickets", summary="🎫 Meus tickets", description="Listar tickets do operador")
+async def get_my_tickets(tenant_id: str, operator_id: str = None):
+    """Listar tickets do operador."""
+    try:
+        import psycopg2
+        from urllib.parse import urlparse
+        import os
+        
+        db_url = os.getenv("DATABASE_URL")
+        if not db_url:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="DATABASE_URL não configurada"
+            )
+        
+        parsed = urlparse(db_url)
+        conn = psycopg2.connect(
+            host=parsed.hostname,
+            port=parsed.port,
+            database=parsed.path[1:],
+            user=parsed.username,
+            password=parsed.password
+        )
+        
+        cursor = conn.cursor()
+        
+        if operator_id:
+            cursor.execute(
+                "SELECT id, ticket_number, status, customer_name, created_at FROM tickets WHERE tenant_id = %s AND assigned_operator_id = %s ORDER BY created_at DESC",
+                (tenant_id, operator_id)
+            )
+        else:
+            cursor.execute(
+                "SELECT id, ticket_number, status, customer_name, created_at FROM tickets WHERE tenant_id = %s ORDER BY created_at DESC",
+                (tenant_id,)
+            )
+        
+        tickets = []
+        for row in cursor.fetchall():
+            tickets.append({
+                "id": str(row[0]),
+                "ticket_number": row[1],
+                "status": row[2],
+                "customer_name": row[3],
+                "created_at": row[4].isoformat() if row[4] else None
+            })
+        
+        cursor.close()
+        conn.close()
+        
+        return tickets
+    except Exception as e:
+        return {
+            "message": f"Erro ao buscar tickets: {str(e)}",
+            "timestamp": datetime.utcnow().isoformat(),
+            "success": False,
+            "error": str(e)
+        }
+
+# Endpoint para buscar tickets por status
+@app.get("/tickets", summary="🎫 Listar tickets", description="Listar tickets por status")
+async def get_tickets_by_status(tenant_id: str, status: str = None):
+    """Listar tickets por status."""
+    try:
+        import psycopg2
+        from urllib.parse import urlparse
+        import os
+        
+        db_url = os.getenv("DATABASE_URL")
+        if not db_url:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="DATABASE_URL não configurada"
+            )
+        
+        parsed = urlparse(db_url)
+        conn = psycopg2.connect(
+            host=parsed.hostname,
+            port=parsed.port,
+            database=parsed.path[1:],
+            user=parsed.username,
+            password=parsed.password
+        )
+        
+        cursor = conn.cursor()
+        
+        if status:
+            cursor.execute(
+                "SELECT id, ticket_number, status, customer_name, created_at FROM tickets WHERE tenant_id = %s AND status = %s ORDER BY created_at DESC",
+                (tenant_id, status)
+            )
+        else:
+            cursor.execute(
+                "SELECT id, ticket_number, status, customer_name, created_at FROM tickets WHERE tenant_id = %s ORDER BY created_at DESC",
+                (tenant_id,)
+            )
+        
+        tickets = []
+        for row in cursor.fetchall():
+            tickets.append({
+                "id": str(row[0]),
+                "ticket_number": row[1],
+                "status": row[2],
+                "customer_name": row[3],
+                "created_at": row[4].isoformat() if row[4] else None
+            })
+        
+        cursor.close()
+        conn.close()
+        
+        return tickets
+    except Exception as e:
+        return {
+            "message": f"Erro ao buscar tickets: {str(e)}",
+            "timestamp": datetime.utcnow().isoformat(),
+            "success": False,
+            "error": str(e)
+        }
+
+# Endpoint para buscar tickets pendentes de pagamento
+@app.get("/tickets/status/pending-payment", summary="💳 Tickets pendentes de pagamento", description="Listar tickets pendentes de pagamento")
+async def get_pending_payment_tickets(tenant_id: str):
+    """Listar tickets pendentes de pagamento."""
+    try:
+        import psycopg2
+        from urllib.parse import urlparse
+        import os
+        
+        db_url = os.getenv("DATABASE_URL")
+        if not db_url:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="DATABASE_URL não configurada"
+            )
+        
+        parsed = urlparse(db_url)
+        conn = psycopg2.connect(
+            host=parsed.hostname,
+            port=parsed.port,
+            database=parsed.path[1:],
+            user=parsed.username,
+            password=parsed.password
+        )
+        
+        cursor = conn.cursor()
+        
+        # Buscar tickets com status "paid" (que já foram pagos mas ainda não foram processados)
+        cursor.execute(
+            "SELECT id, ticket_number, status, customer_name, created_at FROM tickets WHERE tenant_id = %s AND status = 'paid' ORDER BY created_at DESC",
+            (tenant_id,)
+        )
+        
+        tickets = []
+        for row in cursor.fetchall():
+            tickets.append({
+                "id": str(row[0]),
+                "ticket_number": row[1],
+                "status": row[2],
+                "customer_name": row[3],
+                "created_at": row[4].isoformat() if row[4] else None
+            })
+        
+        cursor.close()
+        conn.close()
+        
+        return tickets
+    except Exception as e:
+        return {
+            "message": f"Erro ao buscar tickets pendentes: {str(e)}",
+            "timestamp": datetime.utcnow().isoformat(),
+            "success": False,
+            "error": str(e)
+        }
+
+# Endpoint para buscar fila de tickets
+@app.get("/tickets/queue", summary="📋 Fila de tickets", description="Listar tickets na fila")
+async def get_tickets_queue(tenant_id: str):
+    """Listar tickets na fila."""
+    try:
+        import psycopg2
+        from urllib.parse import urlparse
+        import os
+        
+        db_url = os.getenv("DATABASE_URL")
+        if not db_url:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="DATABASE_URL não configurada"
+            )
+        
+        parsed = urlparse(db_url)
+        conn = psycopg2.connect(
+            host=parsed.hostname,
+            port=parsed.port,
+            database=parsed.path[1:],
+            user=parsed.username,
+            password=parsed.password
+        )
+        
+        cursor = conn.cursor()
+        
+        # Buscar tickets com status "in_queue"
+        cursor.execute(
+            "SELECT id, ticket_number, status, customer_name, queue_position, created_at FROM tickets WHERE tenant_id = %s AND status = 'in_queue' ORDER BY queue_position ASC",
+            (tenant_id,)
+        )
+        
+        tickets = []
+        for row in cursor.fetchall():
+            tickets.append({
+                "id": str(row[0]),
+                "ticket_number": row[1],
+                "status": row[2],
+                "customer_name": row[3],
+                "queue_position": row[4],
+                "created_at": row[5].isoformat() if row[5] else None
+            })
+        
+        cursor.close()
+        conn.close()
+        
+        return tickets
+    except Exception as e:
+        return {
+            "message": f"Erro ao buscar fila: {str(e)}",
+            "timestamp": datetime.utcnow().isoformat(),
+            "success": False,
+            "error": str(e)
+        }
+
 @app.post("/auth/token", summary="🔐 Login para obter token", description="Endpoint de login para obter token JWT")
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends()
