@@ -5,13 +5,17 @@ from alembic import context
 import os
 import sys
 from dotenv import load_dotenv
-from apps.api.models import Base, OperationStatusModel  # ajuste o import conforme seu projeto
-
-# Adiciona o diretório raiz ao PYTHONPATH
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Carrega variáveis de ambiente
 load_dotenv()
+
+# Adiciona o diretório apps/api ao PYTHONPATH para importar models
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)  # apps/api
+sys.path.insert(0, parent_dir)
+
+# Importa os modelos após adicionar o path
+from models import Base, OperationStatusModel
 
 # this is the Alembic Config object
 config = context.config

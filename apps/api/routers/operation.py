@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, validator
 from database import get_db
 from auth import get_current_operator
 import threading
-from models import Equipment, Service, Extra, OperationConfig, OperationConfigEquipment, OperationConfigExtra, OperationStatusModel
+from models import Equipment, Service, Extra, OperationConfig, OperationConfigEquipment, OperationConfigExtra, OperationStatusModel, OperationConfigService
 from uuid import UUID
 from fastapi import Request
 import logging
@@ -227,6 +227,18 @@ async def save_operation_config(
     db.commit()
     db.refresh(op_cfg)
 
+    # Adicionar serviços
+    for s in cfg.services:
+        svc = OperationConfigService(
+            operation_config_id=op_cfg.id,
+            service_id=s.service_id,
+            active=s.active,
+            duration=s.duration,
+            price=s.price,
+            equipment_count=s.equipment_count,
+        )
+        db.add(svc)
+
     # Adicionar equipamentos
     for e in cfg.equipments:
         eq = OperationConfigEquipment(
@@ -318,6 +330,7 @@ async def get_operation_config(
     db: Session = Depends(get_db)
 ):
     op_cfg = db.query(OperationConfig).options(
+        joinedload(OperationConfig.services).joinedload(OperationConfigService.service),
         joinedload(OperationConfig.equipments).joinedload(OperationConfigEquipment.equipment),
         joinedload(OperationConfig.extras).joinedload(OperationConfigExtra.extra),
     ).filter(OperationConfig.tenant_id == tenant_id).order_by(OperationConfig.created_at.desc()).first()
@@ -328,15 +341,10 @@ async def get_operation_config(
     from config.settings import Settings
     settings = Settings()
     
-    # Buscar serviços ativos do tenant
-    services = db.query(Service).filter(
-        Service.tenant_id == tenant_id,
-        Service.is_active == True
-    ).all()
-    
-    logger.info(f"🔍 DEBUG - Serviços encontrados: {len(services)}")
-    for s in services:
-        logger.info(f"🔍 DEBUG - Serviço: {s.id} - {s.name}")
+    logger.info(f"🔍 DEBUG - Configuração encontrada: {op_cfg.id}")
+    logger.info(f"🔍 DEBUG - Serviços configurados: {len(op_cfg.services)}")
+    for s in op_cfg.services:
+        logger.info(f"🔍 DEBUG - Serviço configurado: {s.service_id} - {s.service.name if s.service else 'N/A'}")
     
     return {
         "id": str(op_cfg.id),
@@ -356,17 +364,18 @@ async def get_operation_config(
         },
         "services": [
             {
-                "id": str(s.id),
-                "name": s.name,
-                "description": s.description,
+                "service_id": str(s.service_id),
+                "active": s.active,
+                "duration": s.duration,
                 "price": float(s.price),
-                "duration_minutes": s.duration_minutes,
                 "equipment_count": s.equipment_count,
-                "is_active": s.is_active,
-                "tenant_id": str(s.tenant_id),
-                "created_at": s.created_at.isoformat(),
-                "updated_at": s.updated_at.isoformat(),
-            } for s in services
+                "name": s.service.name if s.service else f"Serviço {s.service_id}",
+                "description": s.service.description if s.service else "",
+                "is_active": s.service.is_active if s.service else False,
+                "tenant_id": str(s.service.tenant_id) if s.service else None,
+                "created_at": s.service.created_at.isoformat() if s.service and s.service.created_at else None,
+                "updated_at": s.service.updated_at.isoformat() if s.service and s.service.updated_at else None,
+            } for s in op_cfg.services
         ],
         "equipments": [
             {

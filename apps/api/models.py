@@ -301,8 +301,23 @@ class OperationConfig(Base):
     # Configurações de pagamento (Mercado Pago, etc.)
     payment_config = Column(JSONB, nullable=True)  # Adicionado
 
+    services = relationship('OperationConfigService', back_populates='operation_config', cascade="all, delete-orphan")
     equipments = relationship('OperationConfigEquipment', back_populates='operation_config', cascade="all, delete-orphan")
     extras = relationship('OperationConfigExtra', back_populates='operation_config', cascade="all, delete-orphan")
+
+class OperationConfigService(Base):
+    __tablename__ = 'operation_config_services'
+    __table_args__ = {'extend_existing': True}
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    operation_config_id = Column(UUID(as_uuid=True), ForeignKey('operation_config.id'), nullable=False)
+    service_id = Column(UUID(as_uuid=True), ForeignKey('services.id'), nullable=False)
+    active = Column(Boolean, default=True)
+    duration = Column(Integer, nullable=False, default=10)
+    price = Column(Numeric(10,2), nullable=False, default=0.0)
+    equipment_count = Column(Integer, nullable=False, default=1)
+
+    operation_config = relationship('OperationConfig', back_populates='services')
+    service = relationship('Service')
 
 class OperationConfigEquipment(Base):
     __tablename__ = 'operation_config_equipments'

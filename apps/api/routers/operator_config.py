@@ -259,11 +259,10 @@ async def get_operation_config(
                 "duration": s.duration,
                 "price": float(s.price),
                 "equipment_count": s.equipment_count,
-                "identifier": s.equipment.identifier if s.equipment else None,
+                "name": s.equipment.name if s.equipment else None,
                 "description": s.equipment.description if s.equipment else None,
             } for s in op_cfg.services
         ],
-        "payment_modes": op_cfg.payment_modes or [],
         "equipments": [
             {
                 "equipment_id": str(e.equipment_id),
@@ -271,7 +270,7 @@ async def get_operation_config(
                 "duration": e.duration,
                 "price": float(e.price),
                 "equipment_count": e.equipment_count,
-                "identifier": e.equipment.identifier if e.equipment else None,
+                "name": e.equipment.name if e.equipment else None,
                 "description": e.equipment.description if e.equipment else None,
             } for e in op_cfg.equipments
         ],
