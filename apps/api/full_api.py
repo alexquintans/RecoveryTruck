@@ -6,18 +6,18 @@ from pathlib import Path
 current_dir = str(Path(__file__).parent)
 sys.path.insert(0, current_dir)
 
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from datetime import datetime
+from fastapi.security import OAuth2PasswordRequestForm
+from datetime import datetime, timedelta
 import asyncio
 import traceback
 from fastapi.websockets import WebSocket, WebSocketDisconnect
 
 # Lista de routers disponíveis para carregar
 AVAILABLE_ROUTERS = [
-    "auth", "tickets", "services", "payment_sessions", 
-    "metrics", "websocket", "terminals", "operation", 
+    "websocket", "metrics", "terminals", "operation", 
     "operator_config", "webhooks", "notifications", "customers"
 ]
 
@@ -516,6 +516,63 @@ async def update_password_hash_endpoint():
     except Exception as e:
         return {
             "message": f"Erro ao atualizar hash: {str(e)}",
+            "timestamp": datetime.utcnow().isoformat(),
+            "success": False,
+            "error": str(e)
+        }
+
+@app.post("/auth/token", summary="🔐 Login para obter token", description="Endpoint de login para obter token JWT")
+async def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends()
+):
+    """Login endpoint to get JWT token."""
+    try:
+        from apps.api.auth import authenticate_operator
+        from apps.api.database import get_db
+        from apps.api.security import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+        from apps.api.models import Operator
+        
+        # Autenticar operador
+        db = next(get_db())
+        operator = authenticate_operator(db, form_data.username, form_data.password)
+        
+        if not operator:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Email ou senha incorretos",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Criar token
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": str(operator.id)},
+            expires_delta=access_token_expires
+        )
+        
+        # Atualizar último login
+        operator.last_login_at = datetime.utcnow()
+        db.commit()
+        
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "operator": {
+                "id": operator.id,
+                "name": operator.name,
+                "email": operator.email,
+                "tenant_id": operator.tenant_id,
+                "is_active": operator.is_active,
+                "last_login_at": operator.last_login_at,
+                "created_at": operator.created_at,
+                "updated_at": operator.updated_at,
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {
+            "message": f"Erro no login: {str(e)}",
             "timestamp": datetime.utcnow().isoformat(),
             "success": False,
             "error": str(e)
