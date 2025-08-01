@@ -36,8 +36,21 @@ export function useQueueWebSocket({
   const lastUpdateRef = useRef<QueueUpdate | null>(null);
 
   // Construir URL do WebSocket
-  const baseWs = (import.meta as any).env?.VITE_WS_URL || 'ws://localhost:8000/ws';
+  let baseWs = (import.meta as any).env?.VITE_WS_URL || 'wss://recoverytruck-production.up.railway.app/ws';
+  
+  // Forçar uso de wss:// em produção (corrigir se a variável estiver com ws://)
+  if (baseWs.startsWith('ws://') && window.location.protocol === 'https:') {
+    baseWs = baseWs.replace('ws://', 'wss://');
+  }
+  
+  // Debug: verificar variáveis de ambiente
+  console.log('🔍 DEBUG - VITE_WS_URL:', (import.meta as any).env?.VITE_WS_URL);
+  console.log('🔍 DEBUG - baseWs:', baseWs);
+  console.log('🔍 DEBUG - tenantId:', tenantId);
+  
   const wsUrl = `${baseWs}?tenant_id=${tenantId}&client_type=totem`;
+  
+  console.log('🔍 DEBUG - wsUrl final:', wsUrl);
 
   // Handler para mensagens do WebSocket
   const handleMessage = useCallback((data: QueueUpdate) => {

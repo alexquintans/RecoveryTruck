@@ -91,12 +91,26 @@ export function useTicketQueue() {
   // Construir URL de WebSocket
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
-  const baseWs = (import.meta as any).env?.VITE_WS_URL || 'ws://localhost:8000/ws';
+  let baseWs = (import.meta as any).env?.VITE_WS_URL || 'wss://recoverytruck-production.up.railway.app/ws';
+  
+  // Forçar uso de wss:// em produção (corrigir se a variável estiver com ws://)
+  if (baseWs.startsWith('ws://') && window.location.protocol === 'https:') {
+    baseWs = baseWs.replace('ws://', 'wss://');
+  }
   const tenantId = user?.tenant_id || (import.meta as any).env?.VITE_TENANT_ID || '7f02a566-2406-436d-b10d-90ecddd3fe2d';
   const token = getAuthToken();
   
+  // Debug: verificar variáveis de ambiente
+  console.log('🔍 DEBUG - VITE_WS_URL:', (import.meta as any).env?.VITE_WS_URL);
+  console.log('🔍 DEBUG - VITE_API_URL:', (import.meta as any).env?.VITE_API_URL);
+  console.log('🔍 DEBUG - VITE_TENANT_ID:', (import.meta as any).env?.VITE_TENANT_ID);
+  console.log('🔍 DEBUG - baseWs:', baseWs);
+  console.log('🔍 DEBUG - tenantId:', tenantId);
+  
   // Corrigir URL do WebSocket para usar query parameters
   const wsUrl = `${baseWs}?tenant_id=${tenantId}&client_type=operator${token ? `&token=${token}` : ''}`;
+  
+  console.log('🔍 DEBUG - wsUrl final:', wsUrl);
 
 
 
