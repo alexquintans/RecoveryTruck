@@ -403,6 +403,48 @@ async def check_data_endpoint():
             "error": str(e)
         }
 
+@app.get("/test-auth", summary="🔐 Testar autenticação", description="Testar autenticação diretamente")
+async def test_auth_endpoint():
+    """Endpoint para testar autenticação diretamente."""
+    try:
+        from apps.api.services.auth.auth_service import AuthService
+        from apps.api.database import get_db
+        
+        # Testar autenticação
+        auth_service = AuthService()
+        db = next(get_db())
+        
+        # Tentar autenticar
+        result = auth_service.authenticate_operator(
+            db=db,
+            email="admin@exemplo.com",
+            password="123456"
+        )
+        
+        if result:
+            return {
+                "message": "Autenticação bem-sucedida!",
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": True,
+                "operator_id": str(result.id),
+                "operator_name": result.name,
+                "tenant_id": str(result.tenant_id)
+            }
+        else:
+            return {
+                "message": "Autenticação falhou",
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": False,
+                "error": "Email ou senha incorretos"
+            }
+    except Exception as e:
+        return {
+            "message": f"Erro ao testar autenticação: {str(e)}",
+            "timestamp": datetime.utcnow().isoformat(),
+            "success": False,
+            "error": str(e)
+        }
+
 @app.get("/health", summary="🏥 Health check", description="Verificação de saúde da API")
 async def health_check():
     """Health check endpoint simplificado."""
