@@ -1,18 +1,18 @@
 -- Script para inserir operador de teste
--- Operador associado ao tenant: RecoveryTruck Dev (ID: 38534c9f-accb-4884-9c19-dd37f77d0594)
+-- Operador associado ao tenant: RecoveryTruck Dev (ID: 7f02a566-2406-436d-b10d-90ecddd3fe2d)
 
 -- 1. Verificar se o tenant existe
 SELECT 'Verificando tenant RecoveryTruck Dev:' as info;
 SELECT id, name, cnpj, is_active 
 FROM tenants 
-WHERE id = '38534c9f-accb-4884-9c19-dd37f77d0594';
+WHERE id = '7f02a566-2406-436d-b10d-90ecddd3fe2d';
 
 -- 2. Inserir operador para o tenant RecoveryTruck Dev
 -- Senha: "123456" (hash bcrypt)
 INSERT INTO operators (id, tenant_id, name, email, password_hash, is_active, created_at, updated_at) 
 VALUES (
     gen_random_uuid(),
-    '38534c9f-accb-4884-9c19-dd37f77d0594', -- ID correto do tenant
+    '7f02a566-2406-436d-b10d-90ecddd3fe2d', -- ID correto do tenant
     'Operador Teste',
     'operador@recoverytruck.dev',
     '$2b$12$CO4AsLnoRO.F624pMIMz6OjdwH99BBEhCDjYR8/ryM/NsRDw0KqBO', -- Hash correto
@@ -35,7 +35,7 @@ SELECT 'Listando todos os operadores do tenant:' as info;
 SELECT o.id, o.name, o.email, o.is_active, t.name as tenant_name
 FROM operators o
 JOIN tenants t ON o.tenant_id = t.id
-WHERE o.tenant_id = '38534c9f-accb-4884-9c19-dd37f77d0594'
+WHERE o.tenant_id = '7f02a566-2406-436d-b10d-90ecddd3fe2d'
 ORDER BY o.created_at;
 
 -- 5. Contar total de operadores

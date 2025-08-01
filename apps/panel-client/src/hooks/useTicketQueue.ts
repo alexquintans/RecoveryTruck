@@ -92,7 +92,7 @@ export function useTicketQueue() {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const baseWs = (import.meta as any).env?.VITE_WS_URL || 'ws://localhost:8000/ws';
-  const tenantId = user?.tenant_id || (import.meta as any).env?.VITE_TENANT_ID || '38534c9f-accb-4884-9c19-dd37f77d0594';
+  const tenantId = user?.tenant_id || (import.meta as any).env?.VITE_TENANT_ID || '7f02a566-2406-436d-b10d-90ecddd3fe2d';
   const token = getAuthToken();
   
   // Corrigir URL do WebSocket para usar a nova estrutura com path parameters

@@ -81,7 +81,7 @@ panel:
   environment:
     - VITE_API_URL=http://localhost:8000
     - VITE_WS_URL=ws://localhost:8000/ws
-    - VITE_TENANT_ID=38534c9f-accb-4884-9c19-dd37f77d0594
+    - VITE_TENANT_ID=7f02a566-2406-436d-b10d-90ecddd3fe2d
 ```
 
 ## 🧪 Como Testar
@@ -122,15 +122,15 @@ docker-compose logs panel
 ## 🔍 URLs de Teste
 
 ### **Totem Client**
-- **URL:** `ws://localhost:8000/ws/38534c9f-accb-4884-9c19-dd37f77d0594/totem`
+- **URL:** `ws://localhost:8000/ws/7f02a566-2406-436d-b10d-90ecddd3fe2d/totem`
 - **Frontend:** http://localhost:5174
 
 ### **Panel Client**
-- **URL:** `ws://localhost:8000/ws/38534c9f-accb-4884-9c19-dd37f77d0594/operator?token={jwt_token}`
+- **URL:** `ws://localhost:8000/ws/7f02a566-2406-436d-b10d-90ecddd3fe2d/operator?token={jwt_token}`
 - **Frontend:** http://localhost:5175
 
 ### **Display**
-- **URL:** `ws://localhost:8000/ws/38534c9f-accb-4884-9c19-dd37f77d0594/display`
+- **URL:** `ws://localhost:8000/ws/7f02a566-2406-436d-b10d-90ecddd3fe2d/display`
 
 ## 🐛 Debugging
 
@@ -145,7 +145,7 @@ curl http://localhost:8000/health
 ```bash
 # Teste direto no navegador
 # Abra o console e execute:
-const ws = new WebSocket('ws://localhost:8000/ws/38534c9f-accb-4884-9c19-dd37f77d0594/totem');
+const ws = new WebSocket('ws://localhost:8000/ws/7f02a566-2406-436d-b10d-90ecddd3fe2d/totem');
 ws.onopen = () => console.log('Conectado!');
 ws.onerror = (e) => console.error('Erro:', e);
 ```

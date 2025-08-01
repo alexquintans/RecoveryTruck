@@ -19,7 +19,7 @@ const QueuePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [autoRedirectCountdown, setAutoRedirectCountdown] = useState(8); // 8 segundos
   
-  const tenantId = (import.meta as any).env?.VITE_TENANT_ID || '38534c9f-accb-4884-9c19-dd37f77d0594';
+  const tenantId = (import.meta as any).env?.VITE_TENANT_ID || '7f02a566-2406-436d-b10d-90ecddd3fe2d';
 
   // Redirecionar se não houver ticket
   if (!currentTicket || !selectedService) {

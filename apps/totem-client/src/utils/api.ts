@@ -106,7 +106,7 @@ export const api = {
     customer: Customer,
     extras?: Array<{ id: string; quantity: number; price: number }>
   ): Promise<Ticket> {
-    const tenantId = (import.meta as any).env?.VITE_TENANT_ID || '38534c9f-accb-4884-9c19-dd37f77d0594';
+    const tenantId = (import.meta as any).env?.VITE_TENANT_ID || '7f02a566-2406-436d-b10d-90ecddd3fe2d';
     const response = await baseApi.post('/tickets', {
       tenant_id: tenantId, // Adicionado
       services: services.map(s => ({
@@ -186,7 +186,7 @@ export const api = {
     const response = await baseApi.get('/customers/search', { 
       params: { 
         q: searchTerm,
-        tenant_id: (import.meta as any).env?.VITE_TENANT_ID || '38534c9f-accb-4884-9c19-dd37f77d0594'
+        tenant_id: (import.meta as any).env?.VITE_TENANT_ID || '7f02a566-2406-436d-b10d-90ecddd3fe2d'
       }, 
       withAuth: false 
     });

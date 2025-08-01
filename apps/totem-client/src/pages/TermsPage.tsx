@@ -27,7 +27,7 @@ const TermsPage: React.FC = () => {
     const fetchConsent = async () => {
       setLoadingConsent(true);
       try {
-        const tenantId = (import.meta as any).env?.VITE_TENANT_ID || '38534c9f-accb-4884-9c19-dd37f77d0594';
+        const tenantId = (import.meta as any).env?.VITE_TENANT_ID || '7f02a566-2406-436d-b10d-90ecddd3fe2d';
         const params: any = { tenant_id: tenantId };
         if (customerData.cpf) params.cpf = customerData.cpf.replace(/\D/g, '');
         else if (customerData.name && customerData.phone) {

@@ -45,7 +45,7 @@ python test_websocket.py
 ### **3. Testar no Navegador:**
 ```javascript
 // Abra o console do navegador e execute:
-const ws = new WebSocket('ws://localhost:8000/ws/38534c9f-accb-4884-9c19-dd37f77d0594/totem');
+const ws = new WebSocket('ws://localhost:8000/ws/7f02a566-2406-436d-b10d-90ecddd3fe2d/totem');
 ws.onopen = () => console.log('✅ Conectado!');
 ws.onerror = (e) => console.error('❌ Erro:', e);
 ws.onmessage = (e) => console.log('📥 Mensagem:', e.data);

@@ -482,37 +482,56 @@ WHERE email = 'admin@exemplo.com';
 async def update_password_hash_endpoint():
     """Endpoint para atualizar hash da senha do operador admin."""
     try:
-        from apps.api.security import get_password_hash
-        from apps.api.database import get_db
-        from apps.api.models import Operator
+        import bcrypt
+        import subprocess
+        import os
         
         password = "123456"
-        hash_generated = get_password_hash(password)
+        # Gerar hash usando bcrypt diretamente
+        salt = bcrypt.gensalt()
+        hash_generated = bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
         
-        # Atualizar no banco
-        db = next(get_db())
-        operator = db.query(Operator).filter(Operator.email == "admin@exemplo.com").first()
-        
-        if not operator:
+        # Executar SQL diretamente
+        db_url = os.getenv("DATABASE_URL")
+        if not db_url:
             return {
-                "message": "Operador não encontrado",
+                "message": "DATABASE_URL não encontrada",
                 "timestamp": datetime.utcnow().isoformat(),
                 "success": False,
-                "error": "Operador admin@exemplo.com não encontrado"
+                "error": "DATABASE_URL não configurada"
             }
         
-        # Atualizar hash
-        operator.password_hash = hash_generated
-        db.commit()
+        # Usar psql para executar SQL diretamente
+        sql_command = f"""
+        UPDATE operators 
+        SET password_hash = '{hash_generated}'
+        WHERE email = 'admin@exemplo.com';
+        """
         
-        return {
-            "message": "Hash atualizado com sucesso!",
-            "timestamp": datetime.utcnow().isoformat(),
-            "success": True,
-            "operator_email": "admin@exemplo.com",
-            "hash_updated": hash_generated,
-            "operator_id": str(operator.id)
-        }
+        # Executar com psql
+        result = subprocess.run(
+            ["psql", db_url, "-c", sql_command],
+            capture_output=True,
+            text=True
+        )
+        
+        if result.returncode == 0:
+            return {
+                "message": "Hash atualizado com sucesso!",
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": True,
+                "operator_email": "admin@exemplo.com",
+                "hash_updated": hash_generated,
+                "sql_output": result.stdout
+            }
+        else:
+            return {
+                "message": "Erro ao executar SQL",
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": False,
+                "error": result.stderr,
+                "sql_output": result.stdout
+            }
     except Exception as e:
         return {
             "message": f"Erro ao atualizar hash: {str(e)}",
@@ -527,45 +546,94 @@ async def login_for_access_token(
 ):
     """Login endpoint to get JWT token."""
     try:
-        from apps.api.auth import authenticate_operator
-        from apps.api.database import get_db
-        from apps.api.security import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
-        from apps.api.models import Operator
+        import bcrypt
+        import subprocess
+        import os
+        import jwt
+        from datetime import datetime, timedelta
         
-        # Autenticar operador
-        db = next(get_db())
-        operator = authenticate_operator(db, form_data.username, form_data.password)
-        
-        if not operator:
+        # Verificar credenciais diretamente no banco
+        db_url = os.getenv("DATABASE_URL")
+        if not db_url:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Email ou senha incorretos",
-                headers={"WWW-Authenticate": "Bearer"},
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="DATABASE_URL não configurada"
             )
         
-        # Criar token
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = create_access_token(
-            data={"sub": str(operator.id)},
-            expires_delta=access_token_expires
+        # Buscar operador no banco
+        sql_command = f"""
+        SELECT id, name, email, password_hash, tenant_id, is_active, 
+               last_login_at, created_at, updated_at
+        FROM operators 
+        WHERE email = '{form_data.username}';
+        """
+        
+        result = subprocess.run(
+            ["psql", db_url, "-t", "-c", sql_command],
+            capture_output=True,
+            text=True
         )
         
+        if result.returncode != 0 or not result.stdout.strip():
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Email ou senha incorretos"
+            )
+        
+        # Parse resultado
+        lines = result.stdout.strip().split('\n')
+        if not lines or not lines[0].strip():
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Email ou senha incorretos"
+            )
+        
+        # Parse dos campos (formato: id | name | email | password_hash | ...)
+        fields = [f.strip() for f in lines[0].split('|')]
+        operator_id = fields[0].strip()
+        name = fields[1].strip()
+        email = fields[2].strip()
+        password_hash = fields[3].strip()
+        tenant_id = fields[4].strip()
+        is_active = fields[5].strip() == 't'
+        
+        # Verificar senha
+        if not bcrypt.checkpw(form_data.password.encode('utf-8'), password_hash.encode('utf-8')):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Email ou senha incorretos"
+            )
+        
+        # Gerar token JWT
+        jwt_secret = os.getenv("JWT_SECRET", "your-secret-key")
+        payload = {
+            "sub": operator_id,
+            "exp": datetime.utcnow() + timedelta(minutes=30)
+        }
+        access_token = jwt.encode(payload, jwt_secret, algorithm="HS256")
+        
         # Atualizar último login
-        operator.last_login_at = datetime.utcnow()
-        db.commit()
+        update_sql = f"""
+        UPDATE operators 
+        SET last_login_at = NOW()
+        WHERE id = '{operator_id}';
+        """
+        
+        subprocess.run(
+            ["psql", db_url, "-c", update_sql],
+            capture_output=True,
+            text=True
+        )
         
         return {
             "access_token": access_token,
             "token_type": "bearer",
             "operator": {
-                "id": operator.id,
-                "name": operator.name,
-                "email": operator.email,
-                "tenant_id": operator.tenant_id,
-                "is_active": operator.is_active,
-                "last_login_at": operator.last_login_at,
-                "created_at": operator.created_at,
-                "updated_at": operator.updated_at,
+                "id": operator_id,
+                "name": name,
+                "email": email,
+                "tenant_id": tenant_id,
+                "is_active": is_active
             }
         }
     except HTTPException:

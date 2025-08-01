@@ -58,7 +58,7 @@ export async function fetchApi<T = any>(
   // Header de Tenant (se existir)
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore - Tipagem ImportMeta fora do contexto Vite
-  const tenantId = (import.meta as any).env?.VITE_TENANT_ID as string | "38534c9f-accb-4884-9c19-dd37f77d0594";
+  const tenantId = (import.meta as any).env?.VITE_TENANT_ID as string | "7f02a566-2406-436d-b10d-90ecddd3fe2d";
   if (tenantId && !headers.has('X-Tenant-Id')) {
     headers.set('X-Tenant-Id', tenantId);
   }
@@ -116,7 +116,7 @@ api.interceptors.request.use(
     // Adicionar header de tenant
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore - Tipagem ImportMeta fora do contexto Vite
-    const tenantId = (import.meta as any).env?.VITE_TENANT_ID as string | "38534c9f-accb-4884-9c19-dd37f77d0594";
+    const tenantId = (import.meta as any).env?.VITE_TENANT_ID as string | "7f02a566-2406-436d-b10d-90ecddd3fe2d";
     if (tenantId && !config.headers['X-Tenant-Id']) {
       config.headers['X-Tenant-Id'] = tenantId;
     }
