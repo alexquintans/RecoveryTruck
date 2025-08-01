@@ -194,10 +194,27 @@ const TicketPage: React.FC = () => {
               <span className="text-xl font-bold">{displayNumber}</span>
             </div>
             
-            <div className="flex justify-between mb-2">
-              <span className="font-semibold">Serviço:</span>
-              <span>{mainService.name}</span>
-            </div>
+            {currentTicket.services && currentTicket.services.length > 0 ? (
+              <div className="mb-2">
+                <div className="font-semibold">Serviços:</div>
+                {currentTicket.services.map((service: any, idx: number) => (
+                  <div key={service.service_id || idx} className="mb-1">
+                    <div className="flex justify-between">
+                      <span className="font-medium">{service.name}</span>
+                      <span className="font-bold">{formatCurrency(service.price || 0)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-gray-600 ml-2">
+                      <span>Duração: {service.duration || 10} min</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex justify-between mb-2">
+                <span className="font-semibold">Serviço:</span>
+                <span>{mainService?.name || 'Não informado'}</span>
+              </div>
+            )}
             
             {/* Extras escolhidos pelo cliente */}
             {currentTicket.extras && currentTicket.extras.length > 0 && (
