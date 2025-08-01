@@ -478,7 +478,7 @@ WHERE email = 'admin@exemplo.com';
             "error": str(e)
         }
 
-@app.post("/update-password-hash", summary="🔐 Atualizar hash da senha", description="Atualizar hash da senha do operador admin")
+@app.get("/update-password-hash", summary="🔐 Atualizar hash da senha", description="Atualizar hash da senha do operador admin")
 async def update_password_hash_endpoint():
     """Endpoint para atualizar hash da senha do operador admin."""
     try:
