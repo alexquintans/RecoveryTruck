@@ -672,14 +672,9 @@ async def get_operation_config(tenant_id: str):
 @app.post("/operation/config", summary="⚙️ Configurar operação", description="Salvar configuração de operação")
 async def save_operation_config(
     tenant_id: str,
-    services: list = None,
-    extras: list = None,
-    payment_modes: list = None,
-    payment_config: dict = None,
-    operator_id: str = None,
-    equipments: list = None
+    data: dict
 ):
-    """Buscar configuração de operação."""
+    """Salvar configuração de operação."""
     try:
         import psycopg2
         from urllib.parse import urlparse
