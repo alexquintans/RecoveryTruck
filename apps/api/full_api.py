@@ -112,11 +112,6 @@ router_configs = {
 
 # Incluir routers na aplicação
 for router_name, router in loaded_routers.items():
-    # Pular o router de websocket temporariamente para evitar conflito
-    if router_name == "websocket":
-        print(f"⚠️ Router {router_name} pulado temporariamente para evitar conflito")
-        continue
-        
     config = router_configs.get(router_name, {"prefix": f"/{router_name}", "tags": [router_name]})
     try:
         app.include_router(router, prefix=config["prefix"], tags=config["tags"])
@@ -149,46 +144,7 @@ async def websocket_test_direct(websocket: WebSocket):
         import traceback
         traceback.print_exc()
 
-# Endpoint WebSocket simples para teste - SEM router
-@app.websocket("/ws")
-async def websocket_simple_direct(websocket: WebSocket):
-    """Endpoint WebSocket simples direto na aplicação para teste"""
-    print(f"🔍 DEBUG - WebSocket simples direto recebido")
-    print(f"🔍 DEBUG - Headers: {websocket.headers}")
-    print(f"🔍 DEBUG - URL: {websocket.url}")
-    print(f"🔍 DEBUG - Query params: {websocket.query_params}")
-    
-    try:
-        await websocket.accept()
-        print(f"🔍 DEBUG - WebSocket simples direto aceito com sucesso!")
-        
-        # Extrair parâmetros da query string
-        tenant_id = websocket.query_params.get("tenant_id")
-        client_type = websocket.query_params.get("client_type")
-        
-        print(f"🔍 DEBUG - tenant_id: {tenant_id}")
-        print(f"🔍 DEBUG - client_type: {client_type}")
-        
-        # Enviar mensagem de confirmação
-        await websocket.send_json({
-            "type": "connection_confirmed",
-            "data": {
-                "tenant_id": tenant_id,
-                "client_type": client_type,
-                "message": "Conexão estabelecida com sucesso"
-            }
-        })
-        
-        while True:
-            data = await websocket.receive_text()
-            print(f"🔍 DEBUG - WebSocket simples direto recebeu: {data}")
-            await websocket.send_text(f"Echo simples direto: {data}")
-    except WebSocketDisconnect:
-        print(f"🔍 DEBUG - WebSocket simples direto desconectado")
-    except Exception as e:
-        print(f"🔍 DEBUG - WebSocket simples direto erro: {e}")
-        import traceback
-        traceback.print_exc()
+
 
 
 
