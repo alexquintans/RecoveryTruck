@@ -25,9 +25,9 @@ router_configs = {
 ```
 
 ### **3. URLs Corretas Agora:**
-- **Totem:** `ws://localhost:8000/ws/{tenant_id}/totem`
-- **Panel:** `ws://localhost:8000/ws/{tenant_id}/operator?token={jwt_token}`
-- **Display:** `ws://localhost:8000/ws/{tenant_id}/display`
+- **Totem:** `ws://recoverytruck-production.up.railway.app/ws/{tenant_id}/totem`
+- **Panel:** `ws://recoverytruck-production.up.railway.app/ws/{tenant_id}/operator?token={jwt_token}`
+- **Display:** `ws://recoverytruck-production.up.railway.app/ws/{tenant_id}/display`
 
 ## 🧪 Como Testar
 
@@ -45,7 +45,7 @@ python test_websocket.py
 ### **3. Testar no Navegador:**
 ```javascript
 // Abra o console do navegador e execute:
-const ws = new WebSocket('ws://localhost:8000/ws/7f02a566-2406-436d-b10d-90ecddd3fe2d/totem');
+const ws = new WebSocket('ws://recoverytruck-production.up.railway.app/ws/7f02a566-2406-436d-b10d-90ecddd3fe2d/totem');
 ws.onopen = () => console.log('✅ Conectado!');
 ws.onerror = (e) => console.error('❌ Erro:', e);
 ws.onmessage = (e) => console.log('📥 Mensagem:', e.data);

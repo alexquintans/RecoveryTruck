@@ -348,7 +348,7 @@
         let currentTicket = null;
         let selectedPaymentMethod = null;
         let signaturePad = null;
-        const ws = new WebSocket('ws://localhost:8000/ws');
+        const ws = new WebSocket('ws://recoverytruck-production.up.railway.app/ws');
 
         ws.onmessage = function(event) {
             const data = JSON.parse(event.data);

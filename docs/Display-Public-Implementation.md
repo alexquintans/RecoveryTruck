@@ -16,7 +16,7 @@ A **Prioridade 3: Display público para chamadas** foi implementada com sucesso,
   - Broadcast de atualizações para displays em todas as operações
 
 #### **2. Endpoint WebSocket Atualizado**
-- **URL:** `ws://localhost:8000/ws/{tenant_id}/display`
+- **URL:** `ws://recoverytruck-production.up.railway.app/ws/{tenant_id}/display`
 - **Tipo de cliente:** `display` (novo)
 - **Autenticação:** Não requerida (público)
 - **Localização:** `apps/api/routers/websocket.py`
@@ -110,7 +110,7 @@ A **Prioridade 3: Display público para chamadas** foi implementada com sucesso,
 ## 🔌 WebSocket - Fluxo de Dados
 
 ### **Conexão**
-1. Display conecta ao WebSocket: `ws://localhost:8000/ws/{tenant_id}/display`
+1. Display conecta ao WebSocket: `ws://recoverytruck-production.up.railway.app/ws/{tenant_id}/display`
 2. Conexão é registrada no `ConnectionManager`
 3. Status de conexão é exibido na interface
 
@@ -173,13 +173,13 @@ A **Prioridade 3: Display público para chamadas** foi implementada com sucesso,
 ### **Variáveis de Ambiente**
 ```env
 VITE_API_URL=http://localhost:8000
-VITE_WS_URL=ws://localhost:8000/ws
+VITE_WS_URL=ws://recoverytruck-production.up.railway.app/ws
 VITE_TENANT_ID=default
 ```
 
 ### **WebSocket URL**
 ```
-ws://localhost:8000/ws/{tenant_id}/display
+ws://recoverytruck-production.up.railway.app/ws/{tenant_id}/display
 ```
 
 ### **Dependências**

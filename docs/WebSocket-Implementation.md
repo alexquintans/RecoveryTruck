@@ -17,7 +17,7 @@ A **WebSocket para atualizações em tempo real** foi implementada com sucesso, 
   - Notificações sonoras integradas
 
 #### **2. Endpoint WebSocket**
-- **URL:** `ws://localhost:8000/ws/{tenant_id}/{client_type}`
+- **URL:** `ws://recoverytruck-production.up.railway.app/ws/{tenant_id}/{client_type}`
 - **Tipos de cliente:** `operator`, `totem`
 - **Autenticação:** Apenas para operadores (totem não requer auth)
 - **Localização:** `apps/api/routers/websocket.py`
@@ -54,7 +54,7 @@ A **WebSocket para atualizações em tempo real** foi implementada com sucesso, 
 ### **1. Conexão Inicial**
 ```
 Totem → WebSocket → Backend
-URL: ws://localhost:8000/ws/{tenant_id}/totem
+URL: ws://recoverytruck-production.up.railway.app/ws/{tenant_id}/totem
 ```
 
 ### **2. Atualizações em Tempo Real**
@@ -96,7 +96,7 @@ Operador chama ticket → Backend atualiza status → WebSocket broadcast → To
 ### **Variáveis de Ambiente**
 ```bash
 # Backend
-VITE_WS_URL=ws://localhost:8000/ws  # URL base do WebSocket
+VITE_WS_URL=ws://recoverytruck-production.up.railway.app/ws  # URL base do WebSocket
 
 # Frontend
 VITE_TENANT_ID=default              # ID do tenant
@@ -105,10 +105,10 @@ VITE_TENANT_ID=default              # ID do tenant
 ### **URLs de Conexão**
 ```javascript
 // Totem
-ws://localhost:8000/ws/{tenant_id}/totem
+ws://recoverytruck-production.up.railway.app/ws/{tenant_id}/totem
 
 // Operador (com autenticação)
-ws://localhost:8000/ws/{tenant_id}/operator?token={jwt_token}
+ws://recoverytruck-production.up.railway.app/ws/{tenant_id}/operator?token={jwt_token}
 ```
 
 ## 📊 Benefícios Alcançados

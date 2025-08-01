@@ -7,7 +7,7 @@ async def test_websocket():
     """Teste simples de conexão WebSocket"""
     
     # URL do WebSocket do router com parâmetros
-    uri = "ws://localhost:8000/ws?tenant_id=7f02a566-2406-436d-b10d-90ecddd3fe2d&client_type=totem"
+    uri = "ws://recoverytruck-production.up.railway.app/ws?tenant_id=7f02a566-2406-436d-b10d-90ecddd3fe2d&client_type=totem"
     
     print(f"🔍 Testando conexão WebSocket: {uri}")
     

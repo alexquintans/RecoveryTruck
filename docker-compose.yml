@@ -151,8 +151,8 @@ services:
       dockerfile: apps/panel-client/Dockerfile
     depends_on: [api]
     environment:
-      - VITE_API_URL=http://localhost:8000
-      - VITE_WS_URL=ws://localhost:8000/ws
+      - VITE_API_URL=https://recoverytruck-production.up.railway.app
+      - VITE_WS_URL=ws://recoverytruck-production.up.railway.app/ws
       - VITE_TENANT_ID=7f02a566-2406-436d-b10d-90ecddd3fe2d
     ports:
       - "5175:80"          # porta externa → porta nginx
@@ -169,9 +169,9 @@ services:
       dockerfile: apps/totem-client/Dockerfile
     depends_on: [api]
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_URL=https://recoverytruck-production.up.railway.app
       - VITE_TENANT_ID=7f02a566-2406-436d-b10d-90ecddd3fe2d
-      - VITE_WS_URL=ws://localhost:8000/ws
+      - VITE_WS_URL=ws://recoverytruck-production.up.railway.app/ws
       - VITE_MOCK_PAYMENT=true
     ports:
       - "5174:80"

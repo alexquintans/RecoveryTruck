@@ -11,7 +11,7 @@ import sys
 async def test_simple_websocket():
     """Testa o endpoint WebSocket simples"""
     
-    ws_url = "ws://localhost:8000/ws/test"
+    ws_url = "ws://recoverytruck-production.up.railway.app/ws/test"
     
     print(f"🔍 Testando WebSocket simples: {ws_url}")
     
