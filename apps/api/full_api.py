@@ -91,8 +91,6 @@ app.add_middleware(
     allow_headers=["*"],
     # Headers específicos para WebSocket
     expose_headers=["*"],
-    # Configurações específicas para WebSocket
-    allow_websockets=True,
 )
 
 # Registrar routers carregados
@@ -114,6 +112,11 @@ router_configs = {
 
 # Incluir routers na aplicação
 for router_name, router in loaded_routers.items():
+    # Pular o router de websocket temporariamente para evitar conflito
+    if router_name == "websocket":
+        print(f"⚠️ Router {router_name} pulado temporariamente para evitar conflito")
+        continue
+        
     config = router_configs.get(router_name, {"prefix": f"/{router_name}", "tags": [router_name]})
     try:
         app.include_router(router, prefix=config["prefix"], tags=config["tags"])
@@ -154,8 +157,6 @@ async def websocket_simple_direct(websocket: WebSocket):
     print(f"🔍 DEBUG - Headers: {websocket.headers}")
     print(f"🔍 DEBUG - URL: {websocket.url}")
     print(f"🔍 DEBUG - Query params: {websocket.query_params}")
-    print(f"🔍 DEBUG - Origin: {websocket.headers.get('origin')}")
-    print(f"🔍 DEBUG - User-Agent: {websocket.headers.get('user-agent')}")
     
     try:
         await websocket.accept()
