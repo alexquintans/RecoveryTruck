@@ -555,7 +555,11 @@ async def update_password_hash_endpoint():
 @app.post("/operation/config", summary="⚙️ Configurar operação", description="Salvar configuração de operação")
 async def save_operation_config(
     tenant_id: str,
-    config_data: dict
+    services: list = None,
+    extras: list = None,
+    payment_modes: list = None,
+    payment_config: dict = None,
+    operator_id: str = None
 ):
     """Salvar configuração de operação."""
     try:
@@ -583,7 +587,7 @@ async def save_operation_config(
         
         cursor = conn.cursor()
         
-        # Inserir ou atualizar configuração
+        # Inserir ou atualizar configuração principal
         cursor.execute(
             """
             INSERT INTO operation_config (tenant_id, operator_id, payment_modes, payment_config, created_at, updated_at)
@@ -597,13 +601,66 @@ async def save_operation_config(
             """,
             (
                 tenant_id,
-                config_data.get("operator_id"),
-                json.dumps(config_data.get("payment_modes", [])),
-                json.dumps(config_data.get("payment_config", {}))
+                operator_id,
+                json.dumps(payment_modes or []),
+                json.dumps(payment_config or {})
             )
         )
         
-        result = cursor.fetchone()
+        config_result = cursor.fetchone()
+        config_id = config_result[0] if config_result else None
+        
+        # Processar serviços se fornecidos
+        if services:
+            # Limpar configurações de equipamentos existentes
+            cursor.execute(
+                "DELETE FROM operation_config_equipments WHERE operation_config_id = %s",
+                (config_id,)
+            )
+            
+            # Inserir novas configurações de equipamentos
+            for service in services:
+                if service.get("active"):
+                    cursor.execute(
+                        """
+                        INSERT INTO operation_config_equipments 
+                        (operation_config_id, equipment_id, active, quantity)
+                        VALUES (%s, %s, %s, %s)
+                        """,
+                        (
+                            config_id,
+                            service.get("service_id"),
+                            service.get("active", False),
+                            service.get("equipment_count", 1)
+                        )
+                    )
+        
+        # Processar extras se fornecidos
+        if extras:
+            # Limpar configurações de extras existentes
+            cursor.execute(
+                "DELETE FROM operation_config_extras WHERE operation_config_id = %s",
+                (config_id,)
+            )
+            
+            # Inserir novas configurações de extras
+            for extra in extras:
+                if extra.get("active"):
+                    cursor.execute(
+                        """
+                        INSERT INTO operation_config_extras 
+                        (operation_config_id, extra_id, active, stock, price)
+                        VALUES (%s, %s, %s, %s, %s)
+                        """,
+                        (
+                            config_id,
+                            extra.get("extra_id"),
+                            extra.get("active", False),
+                            extra.get("stock", 0),
+                            extra.get("price", 0)
+                        )
+                    )
+        
         conn.commit()
         cursor.close()
         conn.close()
@@ -612,7 +669,7 @@ async def save_operation_config(
             "message": "Configuração salva com sucesso!",
             "timestamp": datetime.utcnow().isoformat(),
             "success": True,
-            "config_id": str(result[0]) if result else None
+            "config_id": str(config_id) if config_id else None
         }
     except Exception as e:
         return {
