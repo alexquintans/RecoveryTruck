@@ -40,7 +40,7 @@ const WelcomePage: React.FC = () => {
   };
 
   return (
-    <div className="totem-card">
+    <div className="totem-card overflow-y-auto">
       <motion.div
         variants={containerVariants}
         initial="hidden"

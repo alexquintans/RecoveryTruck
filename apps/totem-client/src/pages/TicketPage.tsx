@@ -136,7 +136,7 @@ const TicketPage: React.FC = () => {
       isTicketValid: isTicketValid(currentTicket) 
     });
     return (
-      <div className="totem-card flex flex-col items-center justify-center gap-6">
+      <div className="totem-card flex flex-col items-center justify-center gap-6 overflow-y-auto">
         <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary"></div>
         <h2 className="text-2xl font-bold text-primary text-center">Carregando seu ticket...</h2>
         <p className="text-sm text-text-light text-center">
@@ -169,7 +169,7 @@ const TicketPage: React.FC = () => {
   console.log('TicketPage - IsPaymentNone:', isPaymentNone);
 
   return (
-    <div className="totem-card">
+    <div className="totem-card overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}

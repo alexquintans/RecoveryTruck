@@ -113,7 +113,7 @@ const QueuePage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="totem-card">
+      <div className="totem-card overflow-y-auto">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <h2 className="text-xl font-semibold text-primary mb-2">Carregando...</h2>
@@ -125,7 +125,7 @@ const QueuePage: React.FC = () => {
 
   if (error) {
     return (
-      <div className="totem-card">
+      <div className="totem-card overflow-y-auto">
         <div className="text-center">
           <h2 className="text-xl font-semibold text-red-600 mb-2">Erro</h2>
           <p className="text-text-light mb-4">{error}</p>
@@ -138,7 +138,7 @@ const QueuePage: React.FC = () => {
   }
 
   return (
-    <div className="totem-card">
+    <div className="totem-card overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}

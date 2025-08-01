@@ -298,7 +298,7 @@ const PaymentPage: React.FC = () => {
   // Se está carregando configuração, mostrar loading
   if (loadingConfig) {
     return (
-      <div className="totem-card flex flex-col items-center justify-center gap-6">
+      <div className="totem-card flex flex-col items-center justify-center gap-6 overflow-y-auto">
         <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary"></div>
         <h2 className="text-2xl font-bold text-primary text-center">Carregando...</h2>
         <p className="text-sm text-text-light text-center">Aguarde um momento...</p>
@@ -309,7 +309,7 @@ const PaymentPage: React.FC = () => {
   // Se está carregando o ticket, mostrar loading
   if (loadingTicket) {
     return (
-      <div className="totem-card flex flex-col items-center justify-center gap-6">
+      <div className="totem-card flex flex-col items-center justify-center gap-6 overflow-y-auto">
         <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary"></div>
         <h2 className="text-2xl font-bold text-primary text-center">Criando seu ticket...</h2>
         <p className="text-sm text-text-light text-center">Aguarde um momento...</p>
@@ -392,7 +392,7 @@ const PaymentPage: React.FC = () => {
   const total = subtotalServico + subtotalExtras - desconto;
 
   return (
-    <div className="totem-card">
+    <div className="totem-card overflow-y-auto">
       {/* Status do WebSocket */}
       <WebSocketStatus isConnected={wsConnected} status={wsConnected ? 'open' : 'closed'} />
       

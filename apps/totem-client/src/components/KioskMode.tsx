@@ -335,7 +335,8 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
       const style = document.createElement('style');
       style.innerHTML = `
         .kiosk-fallback-mode {
-          overflow: hidden !important;
+          overflow-x: hidden !important;
+          overflow-y: auto !important;
           position: fixed !important;
           width: 100% !important;
           height: 100% !important;
@@ -352,6 +353,7 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
           right: 0 !important;
           bottom: 0 !important;
           z-index: 9999 !important;
+          overflow-y: auto !important;
         }
       `;
       document.head.appendChild(style);

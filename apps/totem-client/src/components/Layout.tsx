@@ -1,3 +1,4 @@
+import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import KioskAdminTrigger from './KioskAdminTrigger';
@@ -6,7 +7,7 @@ const Layout = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b-2 border-gray-200 py-4">
+      <header className="bg-white border-b-2 border-gray-200 py-4 flex-shrink-0">
         <div className="container mx-auto px-4 flex items-center justify-center">
           <img 
             src="/logo192.png?v=2" 
@@ -17,7 +18,7 @@ const Layout = () => {
       </header>
       
       {/* Main content */}
-      <main className="flex-grow flex items-center justify-center p-4">
+      <main className="flex-grow flex items-center justify-center p-4 overflow-y-auto">
         <motion.div 
           className="w-full max-w-4xl"
           initial={{ opacity: 0, y: 20 }}

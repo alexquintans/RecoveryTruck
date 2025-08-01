@@ -98,7 +98,7 @@ const TermsPage: React.FC = () => {
   };
 
   return (
-    <div className="totem-card">
+    <div className="totem-card overflow-y-auto">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
