@@ -407,15 +407,14 @@ async def check_data_endpoint():
 async def test_auth_endpoint():
     """Endpoint para testar autenticação diretamente."""
     try:
-        from apps.api.services.auth.auth_service import AuthService
+        from apps.api.auth import authenticate_operator
         from apps.api.database import get_db
         
         # Testar autenticação
-        auth_service = AuthService()
         db = next(get_db())
         
         # Tentar autenticar
-        result = auth_service.authenticate_operator(
+        result = authenticate_operator(
             db=db,
             email="admin@exemplo.com",
             password="123456"
