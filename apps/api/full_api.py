@@ -676,7 +676,8 @@ async def save_operation_config(
     extras: list = None,
     payment_modes: list = None,
     payment_config: dict = None,
-    operator_id: str = None
+    operator_id: str = None,
+    equipments: list = None
 ):
     """Buscar configuração de operação."""
     try:
@@ -840,8 +841,33 @@ async def save_operation_config(
         config_result = cursor.fetchone()
         config_id = config_result[0] if config_result else None
         
-        # Processar serviços se fornecidos
-        if services:
+        # Processar equipamentos se fornecidos (novo formato)
+        if equipments:
+            # Limpar configurações de equipamentos existentes
+            cursor.execute(
+                "DELETE FROM operation_config_equipments WHERE operation_config_id = %s",
+                (config_id,)
+            )
+            
+            # Inserir novas configurações de equipamentos
+            for equipment in equipments:
+                if equipment.get("active"):
+                    cursor.execute(
+                        """
+                        INSERT INTO operation_config_equipments 
+                        (operation_config_id, equipment_id, active, quantity)
+                        VALUES (%s, %s, %s, %s)
+                        """,
+                        (
+                            config_id,
+                            equipment.get("equipment_id"),
+                            equipment.get("active", False),
+                            equipment.get("quantity", 1)
+                        )
+                    )
+        
+        # Processar serviços se fornecidos (formato antigo - mantido para compatibilidade)
+        elif services:
             # Limpar configurações de equipamentos existentes
             cursor.execute(
                 "DELETE FROM operation_config_equipments WHERE operation_config_id = %s",
