@@ -6,7 +6,7 @@ from pathlib import Path
 current_dir = str(Path(__file__).parent)
 sys.path.insert(0, current_dir)
 
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
@@ -672,7 +672,7 @@ async def get_operation_config(tenant_id: str):
 @app.post("/operation/config", summary="⚙️ Configurar operação", description="Salvar configuração de operação")
 async def save_operation_config(
     tenant_id: str,
-    data: dict
+    request: Request
 ):
     """Salvar configuração de operação."""
     try:
@@ -680,6 +680,17 @@ async def save_operation_config(
         from urllib.parse import urlparse
         import os
         import json
+        
+        # Pegar body bruto para evitar validação
+        body = await request.json()
+        
+        # Extrair dados do payload
+        services = body.get("services", [])
+        extras = body.get("extras", [])
+        payment_modes = body.get("payment_modes", [])
+        payment_config = body.get("payment_config", {})
+        operator_id = body.get("operator_id")
+        equipments = body.get("equipments", [])
         
         # Conectar ao banco
         db_url = os.getenv("DATABASE_URL")
@@ -700,89 +711,118 @@ async def save_operation_config(
         
         cursor = conn.cursor()
         
-        # Buscar configuração
+        # Inserir ou atualizar configuração principal
         cursor.execute(
             """
-            SELECT id, tenant_id, operator_id, payment_modes, payment_config, created_at, updated_at
-            FROM operation_config 
-            WHERE tenant_id = %s
-            ORDER BY created_at DESC
-            LIMIT 1
+            INSERT INTO operation_config (tenant_id, operator_id, payment_modes, payment_config, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, NOW(), NOW())
+            ON CONFLICT (tenant_id, operator_id) 
+            DO UPDATE SET 
+                payment_modes = EXCLUDED.payment_modes,
+                payment_config = EXCLUDED.payment_config,
+                updated_at = NOW()
+            RETURNING id
             """,
-            (tenant_id,)
+            (
+                tenant_id,
+                operator_id,
+                json.dumps(payment_modes),
+                json.dumps(payment_config)
+            )
         )
         
-        result = cursor.fetchone()
+        config_result = cursor.fetchone()
+        config_id = config_result[0] if config_result else None
         
-        if not result:
-            return {
-                "message": "Configuração não encontrada",
-                "timestamp": datetime.utcnow().isoformat(),
-                "success": False,
-                "error": "Configuração não encontrada para este tenant"
-            }
+        # Processar equipamentos se fornecidos (novo formato)
+        if equipments:
+            # Limpar configurações de equipamentos existentes
+            cursor.execute(
+                "DELETE FROM operation_config_equipments WHERE operation_config_id = %s",
+                (config_id,)
+            )
+            
+            # Inserir novas configurações de equipamentos
+            for equipment in equipments:
+                if equipment.get("active"):
+                    cursor.execute(
+                        """
+                        INSERT INTO operation_config_equipments 
+                        (operation_config_id, equipment_id, active, quantity)
+                        VALUES (%s, %s, %s, %s)
+                        """,
+                        (
+                            config_id,
+                            equipment.get("equipment_id"),
+                            equipment.get("active", False),
+                            equipment.get("quantity", 1)
+                        )
+                    )
         
-        config_id, tenant_id, operator_id, payment_modes, payment_config, created_at, updated_at = result
+        # Processar serviços se fornecidos (formato antigo - mantido para compatibilidade)
+        elif services:
+            # Limpar configurações de equipamentos existentes
+            cursor.execute(
+                "DELETE FROM operation_config_equipments WHERE operation_config_id = %s",
+                (config_id,)
+            )
+            
+            # Inserir novas configurações de equipamentos
+            for service in services:
+                if service.get("active"):
+                    cursor.execute(
+                        """
+                        INSERT INTO operation_config_equipments 
+                        (operation_config_id, equipment_id, active, quantity)
+                        VALUES (%s, %s, %s, %s)
+                        """,
+                        (
+                            config_id,
+                            service.get("service_id"),
+                            service.get("active", False),
+                            service.get("equipment_count", 1)
+                        )
+                    )
         
-        # Buscar equipamentos configurados
-        cursor.execute(
-            """
-            SELECT equipment_id, active, quantity
-            FROM operation_config_equipments 
-            WHERE operation_config_id = %s
-            """,
-            (config_id,)
-        )
+        # Processar extras se fornecidos
+        if extras:
+            # Limpar configurações de extras existentes
+            cursor.execute(
+                "DELETE FROM operation_config_extras WHERE operation_config_id = %s",
+                (config_id,)
+            )
+            
+            # Inserir novas configurações de extras
+            for extra in extras:
+                if extra.get("active"):
+                    cursor.execute(
+                        """
+                        INSERT INTO operation_config_extras 
+                        (operation_config_id, extra_id, active, stock, price)
+                        VALUES (%s, %s, %s, %s, %s)
+                        """,
+                        (
+                            config_id,
+                            extra.get("extra_id"),
+                            extra.get("active", False),
+                            extra.get("stock", 0),
+                            extra.get("price", 0)
+                        )
+                    )
         
-        equipments = []
-        for row in cursor.fetchall():
-            equipments.append({
-                "equipment_id": str(row[0]),
-                "active": row[1],
-                "quantity": row[2]
-            })
-        
-        # Buscar extras configurados
-        cursor.execute(
-            """
-            SELECT extra_id, active, stock, price
-            FROM operation_config_extras 
-            WHERE operation_config_id = %s
-            """,
-            (config_id,)
-        )
-        
-        extras = []
-        for row in cursor.fetchall():
-            extras.append({
-                "extra_id": str(row[0]),
-                "active": row[1],
-                "stock": row[2],
-                "price": float(row[3])
-            })
-        
+        conn.commit()
         cursor.close()
         conn.close()
         
         return {
-            "message": "Configuração encontrada",
+            "message": "Configuração salva com sucesso!",
             "timestamp": datetime.utcnow().isoformat(),
             "success": True,
-            "config": {
-                "id": str(config_id),
-                "tenant_id": str(tenant_id),
-                "operator_id": str(operator_id) if operator_id else None,
-                "payment_modes": json.loads(payment_modes) if payment_modes else [],
-                "payment_config": json.loads(payment_config) if payment_config else {},
-                "equipments": equipments,
-                "extras": extras,
-                "created_at": created_at.isoformat() if created_at else None,
-                "updated_at": updated_at.isoformat() if updated_at else None
-            }
+            "config_id": str(config_id) if config_id else None
         }
     except Exception as e:
         return {
-            "message": f"Erro ao buscar configuração: {str(e)}",
+            "message": f"Erro ao salvar configuração: {str(e)}",
             "timestamp": datetime.utcnow().isoformat(),
             "success": False,
             "error": str(e)
