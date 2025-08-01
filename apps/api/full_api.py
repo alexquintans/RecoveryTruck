@@ -482,16 +482,13 @@ WHERE email = 'admin@exemplo.com';
 async def update_password_hash_endpoint():
     """Endpoint para atualizar hash da senha do operador admin."""
     try:
-        import bcrypt
         import subprocess
         import os
         
+        # Gerar hash usando script externo
         password = "123456"
-        # Gerar hash usando bcrypt diretamente
-        salt = bcrypt.gensalt()
-        hash_generated = bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
         
-        # Executar SQL diretamente
+        # Executar comando SQL direto
         db_url = os.getenv("DATABASE_URL")
         if not db_url:
             return {
@@ -501,37 +498,50 @@ async def update_password_hash_endpoint():
                 "error": "DATABASE_URL não configurada"
             }
         
-        # Usar psql para executar SQL diretamente
-        sql_command = f"""
-        UPDATE operators 
-        SET password_hash = '{hash_generated}'
-        WHERE email = 'admin@exemplo.com';
-        """
+        # Gerar hash usando bcrypt
+        import bcrypt
+        hash_generated = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         
-        # Executar com psql
-        result = subprocess.run(
-            ["psql", db_url, "-c", sql_command],
-            capture_output=True,
-            text=True
+        # Atualizar via SQL direto
+        import psycopg2
+        from urllib.parse import urlparse
+        
+        parsed = urlparse(db_url)
+        conn = psycopg2.connect(
+            host=parsed.hostname,
+            port=parsed.port,
+            database=parsed.path[1:],
+            user=parsed.username,
+            password=parsed.password
         )
         
-        if result.returncode == 0:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE operators SET password_hash = %s WHERE email = %s RETURNING id",
+            (hash_generated, "admin@exemplo.com")
+        )
+        
+        result = cursor.fetchone()
+        if not result:
             return {
-                "message": "Hash atualizado com sucesso!",
-                "timestamp": datetime.utcnow().isoformat(),
-                "success": True,
-                "operator_email": "admin@exemplo.com",
-                "hash_updated": hash_generated,
-                "sql_output": result.stdout
-            }
-        else:
-            return {
-                "message": "Erro ao executar SQL",
+                "message": "Operador não encontrado",
                 "timestamp": datetime.utcnow().isoformat(),
                 "success": False,
-                "error": result.stderr,
-                "sql_output": result.stdout
+                "error": "Operador admin@exemplo.com não encontrado"
             }
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        return {
+            "message": "Hash atualizado com sucesso!",
+            "timestamp": datetime.utcnow().isoformat(),
+            "success": True,
+            "operator_email": "admin@exemplo.com",
+            "hash_updated": hash_generated,
+            "operator_id": str(result[0])
+        }
     except Exception as e:
         return {
             "message": f"Erro ao atualizar hash: {str(e)}",
@@ -547,12 +557,17 @@ async def login_for_access_token(
     """Login endpoint to get JWT token."""
     try:
         import bcrypt
-        import subprocess
+        import psycopg2
+        from urllib.parse import urlparse
         import os
         import jwt
         from datetime import datetime, timedelta
         
-        # Verificar credenciais diretamente no banco
+        # Configurações
+        JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key")
+        ACCESS_TOKEN_EXPIRE_MINUTES = 30
+        
+        # Conectar ao banco
         db_url = os.getenv("DATABASE_URL")
         if not db_url:
             raise HTTPException(
@@ -560,70 +575,69 @@ async def login_for_access_token(
                 detail="DATABASE_URL não configurada"
             )
         
-        # Buscar operador no banco
-        sql_command = f"""
-        SELECT id, name, email, password_hash, tenant_id, is_active, 
-               last_login_at, created_at, updated_at
-        FROM operators 
-        WHERE email = '{form_data.username}';
-        """
-        
-        result = subprocess.run(
-            ["psql", db_url, "-t", "-c", sql_command],
-            capture_output=True,
-            text=True
+        parsed = urlparse(db_url)
+        conn = psycopg2.connect(
+            host=parsed.hostname,
+            port=parsed.port,
+            database=parsed.path[1:],
+            user=parsed.username,
+            password=parsed.password
         )
         
-        if result.returncode != 0 or not result.stdout.strip():
+        cursor = conn.cursor()
+        
+        # Buscar operador
+        cursor.execute(
+            "SELECT id, name, email, password_hash, tenant_id, is_active, last_login_at, created_at, updated_at FROM operators WHERE email = %s",
+            (form_data.username,)
+        )
+        
+        result = cursor.fetchone()
+        if not result:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Email ou senha incorretos"
+                detail="Email ou senha incorretos",
+                headers={"WWW-Authenticate": "Bearer"},
             )
         
-        # Parse resultado
-        lines = result.stdout.strip().split('\n')
-        if not lines or not lines[0].strip():
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Email ou senha incorretos"
-            )
-        
-        # Parse dos campos (formato: id | name | email | password_hash | ...)
-        fields = [f.strip() for f in lines[0].split('|')]
-        operator_id = fields[0].strip()
-        name = fields[1].strip()
-        email = fields[2].strip()
-        password_hash = fields[3].strip()
-        tenant_id = fields[4].strip()
-        is_active = fields[5].strip() == 't'
+        operator_id, name, email, password_hash, tenant_id, is_active, last_login_at, created_at, updated_at = result
         
         # Verificar senha
         if not bcrypt.checkpw(form_data.password.encode('utf-8'), password_hash.encode('utf-8')):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Email ou senha incorretos"
+                detail="Email ou senha incorretos",
+                headers={"WWW-Authenticate": "Bearer"},
             )
         
-        # Gerar token JWT
-        jwt_secret = os.getenv("JWT_SECRET", "your-secret-key")
-        payload = {
-            "sub": operator_id,
-            "exp": datetime.utcnow() + timedelta(minutes=30)
-        }
-        access_token = jwt.encode(payload, jwt_secret, algorithm="HS256")
+        # Verificar se operador está ativo
+        if not is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Operador inativo",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Criar token JWT
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = jwt.encode(
+            {
+                "sub": str(operator_id),
+                "exp": datetime.utcnow() + access_token_expires
+            },
+            JWT_SECRET,
+            algorithm="HS256"
+        )
         
         # Atualizar último login
-        update_sql = f"""
-        UPDATE operators 
-        SET last_login_at = NOW()
-        WHERE id = '{operator_id}';
-        """
-        
-        subprocess.run(
-            ["psql", db_url, "-c", update_sql],
-            capture_output=True,
-            text=True
+        cursor.execute(
+            "UPDATE operators SET last_login_at = %s WHERE id = %s",
+            (datetime.utcnow(), operator_id)
         )
+        conn.commit()
+        
+        cursor.close()
+        conn.close()
         
         return {
             "access_token": access_token,
@@ -633,7 +647,10 @@ async def login_for_access_token(
                 "name": name,
                 "email": email,
                 "tenant_id": tenant_id,
-                "is_active": is_active
+                "is_active": is_active,
+                "last_login_at": last_login_at,
+                "created_at": created_at,
+                "updated_at": updated_at,
             }
         }
     except HTTPException:
