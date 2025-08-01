@@ -348,6 +348,61 @@ async def seed_endpoint():
             "error": str(e)
         }
 
+@app.get("/check-data", summary="🔍 Verificar dados no banco", description="Verificar tenants e operadores no banco")
+async def check_data_endpoint():
+    """Endpoint para verificar dados no banco."""
+    import os
+    import subprocess
+    
+    try:
+        print("🔍 Verificando dados no banco...")
+        
+        # Query para verificar dados
+        query = """
+        SELECT 'Tenants:' as info;
+        SELECT id, name, cnpj, is_active FROM tenants;
+        
+        SELECT 'Operadores:' as info;
+        SELECT id, name, email, tenant_id, is_active FROM operators;
+        """
+        
+        # Definir variável de ambiente para o psql
+        env = os.environ.copy()
+        env['DATABASE_URL'] = os.getenv('DATABASE_URL', '')
+        
+        # Executar via psql
+        result = subprocess.run(
+            ["psql", os.getenv('DATABASE_URL', '')],
+            input=query,
+            capture_output=True,
+            text=True,
+            env=env
+        )
+        
+        if result.returncode == 0:
+            return {
+                "message": "Dados verificados com sucesso!",
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": True,
+                "data": result.stdout,
+                "stderr": result.stderr
+            }
+        else:
+            return {
+                "message": "Erro ao verificar dados",
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": False,
+                "data": result.stdout,
+                "stderr": result.stderr
+            }
+    except Exception as e:
+        return {
+            "message": f"Erro ao verificar dados: {str(e)}",
+            "timestamp": datetime.utcnow().isoformat(),
+            "success": False,
+            "error": str(e)
+        }
+
 @app.get("/health", summary="🏥 Health check", description="Verificação de saúde da API")
 async def health_check():
     """Health check endpoint simplificado."""
