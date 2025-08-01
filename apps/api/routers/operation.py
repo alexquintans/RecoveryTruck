@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from database import get_db
 from auth import get_current_operator
 import threading
@@ -42,32 +42,64 @@ class OperationStartRequest(BaseModel):
 class ServiceConfigIn(BaseModel):
     service_id: UUID
     active: bool
-    duration: int
-    price: float
+    duration: Optional[int] = 10  # Valor padrão de 10 minutos
+    price: Optional[float] = 0.0  # Valor padrão de 0.0
     equipment_count: int
+    
+    @validator('service_id', pre=True)
+    def validate_service_id(cls, v):
+        if isinstance(v, str):
+            return UUID(v)
+        return v
 
 class EquipmentConfigIn(BaseModel):
     equipment_id: UUID
     active: bool
     quantity: int
+    
+    @validator('equipment_id', pre=True)
+    def validate_equipment_id(cls, v):
+        if isinstance(v, str):
+            return UUID(v)
+        return v
 
 class ExtraConfigIn(BaseModel):
     extra_id: UUID
     active: bool
-    stock: int
-    price: float
+    stock: Optional[int] = 0  # Valor padrão de 0
+    price: Optional[float] = 0.0  # Valor padrão de 0.0
+    
+    @validator('extra_id', pre=True)
+    def validate_extra_id(cls, v):
+        if isinstance(v, str):
+            return UUID(v)
+        return v
 
 # Novo enum/string simples para modos de pagamento
 PaymentMode = str  # 'none' | 'mercadopago' | 'sicredi' — manter flexível
 
 class OperationConfigIn(BaseModel):
     tenant_id: UUID
-    operator_id: UUID
+    operator_id: Optional[UUID] = None  # Tornar opcional
     services: list[ServiceConfigIn]
     equipments: list[EquipmentConfigIn]
     extras: list[ExtraConfigIn]
     payment_modes: Optional[List[PaymentMode]] = None
     payment_config: Optional[dict] = None
+    
+    @validator('tenant_id', pre=True)
+    def validate_tenant_id(cls, v):
+        if isinstance(v, str):
+            return UUID(v)
+        return v
+    
+    @validator('operator_id', pre=True)
+    def validate_operator_id(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            return UUID(v)
+        return v
 
 @router.get("", summary="Informações da operação atual")
 async def get_operation_info(request: Request, db: Session = Depends(get_db)):
