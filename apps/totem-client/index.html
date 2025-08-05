@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/logo192.png?v=3" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#1F526B" />
     <meta name="description" content="Sistema de autoatendimento RecoveryTruck" />
     
@@ -12,6 +12,14 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="RecoveryTruck" />
+    
+    <!-- Meta tags para orientação -->
+    <meta name="screen-orientation" content="portrait" />
+    <meta name="x5-orientation" content="portrait" />
+    <meta name="full-screen" content="yes" />
+    <meta name="browsermode" content="application" />
+    <meta name="x5-fullscreen" content="true" />
+    <meta name="360-fullscreen" content="true" />
     
     <!-- Manifesto PWA -->
     <link rel="manifest" href="/manifest.json" />
@@ -43,14 +51,21 @@
         
         window.IS_PWA_MODE = isStandalone;
         
-        // Forçar tela cheia em PWAs
-        if (isStandalone) {
-          console.log("PWA detectada! Modo tela cheia ativado automaticamente.");
+        // Detectar dispositivo móvel
+        const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(navigator.userAgent);
+        const isTablet = /ipad|android(?=.*\bMobile\b)(?=.*\bSafari\b)/i.test(navigator.userAgent) || 
+                        (window.innerWidth >= 768 && window.innerWidth <= 1024);
+        
+        console.log(`Dispositivo: ${isMobile ? 'Mobile' : 'Desktop'}, ${isTablet ? 'Tablet' : 'Phone'}, PWA: ${isStandalone ? 'Sim' : 'Não'}`);
+        
+        // Forçar tela cheia em PWAs e dispositivos móveis
+        if (isStandalone || isMobile) {
+          console.log("PWA ou dispositivo móvel detectado! Modo tela cheia ativado automaticamente.");
           
           // Tentar entrar em tela cheia assim que possível
           document.addEventListener('click', function tryFullscreen() {
             if (document.documentElement.requestFullscreen) {
-              document.documentElement.requestFullscreen();
+              document.documentElement.requestFullscreen().catch(err => console.error('Erro fullscreen:', err));
             } else if (document.documentElement.webkitRequestFullscreen) {
               document.documentElement.webkitRequestFullscreen();
             } else if (document.documentElement.mozRequestFullScreen) {
@@ -83,7 +98,7 @@
     </script>
     
     <style>
-      /* Estilos para simular tela cheia em PWAs */
+      /* Estilos para simular tela cheia em PWAs e dispositivos móveis */
       html, body {
         height: 100%;
         width: 100%;
@@ -109,6 +124,58 @@
       .totem-container {
         overflow-y: auto;
         overflow-x: hidden;
+      }
+      
+      /* Estilos específicos para tablets */
+      @media (min-width: 768px) and (max-width: 1024px) {
+        html, body {
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 100vw !important;
+          height: 100vh !important;
+          overflow: hidden !important;
+        }
+        
+        #root {
+          width: 100vw !important;
+          height: 100vh !important;
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: 0 !important;
+          overflow: hidden !important;
+        }
+      }
+      
+      /* Estilos para dispositivos iOS */
+      @supports (-webkit-touch-callout: none) {
+        html, body {
+          height: -webkit-fill-available;
+        }
+        
+        #root {
+          height: -webkit-fill-available;
+        }
+      }
+      
+      /* Impedir seleção de texto em dispositivos móveis */
+      @media (max-width: 1024px) {
+        * {
+          -webkit-user-select: none;
+          -moz-user-select: none;
+          -ms-user-select: none;
+          user-select: none;
+          -webkit-touch-callout: none;
+        }
+        
+        input, textarea, [contenteditable] {
+          -webkit-user-select: text;
+          -moz-user-select: text;
+          -ms-user-select: text;
+          user-select: text;
+        }
       }
     </style>
     <script src="https://sdk.mercadopago.com/js/v2"></script>

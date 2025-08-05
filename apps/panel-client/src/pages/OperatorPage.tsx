@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTicketQueue } from '../hooks/useTicketQueue';
 import { useOperatorActions } from '../hooks/useOperatorActions';
 import { useAuth } from '../hooks/useAuth';
+import { useServiceProgress } from '../hooks/useServiceProgress';
 import { fetchServices, fetchEquipments, fetchExtras, createService, createExtra, updateService as apiUpdateService, deleteService as apiDeleteService, updateExtra as apiUpdateExtra, deleteExtra as apiDeleteExtra, saveOperationConfig } from '../services/operatorConfigService';
 import { ServiceModal } from '../components/ServiceModal';
 import { ExtraModal } from '../components/ExtraModal';
@@ -92,6 +93,23 @@ interface Equipment {
   serviceId: string;
 }
 
+// NOVO: Interface para progresso individual dos serviços
+interface ServiceProgress {
+  id: string;
+  ticket_service_id: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  duration_minutes: number;
+  operator_notes?: string;
+  equipment_id?: string;
+  started_at?: string;
+  completed_at?: string;
+  created_at: string;
+  updated_at: string;
+  service_name: string;
+  service_price: number;
+  equipment_name?: string;
+}
+
 interface Ticket {
   id: string;
   status: string;
@@ -104,6 +122,8 @@ interface Ticket {
   calledAt?: string;
   priority?: string;
   extras?: { name: string; quantity: number }[]; // Adicionado para extras
+  // NOVO: Progresso individual dos serviços
+  serviceProgress?: ServiceProgress[];
 }
 
 // Dicionário de correção para nomes especiais
@@ -120,6 +140,26 @@ function formatEquipmentName(identifier: string) {
     .split(' ')
     .map(word => nameCorrections[word.toLowerCase()] || (word.charAt(0).toUpperCase() + word.slice(1)))
     .join(' ');
+}
+
+// Função utilitária para calcular desconto baseado na quantidade de serviços
+function calculateDiscount(servicesCount: number): number {
+  if (servicesCount >= 2) {
+    return (servicesCount - 1) * 10; // 10 reais por serviço adicional
+  }
+  return 0;
+}
+
+// Função utilitária para calcular valor total com desconto
+function calculateTotalWithDiscount(services: any[], extras: any[]): { subtotal: number; discount: number; total: number } {
+  const servicesTotal = services.reduce((sum, s) => sum + (s.price || 0), 0);
+  const extrasTotal = extras.reduce((sum, e) => sum + ((e.price || 0) * (e.quantity || 1)), 0);
+  
+  const subtotal = servicesTotal + extrasTotal;
+  const discount = calculateDiscount(services.length);
+  const total = Math.max(0, subtotal - discount);
+  
+  return { subtotal, discount, total };
 }
 
 // Paleta de cores da marca RecoveryTruck
@@ -178,88 +218,162 @@ function ResumoVisual({ servicos, equipamentos, extras, tickets }) {
 }
 
 const OperatorPage: React.FC = () => {
-  const { user } = useAuth();
-  const [currentStep, setCurrentStep] = useState<'name' | 'config' | 'operation'>('name');
-  const [operatorName, setOperatorName] = useState<string>(user?.name || '');
-  const operatorId = user?.id;
-  const tenantId = user?.tenant_id;
-  
-  // Estados para modais
-  const [activeModal, setActiveModal] = useState<'service'|'extra'|null>(null);
-  const [editingService, setEditingService] = useState<Service | null>(null);
-  const [editingExtra, setEditingExtra] = useState<Extra | null>(null);
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const queryClient = useQueryClient();
+  const {
+    operationConfig,
+    ...ticketQueueRest
+  } = useTicketQueue();
 
-  // Estados para configuração
+  // Novo: Estado de etapa do fluxo
+  const [currentStep, setCurrentStep] = useState<string | null>(null);
+  const [operatorName, setOperatorName] = useState('');
+
+  // Estados existentes
+  const [activeTab, setActiveTab] = useState('operation');
   const [services, setServices] = useState<Service[]>([]);
   const [extras, setExtras] = useState<Extra[]>([]);
   const [equipments, setEquipments] = useState<Equipment[]>([]);
-
-  // Métodos de pagamento disponíveis para a operação
-  type PaymentMode = 'none' | 'mercadopago' | 'sicredi';
-  const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
-
-  const togglePaymentMode = (mode: PaymentMode) => {
-    setPaymentModes(prev => {
-      if (mode === 'none') {
-        // "Nenhum" é exclusivo – seleciona / desseleciona e limpa os demais
-        return prev.includes('none') ? [] : ['none'];
-      }
-      // Se algum modo específico for marcado, remova "none" se existir
-      const filtered = prev.filter(m => m !== 'none');
-      if (filtered.includes(mode)) {
-        // Desmarca o modo
-        return filtered.filter(m => m !== mode);
-      }
-      // Marca o modo
-      return [...filtered, mode];
-    });
-  };
-
-  const [selectedEquipment, setSelectedEquipment] = useState<string>('');
-
-  // Estados para formulários
-  const [serviceForm, setServiceForm] = useState<Omit<Service, 'id'>>({
+  const [paymentModes, setPaymentModes] = useState<string[]>(['none']);
+  const [serviceForm, setServiceForm] = useState({
     name: '',
     description: '',
     price: 0,
     duration: 10,
     equipment_count: 1,
-    isActive: true,
-    type: '',
-    color: 'blue'
+    type: 'default',
+    color: '#3B82F6'
   });
-
-  const [extraForm, setExtraForm] = useState<Omit<Extra, 'id'>>({
+  const [extraForm, setExtraForm] = useState({
     name: '',
     description: '',
     price: 0,
-    category: '',
-    stock: 0,
-    isActive: true
+    category: 'default',
+    stock: 0
   });
+  const [editingService, setEditingService] = useState<Service | null>(null);
+  const [editingExtra, setEditingExtra] = useState<Extra | null>(null);
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [showExtraModal, setShowExtraModal] = useState(false);
 
-  // Dados para operação
-  const { tickets, myTickets, completedTickets, cancelledTickets, pendingPaymentTickets, equipment, operationConfig, refetch } = useTicketQueue();
-  const { 
-    callTicket, 
-    startService, 
-    completeService, 
-    cancelTicket,
-    confirmPayment,
-    moveToQueue,
-    callLoading,
-    startLoading,
-    completeLoading,
-    cancelLoading,
-    confirmLoading,
-    moveToQueueLoading,
-  } = useOperatorActions();
-  
-  const navigate = useNavigate();
-  
-  const queryClient = useQueryClient();
+  // NOVO: Usar o hook para progresso dos serviços
+  const {
+    serviceProgress,
+    loading: progressLoading,
+    fetchServiceProgress,
+    startServiceProgress,
+    completeServiceProgress,
+    cancelServiceProgress,
+    getProgressStatusColor,
+    getProgressStatusText
+  } = useServiceProgress();
 
-  // Obter configuração atual de pagamento
+  // NOVO: useEffect para carregar progresso dos serviços automaticamente
+  useEffect(() => {
+    const loadServiceProgress = async () => {
+      if (myTickets.length > 0) {
+        for (const ticket of myTickets) {
+          await fetchServiceProgress(ticket.id);
+        }
+      }
+    };
+
+    loadServiceProgress();
+  }, [myTickets, fetchServiceProgress]);
+
+  // NOVO: Funções para verificar status do ticket
+  const getTicketOverallStatus = (ticketId: string) => {
+    const progress = serviceProgress[ticketId] || [];
+    if (progress.length === 0) return 'unknown';
+    
+    const allCompleted = progress.every(p => p.status === 'completed');
+    const anyInProgress = progress.some(p => p.status === 'in_progress');
+    const anyCancelled = progress.some(p => p.status === 'cancelled');
+    
+    if (allCompleted) return 'completed';
+    if (anyCancelled) return 'cancelled';
+    if (anyInProgress) return 'in_progress';
+    return 'pending';
+  };
+
+  const getTicketProgressSummary = (ticketId: string) => {
+    const progress = serviceProgress[ticketId] || [];
+    if (progress.length === 0) return { total: 0, completed: 0, inProgress: 0, pending: 0 };
+    
+    return {
+      total: progress.length,
+      completed: progress.filter(p => p.status === 'completed').length,
+      inProgress: progress.filter(p => p.status === 'in_progress').length,
+      pending: progress.filter(p => p.status === 'pending').length
+    };
+  };
+
+  const canCompleteTicket = (ticketId: string) => {
+    const progress = serviceProgress[ticketId] || [];
+    if (progress.length === 0) return false;
+    
+    // Só pode completar se todos os serviços estiverem completos
+    return progress.every(p => p.status === 'completed');
+  };
+
+  // NOVO: Componente de resumo visual do progresso
+  const ProgressSummary = ({ ticketId }: { ticketId: string }) => {
+    const summary = getTicketProgressSummary(ticketId);
+    const overallStatus = getTicketOverallStatus(ticketId);
+    
+    if (summary.total === 0) return null;
+    
+    return (
+      <div className="mb-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-semibold text-gray-700">Progresso Geral</span>
+          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+            overallStatus === 'completed' ? 'bg-green-100 text-green-700 border border-green-300' :
+            overallStatus === 'in_progress' ? 'bg-blue-100 text-blue-700 border border-blue-300' :
+            overallStatus === 'cancelled' ? 'bg-red-100 text-red-700 border border-red-300' :
+            'bg-gray-100 text-gray-700 border border-gray-300'
+          }`}>
+            {overallStatus === 'completed' ? '✓ Concluído' :
+             overallStatus === 'in_progress' ? '⟳ Em Andamento' :
+             overallStatus === 'cancelled' ? '✗ Cancelado' :
+             '⏳ Pendente'}
+          </span>
+        </div>
+        
+        <div className="flex items-center gap-4 text-xs">
+          <div className="flex items-center gap-1">
+            <span className="text-gray-600">Total:</span>
+            <span className="font-bold text-gray-800">{summary.total}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-green-600">✓</span>
+            <span className="text-green-700 font-medium">{summary.completed}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-blue-600">⟳</span>
+            <span className="text-blue-700 font-medium">{summary.inProgress}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-gray-600">⏳</span>
+            <span className="text-gray-700 font-medium">{summary.pending}</span>
+          </div>
+        </div>
+        
+        {/* Barra de progresso */}
+        <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+          <div 
+            className="bg-gradient-to-r from-green-500 to-blue-500 h-2 rounded-full transition-all duration-300"
+            style={{ 
+              width: `${summary.total > 0 ? (summary.completed / summary.total) * 100 : 0}%` 
+            }}
+          ></div>
+        </div>
+      </div>
+    );
+  };
+
+  // Estados para configuração
   const [currentPaymentModes, setCurrentPaymentModes] = useState<string[]>([]);
   
   useEffect(() => {
@@ -1020,6 +1134,161 @@ const OperatorPage: React.FC = () => {
       return <span className={`px-2 py-0.5 rounded text-xs font-medium ${color}`}>{status.replace('_', ' ')}</span>;
     };
 
+    // NOVO: Componente para exibir progresso individual dos serviços
+    const ServiceProgressCard = ({ progress, ticketId }: { progress: ServiceProgress; ticketId: string }) => {
+      const [isLoading, setIsLoading] = useState(false);
+      const [showNotesModal, setShowNotesModal] = useState(false);
+      const [notes, setNotes] = useState(progress.operator_notes || '');
+      const [selectedEquipment, setSelectedEquipment] = useState<string>('');
+
+      const handleStartService = async () => {
+        setIsLoading(true);
+        try {
+          await startServiceProgress(progress.id, selectedEquipment || undefined);
+          // Recarregar progresso do ticket
+          await fetchServiceProgress(ticketId);
+        } catch (error) {
+          console.error('Erro ao iniciar serviço:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      const handleCompleteService = async () => {
+        setIsLoading(true);
+        try {
+          await completeServiceProgress(progress.id, notes);
+          // Recarregar progresso do ticket
+          await fetchServiceProgress(ticketId);
+          setShowNotesModal(false);
+        } catch (error) {
+          console.error('Erro ao completar serviço:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      const handleCancelService = async () => {
+        const reason = prompt('Motivo do cancelamento:');
+        if (reason) {
+          setIsLoading(true);
+          try {
+            await cancelServiceProgress(progress.id, reason);
+            // Recarregar progresso do ticket
+            await fetchServiceProgress(ticketId);
+          } catch (error) {
+            console.error('Erro ao cancelar serviço:', error);
+          } finally {
+            setIsLoading(false);
+          }
+        }
+      };
+
+      return (
+        <div className={`p-3 rounded-lg border ${getProgressStatusColor(progress.status)}`}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-current"></div>
+              <span className="font-medium text-sm">{progress.service_name}</span>
+            </div>
+            <span className="text-xs font-semibold">
+              {getProgressStatusText(progress.status)}
+            </span>
+          </div>
+          
+          <div className="text-xs text-gray-600 mb-2">
+            <div>Duração: {progress.duration_minutes} min</div>
+            <div>Preço: R$ {progress.service_price.toFixed(2).replace('.', ',')}</div>
+            {progress.equipment_name && (
+              <div>Equipamento: {progress.equipment_name}</div>
+            )}
+          </div>
+
+          {progress.operator_notes && (
+            <div className="text-xs text-gray-500 mb-2">
+              <strong>Observações:</strong> {progress.operator_notes}
+            </div>
+          )}
+
+          <div className="flex gap-2 mt-3">
+            {progress.status === 'pending' && (
+              <>
+                <select
+                  value={selectedEquipment}
+                  onChange={(e) => setSelectedEquipment(e.target.value)}
+                  className="px-2 py-1 text-xs border rounded"
+                >
+                  <option value="">Selecionar equipamento</option>
+                  {equipments.filter(e => e.isActive).map(equipment => (
+                    <option key={equipment.id} value={equipment.id}>
+                      {equipment.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleStartService}
+                  disabled={isLoading}
+                  className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 disabled:opacity-50"
+                >
+                  {isLoading ? 'Iniciando...' : 'Iniciar'}
+                </button>
+              </>
+            )}
+            
+            {progress.status === 'in_progress' && (
+              <>
+                <button
+                  onClick={() => setShowNotesModal(true)}
+                  disabled={isLoading}
+                  className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 disabled:opacity-50"
+                >
+                  {isLoading ? 'Completando...' : 'Completar'}
+                </button>
+                <button
+                  onClick={handleCancelService}
+                  disabled={isLoading}
+                  className="px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Modal para observações */}
+          {showNotesModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white p-4 rounded-lg w-96">
+                <h3 className="text-lg font-semibold mb-3">Observações do Serviço</h3>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="w-full p-2 border rounded mb-3"
+                  rows={3}
+                  placeholder="Digite suas observações..."
+                />
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => setShowNotesModal(false)}
+                    className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleCompleteService}
+                    disabled={isLoading}
+                    className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
+                  >
+                    {isLoading ? 'Completando...' : 'Completar'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
     return (
       <div className="p-4 space-y-8 max-w-6xl mx-auto">
         {/* Cabeçalho moderno */}
@@ -1145,60 +1414,158 @@ const OperatorPage: React.FC = () => {
                           )}
                         </div>
                         <div className="text-base font-semibold text-gray-800">{ticket.customer_name || ticket.customer?.name}</div>
-                        {/* Chips de serviços */}
-                        <div className="flex flex-wrap gap-2 mt-1">
-                          {ticket.services && ticket.services.length > 0 ? (
-                            ticket.services.map((service, idx) => (
-                              <span key={service.id || idx} className="bg-blue-100 text-blue-700 rounded-full px-3 py-0.5 text-xs font-medium shadow-sm">
-                                {service.name}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="bg-blue-50 text-blue-400 rounded-full px-3 py-0.5 text-xs font-medium">{ticket.service?.name}</span>
-                          )}
-                        </div>
-                        {/* Chips de extras */}
+                        
+                        {/* Seção de Serviços */}
+                        {(ticket.services && ticket.services.length > 0) || ticket.service ? (
+                          <div className="mt-2">
+                            <div className="flex items-center gap-2 mb-1">
+                              <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="10" fill="#3B82F6" />
+                                <path d="M8 12h8" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                              </svg>
+                              <span className="text-xs font-semibold text-gray-600">SERVIÇOS:</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {ticket.services && ticket.services.length > 0 ? (
+                                ticket.services.map((service, idx) => (
+                                  <span key={service.id || idx} className="bg-blue-100 text-blue-700 rounded-full px-3 py-1 text-xs font-medium shadow-sm border border-blue-200">
+                                    {service.name}
+                                    {service.duration && (
+                                      <span className="ml-1 text-blue-600">({service.duration}min)</span>
+                                    )}
+                                    {service.price && (
+                                      <span className="ml-1 text-blue-600">R$ {service.price.toFixed(2).replace('.', ',')}</span>
+                                    )}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="bg-blue-100 text-blue-700 rounded-full px-3 py-1 text-xs font-medium shadow-sm border border-blue-200">
+                                  {ticket.service?.name}
+                                  {ticket.service?.duration && (
+                                    <span className="ml-1 text-blue-600">({ticket.service.duration}min)</span>
+                                  )}
+                                  {ticket.service?.price && (
+                                    <span className="ml-1 text-blue-600">R$ {ticket.service.price.toFixed(2).replace('.', ',')}</span>
+                                  )}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ) : null}
+                        
+                        {/* Seção de Extras */}
                         {ticket.extras && ticket.extras.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mt-1">
-                            {ticket.extras.map((extra, idx) => (
-                              <span key={extra.id || idx} className="bg-green-100 text-green-700 rounded-full px-3 py-0.5 text-xs font-medium shadow-sm">
-                                {extra.name} {extra.quantity > 1 && `(${extra.quantity}x)`}
-                              </span>
-                            ))}
+                          <div className="mt-2">
+                            <div className="flex items-center gap-2 mb-1">
+                              <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <rect x="4" y="8" width="16" height="8" rx="4" fill="#10B981" />
+                                <rect x="7" y="11" width="10" height="2" rx="1" fill="white" />
+                              </svg>
+                              <span className="text-xs font-semibold text-gray-600">EXTRAS:</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {ticket.extras.map((extra, idx) => (
+                                <span key={extra.id || idx} className="bg-green-100 text-green-700 rounded-full px-3 py-1 text-xs font-medium shadow-sm border border-green-200">
+                                  {extra.name} {extra.quantity > 1 && `(${extra.quantity}x)`}
+                                  {extra.price && (
+                                    <span className="ml-1 text-green-600">R$ {extra.price.toFixed(2).replace('.', ',')}</span>
+                                  )}
+                                </span>
+                              ))}
+                            </div>
                           </div>
                         )}
+                        
+                        {/* Valor Total com Desconto (se disponível) */}
+                        {((ticket.services && ticket.services.length > 0) || ticket.service) && ticket.extras && ticket.extras.length > 0 && (
+                          <div className="mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                            <div className="text-xs font-semibold text-gray-700 mb-1">VALOR TOTAL:</div>
+                            <div className="text-sm font-bold text-gray-800">
+                              {(() => {
+                                const services = ticket.services || (ticket.service ? [ticket.service] : []);
+                                const { subtotal, discount, total } = calculateTotalWithDiscount(services, ticket.extras);
+                                
+                                return (
+                                  <div>
+                                    <div>Subtotal: R$ {subtotal.toFixed(2).replace('.', ',')}</div>
+                                    {discount > 0 && (
+                                      <div className="text-green-600 text-xs">Desconto: -R$ {discount.toFixed(2).replace('.', ',')}</div>
+                                    )}
+                                    <div className="font-bold">Total: R$ {total.toFixed(2).replace('.', ',')}</div>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Duração Total (se disponível) */}
+                        {(ticket.services && ticket.services.length > 0) && (
+                          <div className="mt-1">
+                            <div className="flex items-center gap-1">
+                              <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                                <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                              </svg>
+                              <span className="text-xs text-gray-500">
+                                Duração: {ticket.services.reduce((sum, s) => sum + (s.duration || 0), 0)} min
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        
                         <div className="text-xs text-gray-400 mt-1">{ticket.createdAt && new Date(ticket.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
                       </div>
-                      <button
-                        disabled={callLoading || !selectedEquipment}
-                        onClick={async () => {
-                          console.log('🔍 DEBUG - Chamando ticket:', ticket.id, 'com equipamento:', selectedEquipment);
-                          console.log('🔍 DEBUG - Status do ticket:', ticket.status);
-                          
-                          // Verificar se o ticket já foi chamado
-                          if (ticket.status === 'called') {
-                            console.log('🔍 DEBUG - Ticket já foi chamado, pulando...');
-                            alert('Este ticket já foi chamado!');
-                            return;
-                          }
-                          
-                          // Verificar se o ticket está na fila
-                          if (ticket.status !== 'in_queue') {
-                            console.log('🔍 DEBUG - Ticket não está na fila, pulando...');
-                            alert('Este ticket não está na fila!');
-                            return;
-                          }
-                          
-                          await callTicket({ ticketId: ticket.id, equipmentId: selectedEquipment });
-                          console.log('🔍 DEBUG - Ticket chamado, refetching...');
-                          await refetch();
-                          console.log('🔍 DEBUG - Refetch concluído');
-                        }}
-                        className="ml-6 px-7 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-400 focus:outline-none transition-all scale-100 group-hover:scale-105 disabled:bg-gray-300 disabled:text-gray-500"
-                        aria-label={`Chamar ticket ${ticket.number}`}
-                      >
-                        Chamar
-                      </button>
+                      <div className="flex gap-2 ml-6">
+                        <button
+                          disabled={callLoading || !selectedEquipment}
+                          onClick={async () => {
+                            console.log('🔍 DEBUG - Chamando ticket:', ticket.id, 'com equipamento:', selectedEquipment);
+                            console.log('🔍 DEBUG - Status do ticket:', ticket.status);
+                            
+                            // Verificar se o ticket já foi chamado
+                            if (ticket.status === 'called') {
+                              console.log('🔍 DEBUG - Ticket já foi chamado, pulando...');
+                              alert('Este ticket já foi chamado!');
+                              return;
+                            }
+                            
+                            // Verificar se o ticket está na fila
+                            if (ticket.status !== 'in_queue') {
+                              console.log('🔍 DEBUG - Ticket não está na fila, pulando...');
+                              alert('Este ticket não está na fila!');
+                              return;
+                            }
+                            
+                            await callTicket({ ticketId: ticket.id, equipmentId: selectedEquipment });
+                            console.log('🔍 DEBUG - Ticket chamado, refetching...');
+                            await refetch();
+                            console.log('🔍 DEBUG - Refetch concluído');
+                          }}
+                          className="px-7 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-400 focus:outline-none transition-all scale-100 group-hover:scale-105 disabled:bg-gray-300 disabled:text-gray-500"
+                          aria-label={`Chamar ticket ${ticket.number}`}
+                        >
+                          Chamar
+                        </button>
+                        <button
+                          disabled={cancelLoading}
+                          onClick={async () => {
+                            const reason = prompt('Motivo do cancelamento:');
+                            if (reason && reason.trim()) {
+                              if (confirm(`Confirmar cancelamento do ticket ${ticket.number}?\nMotivo: ${reason}`)) {
+                                await cancelTicket({ ticketId: ticket.id, reason: reason.trim() });
+                                await refetch();
+                              }
+                            } else if (reason !== null) {
+                              alert('Por favor, informe o motivo do cancelamento.');
+                            }
+                          }}
+                          className="px-5 py-3 bg-red-500 text-white rounded-xl font-bold shadow-lg hover:bg-red-600 focus:ring-2 focus:ring-red-400 focus:outline-none transition-all scale-100 group-hover:scale-105 disabled:bg-gray-300 disabled:text-gray-500"
+                          aria-label={`Cancelar ticket ${ticket.number}`}
+                        >
+                          {cancelLoading ? 'Cancelando...' : 'Cancelar'}
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -1272,20 +1639,99 @@ const OperatorPage: React.FC = () => {
                           ))}
                         </div>
                       )}
-                      {/* Cálculo do valor total */}
+                      {/* Cálculo do valor total com desconto */}
                       {ticket.services && ticket.extras && (
                         <div className="mt-2 p-2 bg-blue-50 rounded-lg">
                           <div className="text-sm font-semibold text-blue-800 mb-1">Valor Total:</div>
-                          <div className="text-xs text-blue-600">
-                            {(() => {
-                              const servicesTotal = ticket.services.reduce((sum, s) => sum + (s.price || 0), 0);
-                              const extrasTotal = ticket.extras.reduce((sum, e) => sum + ((e.price || 0) * (e.quantity || 1)), 0);
-                              const total = servicesTotal + extrasTotal;
-                              return `R$ ${total.toFixed(2).replace('.', ',')}`;
-                            })()}
+                                                      <div className="text-xs text-blue-600">
+                              {(() => {
+                                const { subtotal, discount, total } = calculateTotalWithDiscount(ticket.services, ticket.extras);
+                                
+                                return (
+                                  <div>
+                                    <div>Subtotal: R$ {subtotal.toFixed(2).replace('.', ',')}</div>
+                                    {discount > 0 && (
+                                      <div className="text-green-600">Desconto: -R$ {discount.toFixed(2).replace('.', ',')}</div>
+                                    )}
+                                    <div className="font-semibold">Total: R$ {total.toFixed(2).replace('.', ',')}</div>
+                                  </div>
+                                );
+                              })()}
                           </div>
                         </div>
                       )}
+
+                      {/* NOVO: Seção de Progresso Individual dos Serviços */}
+                      <div className="w-full mt-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-sm font-semibold text-gray-700">Progresso dos Serviços</h4>
+                          <button
+                            onClick={() => fetchServiceProgress(ticket.id)}
+                            className="text-xs text-blue-600 hover:text-blue-800 underline"
+                          >
+                            Atualizar
+                          </button>
+                        </div>
+                        
+                        {/* Resumo do progresso */}
+                        {(() => {
+                          const summary = getTicketProgressSummary(ticket.id);
+                          const overallStatus = getTicketOverallStatus(ticket.id);
+                          
+                          return (
+                            <div className="mb-3 p-2 bg-gray-50 rounded-lg">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="font-medium">Progresso Geral:</span>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  overallStatus === 'completed' ? 'bg-green-100 text-green-700' :
+                                  overallStatus === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                                  overallStatus === 'cancelled' ? 'bg-red-100 text-red-700' :
+                                  'bg-gray-100 text-gray-700'
+                                }`}>
+                                  {overallStatus === 'completed' ? 'Concluído' :
+                                   overallStatus === 'in_progress' ? 'Em Andamento' :
+                                   overallStatus === 'cancelled' ? 'Cancelado' :
+                                   'Pendente'}
+                                </span>
+                              </div>
+                              <div className="flex gap-2 mt-1 text-xs text-gray-600">
+                                <span>Total: {summary.total}</span>
+                                <span className="text-green-600">✓ {summary.completed}</span>
+                                <span className="text-blue-600">⟳ {summary.inProgress}</span>
+                                <span className="text-gray-600">⏳ {summary.pending}</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                        
+                        {/* NOVO: Componente de resumo visual */}
+                        <ProgressSummary ticketId={ticket.id} />
+                        
+                        {/* Carregar progresso dos serviços */}
+                        {(() => {
+                          const progress = serviceProgress[ticket.id] || [];
+                          if (progress.length === 0) {
+                            return (
+                              <div className="text-xs text-gray-500 italic">
+                                Carregando progresso dos serviços...
+                              </div>
+                            );
+                          }
+                          
+                          return (
+                            <div className="space-y-2">
+                              {progress.map((serviceProgress) => (
+                                <ServiceProgressCard
+                                  key={serviceProgress.id}
+                                  progress={serviceProgress}
+                                  ticketId={ticket.id}
+                                />
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </div>
+
                       <div className="text-xs text-gray-400 mt-1">
                         {ticket.calledAt ? `Chamado há ${formatDistanceToNow(new Date(ticket.calledAt), { addSuffix: true, locale: ptBR })}` : ""}
                       </div>
@@ -1311,8 +1757,14 @@ const OperatorPage: React.FC = () => {
                             <button
                               className="w-full sm:w-auto px-5 py-2 bg-green-600 text-white rounded-lg font-bold shadow hover:bg-green-700 focus:ring-2 focus:ring-green-400 focus:outline-none transition-all disabled:bg-gray-300 disabled:text-gray-500"
                               aria-label={`Concluir atendimento do ticket ${ticket.number}`}
-                              disabled={completeLoading}
+                              disabled={completeLoading || !canCompleteTicket(ticket.id)}
                               onClick={async () => {
+                                // Verificar se todos os serviços estão completos
+                                if (!canCompleteTicket(ticket.id)) {
+                                  alert('Todos os serviços devem estar completos para finalizar o ticket!');
+                                  return;
+                                }
+                                
                                 await completeService({ ticketId: ticket.id });
                                 await refetch();
                               }}
@@ -1324,11 +1776,8 @@ const OperatorPage: React.FC = () => {
                               aria-label={`Cancelar atendimento do ticket ${ticket.number}`}
                               disabled={cancelLoading}
                               onClick={async () => {
-                                if (window.confirm('Tem certeza que deseja cancelar este atendimento?')) {
-                                  const reason = window.prompt('Informe o motivo do cancelamento:', 'Cancelado pelo operador') || 'Cancelado pelo operador';
-                                  await cancelTicket({ ticketId: ticket.id, reason });
-                                  await refetch();
-                                }
+                                await cancelTicket({ ticketId: ticket.id });
+                                await refetch();
                               }}
                             >
                               {cancelLoading ? 'Cancelando...' : 'Cancelar'}
@@ -1428,17 +1877,24 @@ const OperatorPage: React.FC = () => {
                             ))}
                           </div>
                         )}
-                        {/* Cálculo do valor total */}
+                        {/* Cálculo do valor total com desconto */}
                         {ticket.services && ticket.extras && (
                           <div className="mt-2 p-2 bg-blue-50 rounded-lg">
                             <div className="text-sm font-semibold text-blue-800 mb-1">Valor Total:</div>
-                            <div className="text-xs text-blue-600">
-                              {(() => {
-                                const servicesTotal = ticket.services.reduce((sum, s) => sum + (s.price || 0), 0);
-                                const extrasTotal = ticket.extras.reduce((sum, e) => sum + ((e.price || 0) * (e.quantity || 1)), 0);
-                                const total = servicesTotal + extrasTotal;
-                                return `R$ ${total.toFixed(2).replace('.', ',')}`;
-                              })()}
+                                                      <div className="text-xs text-blue-600">
+                            {(() => {
+                              const { subtotal, discount, total } = calculateTotalWithDiscount(ticket.services, ticket.extras);
+                              
+                              return (
+                                <div>
+                                  <div>Subtotal: R$ {subtotal.toFixed(2).replace('.', ',')}</div>
+                                  {discount > 0 && (
+                                    <div className="text-green-600">Desconto: -R$ {discount.toFixed(2).replace('.', ',')}</div>
+                                  )}
+                                  <div className="font-semibold">Total: R$ {total.toFixed(2).replace('.', ',')}</div>
+                                </div>
+                              );
+                            })()}
                             </div>
                           </div>
                         )}
@@ -1448,17 +1904,37 @@ const OperatorPage: React.FC = () => {
                       </div>
                       <div className="flex flex-col gap-2 mt-4 md:mt-0">
                         {ticket.status === 'pending_payment' && ticket.payment_confirmed !== true && (
-                          <button
-                            className="w-full sm:w-auto px-5 py-2 bg-green-500 text-white rounded-lg font-bold shadow hover:bg-green-600 focus:ring-2 focus:ring-green-400 focus:outline-none transition-all disabled:bg-gray-300 disabled:text-gray-500"
-                            aria-label={`Confirmar pagamento do ticket ${ticket.number}`}
-                            disabled={confirmLoading}
-                            onClick={async () => {
-                              await confirmPayment({ ticketId: ticket.id });
-                              await refetch();
-                            }}
-                          >
-                            {confirmLoading ? 'Confirmando...' : 'Confirmar Pagamento'}
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              className="flex-1 px-5 py-2 bg-green-500 text-white rounded-lg font-bold shadow hover:bg-green-600 focus:ring-2 focus:ring-green-400 focus:outline-none transition-all disabled:bg-gray-300 disabled:text-gray-500"
+                              aria-label={`Confirmar pagamento do ticket ${ticket.number}`}
+                              disabled={confirmLoading}
+                              onClick={async () => {
+                                await confirmPayment({ ticketId: ticket.id });
+                                await refetch();
+                              }}
+                            >
+                              {confirmLoading ? 'Confirmando...' : 'Confirmar Pagamento'}
+                            </button>
+                            <button
+                              className="px-5 py-2 bg-red-500 text-white rounded-lg font-bold shadow hover:bg-red-600 focus:ring-2 focus:ring-red-400 focus:outline-none transition-all disabled:bg-gray-300 disabled:text-gray-500"
+                              aria-label={`Cancelar ticket ${ticket.number}`}
+                              disabled={cancelLoading}
+                              onClick={async () => {
+                                const reason = prompt('Motivo do cancelamento:');
+                                if (reason && reason.trim()) {
+                                  if (confirm(`Confirmar cancelamento do ticket ${ticket.number}?\nMotivo: ${reason}`)) {
+                                    await cancelTicket({ ticketId: ticket.id, reason: reason.trim() });
+                                    await refetch();
+                                  }
+                                } else if (reason !== null) {
+                                  alert('Por favor, informe o motivo do cancelamento.');
+                                }
+                              }}
+                            >
+                              {cancelLoading ? 'Cancelando...' : 'Cancelar'}
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -1482,7 +1958,26 @@ const OperatorPage: React.FC = () => {
   );
   };
 
+  // Novo: Definir etapa inicial baseada no status da operação
+  useEffect(() => {
+    if (currentStep === null && operationConfig) {
+      if (operationConfig.isOperating) {
+        setCurrentStep('operation');
+      } else {
+        setCurrentStep('name');
+      }
+    }
+  }, [operationConfig, currentStep]);
+
   // Renderizar componente baseado na etapa atual
+  if (!currentStep) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <span className="text-gray-500 text-lg">Carregando...</span>
+      </div>
+    );
+  }
+
   switch (currentStep) {
     case 'name':
       return renderNameStep();

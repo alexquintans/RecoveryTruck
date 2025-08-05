@@ -18,6 +18,8 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
   const [fullscreenAttempts, setFullscreenAttempts] = useState(0);
   const [autoStartAttempted, setAutoStartAttempted] = useState(false);
   const [isPWA, setIsPWA] = useState(false);
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
   
   // Verificar se estamos em ambiente de desenvolvimento e se o modo quiosque deve ser desativado
   const isDevelopment = import.meta.env.DEV;
@@ -27,6 +29,23 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
   // 1. A prop 'enabled' for true
   // 2. NÃO estivermos em desenvolvimento OU não tivermos configurado para desativar em dev
   const kioskModeActive = enabled && (!isDevelopment || !disableKioskInDev);
+
+  // Detectar tipo de dispositivo
+  useEffect(() => {
+    const detectDevice = () => {
+      const userAgent = navigator.userAgent.toLowerCase();
+      const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+      const isTabletDevice = /ipad|android(?=.*\bMobile\b)(?=.*\bSafari\b)/i.test(userAgent) || 
+                            (window.innerWidth >= 768 && window.innerWidth <= 1024);
+      
+      setIsMobileDevice(isMobile);
+      setIsTablet(isTabletDevice);
+      
+      console.log(`Dispositivo detectado: ${isMobile ? 'Mobile' : 'Desktop'}, ${isTabletDevice ? 'Tablet' : 'Phone'}`);
+    };
+    
+    detectDevice();
+  }, []);
 
   // Verificar se está rodando como PWA
   useEffect(() => {
@@ -48,6 +67,7 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
         setUserInteracted(true);  // Considerar como já tendo interagido
         setIsFullscreen(true);    // Considerar como já estando em tela cheia
         setShowPrompt(false);     // Nunca mostrar o prompt em modo PWA
+        setFullscreenError(null); // Limpar erros em PWA
         
         // Forçar modo tela cheia em PWAs
         document.addEventListener('click', function tryFullscreen(e) {
@@ -97,6 +117,7 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
         console.log("Aplicação entrou em modo standalone");
         setIsPWA(true);
         setShowPrompt(false);
+        setFullscreenError(null);
       }
     };
     
@@ -105,6 +126,7 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
         console.log("Aplicação entrou em modo fullscreen");
         setIsPWA(true);
         setShowPrompt(false);
+        setFullscreenError(null);
       }
     };
     
@@ -124,15 +146,26 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
                                 (document.documentElement as any).mozRequestFullScreen || 
                                 (document.documentElement as any).msRequestFullscreen;
     
-    setFullscreenSupported(!!hasFullscreenSupport);
+    // Em dispositivos móveis, considerar como suportado mesmo sem API nativa
+    const shouldConsiderSupported = hasFullscreenSupport || isMobileDevice || isPWA;
+    
+    setFullscreenSupported(!!shouldConsiderSupported);
     
     if (!hasFullscreenSupport && isDevelopment) {
       console.warn('AVISO: Este navegador não suporta a API Fullscreen. Usando modo alternativo.');
     }
-  }, [isDevelopment]);
+  }, [isDevelopment, isMobileDevice, isPWA]);
 
   // Função para ativar o modo tela cheia
   const enableFullscreen = () => {
+    // Se estamos em PWA ou dispositivo móvel, usar fallback
+    if (isPWA || isMobileDevice) {
+      console.log("Usando modo fallback para PWA/dispositivo móvel");
+      setIsFullscreen(true);
+      setFullscreenError(null);
+      return;
+    }
+    
     if (!isFullscreen && fullscreenSupported && !isPWA) {
       try {
         console.log("Tentando ativar modo tela cheia...");
@@ -168,8 +201,8 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
 
   // Função para detectar saída do modo tela cheia
   const handleFullscreenChange = () => {
-    // Se estamos em modo PWA, sempre considerar como tela cheia
-    if (isPWA) {
+    // Se estamos em modo PWA ou dispositivo móvel, sempre considerar como tela cheia
+    if (isPWA || isMobileDevice) {
       setIsFullscreen(true);
       return;
     }
@@ -184,7 +217,7 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
     
     // Se saiu do modo tela cheia e o modo quiosque está ativado, tenta reativar
     // Mas apenas se não estivermos na rota de administração e não for PWA
-    if (!isInFullscreen && kioskModeActive && fullscreenSupported && !isPWA) {
+    if (!isInFullscreen && kioskModeActive && fullscreenSupported && !isPWA && !isMobileDevice) {
       // Verificar se não estamos na página de administração
       const isAdminPage = window.location.pathname.includes('/admin');
       
@@ -261,8 +294,8 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
     
     console.log("Interação do usuário detectada");
     
-    // Se já estamos em modo PWA, não precisamos fazer nada
-    if (isPWA) {
+    // Se já estamos em modo PWA ou dispositivo móvel, não precisamos fazer nada
+    if (isPWA || isMobileDevice) {
       return;
     }
     
@@ -272,13 +305,13 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
       setShowPrompt(false);
       
       // Se o navegador suporta tela cheia, tentamos ativar
-      if (fullscreenSupported && !isPWA) {
+      if (fullscreenSupported && !isPWA && !isMobileDevice) {
         // Pequeno timeout para garantir que o navegador reconheça a interação do usuário
         setTimeout(() => {
           enableFullscreen();
         }, 100);
       }
-    } else if (kioskModeActive && !isFullscreen && fullscreenSupported && !isPWA) {
+    } else if (kioskModeActive && !isFullscreen && fullscreenSupported && !isPWA && !isMobileDevice) {
       // Se o usuário já interagiu mas não estamos em tela cheia, tentar novamente
       setTimeout(() => {
         enableFullscreen();
@@ -288,12 +321,16 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
 
   // Tentativa de iniciar automaticamente o modo tela cheia
   useEffect(() => {
-    // Se estamos em modo PWA, não precisamos tentar entrar em tela cheia
-    if (isPWA) {
+    // Se estamos em modo PWA ou dispositivo móvel, não precisamos tentar entrar em tela cheia
+    if (isPWA || isMobileDevice) {
+      setUserInteracted(true);
+      setIsFullscreen(true);
+      setShowPrompt(false);
+      setFullscreenError(null);
       return;
     }
     
-    if (kioskModeActive && !autoStartAttempted && !isPWA) {
+    if (kioskModeActive && !autoStartAttempted && !isPWA && !isMobileDevice) {
       setAutoStartAttempted(true);
       
       // Adicionar um evento de clique automático para simular interação do usuário
@@ -323,11 +360,11 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
       // Executar após um pequeno delay para garantir que a página foi carregada
       setTimeout(autoStartFullscreen, 1000);
     }
-  }, [kioskModeActive, autoStartAttempted, isPWA]);
+  }, [kioskModeActive, autoStartAttempted, isPWA, isMobileDevice]);
 
   // Aplicar estilos de fallback quando a API Fullscreen não é suportada
   useEffect(() => {
-    if (kioskModeActive && userInteracted && (!fullscreenSupported || isPWA)) {
+    if (kioskModeActive && (userInteracted || isPWA || isMobileDevice) && (!fullscreenSupported || isPWA || isMobileDevice)) {
       // Adicionar classe ao body para simular tela cheia via CSS
       document.body.classList.add('kiosk-fallback-mode');
       
@@ -355,17 +392,31 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
           z-index: 9999 !important;
           overflow-y: auto !important;
         }
+        
+        /* Estilos específicos para tablets */
+        @media (min-width: 768px) and (max-width: 1024px) {
+          .kiosk-fallback-mode {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            overflow: hidden !important;
+          }
+        }
       `;
       document.head.appendChild(style);
       
       return () => {
         document.body.classList.remove('kiosk-fallback-mode');
-        document.head.removeChild(style);
+        if (document.head.contains(style)) {
+          document.head.removeChild(style);
+        }
       };
     }
     
     return undefined;
-  }, [kioskModeActive, userInteracted, fullscreenSupported, isPWA]);
+  }, [kioskModeActive, userInteracted, fullscreenSupported, isPWA, isMobileDevice]);
 
   // Monitorar mudanças na URL para verificar se estamos na página de admin
   useEffect(() => {
@@ -374,7 +425,7 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
       
       // Se não estamos na página de admin e o modo quiosque está ativo,
       // garantimos que estamos em tela cheia
-      if (!isAdminPage && kioskModeActive && !isFullscreen && fullscreenSupported && !isPWA) {
+      if (!isAdminPage && kioskModeActive && !isFullscreen && fullscreenSupported && !isPWA && !isMobileDevice) {
         enableFullscreen();
       }
     };
@@ -385,17 +436,17 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
     return () => {
       window.removeEventListener('popstate', handleLocationChange);
     };
-  }, [kioskModeActive, isFullscreen, fullscreenSupported, isPWA]);
+  }, [kioskModeActive, isFullscreen, fullscreenSupported, isPWA, isMobileDevice]);
 
   // Mostrar o prompt de tela cheia após um pequeno delay
   useEffect(() => {
-    // Se estamos em modo PWA, nunca mostrar o prompt
-    if (isPWA) {
+    // Se estamos em modo PWA ou dispositivo móvel, nunca mostrar o prompt
+    if (isPWA || isMobileDevice) {
       setShowPrompt(false);
       return;
     }
     
-    if (kioskModeActive && !initialPromptShown && !isPWA) {
+    if (kioskModeActive && !initialPromptShown && !isPWA && !isMobileDevice) {
       const promptTimer = setTimeout(() => {
         if (!isFullscreen && !document.fullscreenElement) {
           console.log("Mostrando prompt de tela cheia");
@@ -410,16 +461,16 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
     }
     
     return undefined;
-  }, [kioskModeActive, initialPromptShown, isFullscreen, isPWA]);
+  }, [kioskModeActive, initialPromptShown, isFullscreen, isPWA, isMobileDevice]);
 
   // Tentar entrar em tela cheia periodicamente se não estamos em tela cheia
   useEffect(() => {
-    // Se estamos em modo PWA, não precisamos verificar periodicamente
-    if (isPWA) {
+    // Se estamos em modo PWA ou dispositivo móvel, não precisamos verificar periodicamente
+    if (isPWA || isMobileDevice) {
       return;
     }
     
-    if (kioskModeActive && !isFullscreen && fullscreenSupported && !isPWA) {
+    if (kioskModeActive && !isFullscreen && fullscreenSupported && !isPWA && !isMobileDevice) {
       const retryTimer = setInterval(() => {
         // Verificar se já estamos em tela cheia
         const isInFullscreen = !!document.fullscreenElement || 
@@ -442,7 +493,7 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
     }
     
     return undefined;
-  }, [kioskModeActive, isFullscreen, fullscreenSupported, isPWA]);
+  }, [kioskModeActive, isFullscreen, fullscreenSupported, isPWA, isMobileDevice]);
 
   useEffect(() => {
     if (kioskModeActive) {
@@ -483,6 +534,10 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
         if (isPWA) {
           console.info('Aplicação rodando como PWA, não é necessário ativar tela cheia manualmente');
         }
+        
+        if (isMobileDevice) {
+          console.info('Dispositivo móvel detectado, usando modo fallback');
+        }
       }
       
       return () => {
@@ -500,20 +555,20 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
     }
     
     return undefined;
-  }, [kioskModeActive, isFullscreen, isPWA]);
+  }, [kioskModeActive, isFullscreen, isPWA, isMobileDevice]);
 
   return (
     <>
-      {kioskModeActive && !isPWA && <IOSFullscreen />}
+      {kioskModeActive && (isMobileDevice || isTablet) && <IOSFullscreen />}
       <AnimatePresence>
-        {showPrompt && !isPWA && (
+        {showPrompt && !isPWA && !isMobileDevice && (
           <FullscreenPrompt 
             onInteraction={handleUserInteraction} 
             visible={showPrompt} 
           />
         )}
       </AnimatePresence>
-      {fullscreenError && !isPWA && (
+      {fullscreenError && !isPWA && !isMobileDevice && (
         <div className="fixed top-0 left-0 right-0 bg-red-500 text-white p-2 text-sm z-50">
           Erro ao ativar tela cheia: {fullscreenError}
         </div>

@@ -46,7 +46,7 @@ const CustomerInfoPage: React.FC = () => {
     
     setIsSearching(true);
     try {
-      // Buscar por nome ou CPF
+      // Buscar por CPF (mais preciso)
       const customer = await api.searchCustomer(searchTerm);
       if (customer) {
         // Auto-preenchimento dos campos
@@ -58,11 +58,13 @@ const CustomerInfoPage: React.FC = () => {
         }));
         
         // Mostrar feedback visual de sucesso
-        console.log('Cliente encontrado na base de dados!');
+        console.log('✅ Cliente encontrado na base de dados!');
+        console.log('📋 Dados preenchidos:', customer);
       }
     } catch (error) {
       // Cliente não encontrado - não é erro, apenas não existe na base
-      console.log('Cliente não encontrado na base de dados');
+      console.log('ℹ️ Cliente não encontrado na base de dados');
+      console.log('🔍 Termo buscado:', searchTerm);
     } finally {
       setIsSearching(false);
     }
@@ -95,8 +97,8 @@ const CustomerInfoPage: React.FC = () => {
       }));
     }
 
-    // Auto-preenchimento: buscar cliente quando digitar nome ou CPF
-    if (name === 'name' || name === 'cpf') {
+    // Auto-preenchimento: buscar cliente quando digitar CPF (mais preciso)
+    if (name === 'cpf') {
       // Cancelar busca anterior
       if (searchTimeout) {
         clearTimeout(searchTimeout);
@@ -234,7 +236,7 @@ const CustomerInfoPage: React.FC = () => {
               <p className="mt-1 text-red-500">{errors.cpf}</p>
             )}
             <p className="mt-1 text-sm text-gray-500">
-              Preencha o CPF para agilizar futuros atendimentos
+              Preencha o CPF para agilizar futuros atendimentos e auto-preenchimento
             </p>
           </div>
 

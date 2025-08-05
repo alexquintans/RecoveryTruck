@@ -6,7 +6,7 @@ from pathlib import Path
 current_dir = str(Path(__file__).parent)
 sys.path.insert(0, current_dir)
 
-from fastapi import FastAPI, HTTPException, Depends, status, Request
+from fastapi import FastAPI, HTTPException, Depends, status, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
@@ -1033,6 +1033,37 @@ async def login_for_access_token(
             "timestamp": datetime.utcnow().isoformat(),
             "success": False,
             "error": str(e)
+        }
+
+@app.get("/customers/search")
+async def search_customer_fallback(
+    q: str = Query(..., min_length=3, description="Termo de busca (nome ou CPF)"),
+    tenant_id: str = Query(..., description="ID do tenant")
+):
+    """
+    Endpoint temporário para busca de clientes (fallback)
+    """
+    try:
+        # Importar a função do router de customers
+        from routers.customers import search_customer
+        from database import get_db
+        from uuid import UUID
+        
+        # Converter tenant_id para UUID
+        tenant_uuid = UUID(tenant_id)
+        
+        # Obter sessão do banco
+        db = next(get_db())
+        
+        # Chamar a função original
+        result = await search_customer(q, tenant_uuid, db)
+        
+        return result
+    except Exception as e:
+        print(f"❌ Erro no endpoint temporário: {e}")
+        return {
+            "error": str(e),
+            "message": "Erro ao buscar cliente"
         }
 
 @app.get("/health", summary="🏥 Health check", description="Verificação de saúde da API")

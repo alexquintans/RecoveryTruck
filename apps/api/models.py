@@ -381,4 +381,25 @@ class TicketService(Base):
     # outros campos relevantes podem ser adicionados aqui
 
     ticket = relationship("Ticket", back_populates="services")
-    service = relationship("Service", back_populates="tickets_assoc") 
+    service = relationship("Service", back_populates="tickets_assoc")
+    progress = relationship("TicketServiceProgress", back_populates="ticket_service", uselist=False, cascade="all, delete-orphan")
+
+# NOVO: Modelo para controle de progresso individual dos serviços
+class TicketServiceProgress(Base):
+    __tablename__ = "ticket_service_progress"
+    __table_args__ = {'extend_existing': True}
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    ticket_service_id = Column(UUID(as_uuid=True), ForeignKey("ticket_services.id", ondelete="CASCADE"), nullable=False)
+    status = Column(String(20), nullable=False, default="pending")  # pending, in_progress, completed, cancelled
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    duration_minutes = Column(Integer, nullable=False)
+    operator_notes = Column(Text, nullable=True)
+    equipment_id = Column(UUID(as_uuid=True), ForeignKey("equipments.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    ticket_service = relationship("TicketService", back_populates="progress")
+    equipment = relationship("Equipment", foreign_keys=[equipment_id]) 
