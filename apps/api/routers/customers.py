@@ -258,97 +258,47 @@ async def debug_tickets(
 @router.get("/consents/last")
 async def get_last_consent(
     tenant_id: UUID = Query(...),
-    cpf: Optional[str] = Query(None),
-    name: Optional[str] = Query(None),
-    phone: Optional[str] = Query(None),
+    cpf: str = Query(..., description="CPF do cliente"),
     db: Session = Depends(get_db)
 ):
     """
-    Busca o consentimento mais recente do cliente (por CPF, ou nome+telefone, ou nome).
+    Busca o consentimento mais recente do cliente por CPF.
     Retorna assinatura e data se válido (menos de 30 dias).
-    Busca tanto em PaymentSession quanto em Ticket.
     """
-    logger.info(f"🔍 Buscando consentimento: tenant_id={tenant_id}, cpf={cpf}, name={name}, phone={phone}")
+    logger.info(f"🔍 Buscando consentimento: tenant_id={tenant_id}, cpf={cpf}")
     
     consent = None
     now = datetime.utcnow()
     cutoff = now - timedelta(days=30)
 
-    if cpf:
-        cpf_clean = normalize_cpf(cpf)
-        if validate_cpf(cpf_clean):
-            # PRIMEIRO: Buscar em Ticket (dados reais dos clientes)
-            consent = db.query(Consent).join(PaymentSession).join(Ticket).filter(
-                Consent.tenant_id == tenant_id,
-                Consent.payment_session_id == PaymentSession.id,
-                PaymentSession.id == Ticket.payment_session_id,
-                Ticket.customer_cpf == cpf_clean,
-                Consent.signature.isnot(None),
-                Consent.created_at >= cutoff
-            ).order_by(Consent.created_at.desc()).first()
-            
-            # SEGUNDO: Buscar em PaymentSession (apenas como fallback)
-            if not consent:
-                consent = db.query(Consent).join(PaymentSession).filter(
-                    Consent.tenant_id == tenant_id,
-                    Consent.payment_session_id == PaymentSession.id,
-                    PaymentSession.customer_cpf == cpf_clean,
-                    Consent.signature.isnot(None),
-                    Consent.created_at >= cutoff
-                ).order_by(Consent.created_at.desc()).first()
-        else:
-            logger.warning(f"❌ CPF inválido para busca de consentimento: {cpf}")
+    # Normalizar e validar CPF
+    cpf_clean = normalize_cpf(cpf)
+    if not validate_cpf(cpf_clean):
+        logger.warning(f"❌ CPF inválido para busca de consentimento: {cpf}")
+        return None
     
-    elif name and phone:
-        # PRIMEIRO: Buscar em Ticket (dados reais dos clientes)
-        consent = db.query(Consent).join(PaymentSession).join(Ticket).filter(
-            Consent.tenant_id == tenant_id,
-            Consent.payment_session_id == PaymentSession.id,
-            PaymentSession.id == Ticket.payment_session_id,
-            Ticket.customer_name.ilike(f"%{name}%"),
-            Ticket.customer_phone == phone,
-            Consent.signature.isnot(None),
-            Consent.created_at >= cutoff
-        ).order_by(Consent.created_at.desc()).first()
-        
-        # SEGUNDO: Buscar em PaymentSession (apenas como fallback)
-        if not consent:
-            consent = db.query(Consent).join(PaymentSession).filter(
-                Consent.tenant_id == tenant_id,
-                Consent.payment_session_id == PaymentSession.id,
-                PaymentSession.customer_name.ilike(f"%{name}%"),
-                PaymentSession.customer_phone == phone,
-                Consent.signature.isnot(None),
-                Consent.created_at >= cutoff
-            ).order_by(Consent.created_at.desc()).first()
+    logger.info(f"🔍 DEBUG - Buscando consentimento por CPF: '{cpf_clean}' (original: '{cpf}')")
     
-    elif name:
-        # PRIMEIRO: Buscar em Ticket (dados reais dos clientes)
-        consent = db.query(Consent).join(PaymentSession).join(Ticket).filter(
-            Consent.tenant_id == tenant_id,
-            Consent.payment_session_id == PaymentSession.id,
-            PaymentSession.id == Ticket.payment_session_id,
-            Ticket.customer_name.ilike(f"%{name}%"),
-            Consent.signature.isnot(None),
-            Consent.created_at >= cutoff
-        ).order_by(Consent.created_at.desc()).first()
-        
-        # SEGUNDO: Buscar em PaymentSession (apenas como fallback)
-        if not consent:
-            consent = db.query(Consent).join(PaymentSession).filter(
-                Consent.tenant_id == tenant_id,
-                Consent.payment_session_id == PaymentSession.id,
-                PaymentSession.customer_name.ilike(f"%{name}%"),
-                Consent.signature.isnot(None),
-                Consent.created_at >= cutoff
-            ).order_by(Consent.created_at.desc()).first()
-
+    # Buscar consentimento em PaymentSession
+    consent = db.query(Consent).join(
+        PaymentSession, 
+        Consent.payment_session_id == PaymentSession.id
+    ).filter(
+        Consent.tenant_id == tenant_id,
+        or_(
+            PaymentSession.customer_cpf == cpf_clean,  # CPF sem formatação
+            PaymentSession.customer_cpf == cpf          # CPF com formatação original
+        ),
+        Consent.signature.isnot(None),
+        Consent.created_at >= cutoff
+    ).order_by(Consent.created_at.desc()).first()
+    
     if consent:
-        logger.info(f"✅ Consentimento encontrado: {consent.id}")
+        logger.info(f"✅ Consentimento encontrado: {consent.id} (criado em: {consent.created_at})")
         return {
             "signature": consent.signature,
             "created_at": consent.created_at.isoformat()
         }
     
-    logger.info("ℹ️ Nenhum consentimento válido encontrado")
+    logger.info(f"ℹ️ Nenhum consentimento válido encontrado para CPF: {cpf}")
     return None 
