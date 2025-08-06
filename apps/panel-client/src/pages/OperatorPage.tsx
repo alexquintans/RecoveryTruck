@@ -284,6 +284,9 @@ const OperatorPage: React.FC = () => {
     getProgressStatusText
   } = useServiceProgress();
 
+  // Estado para equipamento selecionado (movido para o escopo principal)
+  const [selectedEquipment, setSelectedEquipment] = useState<string>('');
+
   // Usar o hook para ações do operador
   const {
     callTicket,
@@ -1181,7 +1184,6 @@ const OperatorPage: React.FC = () => {
       const [isLoading, setIsLoading] = useState(false);
       const [showNotesModal, setShowNotesModal] = useState(false);
       const [notes, setNotes] = useState(progress.operator_notes || '');
-      const [selectedEquipment, setSelectedEquipment] = useState<string>('');
 
       const handleStartService = async () => {
         setIsLoading(true);
