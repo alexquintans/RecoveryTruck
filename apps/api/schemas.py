@@ -429,6 +429,7 @@ class TicketCreate(BaseModel):
     customer_cpf: Optional[str] = Field(None, min_length=11, max_length=14)  # Aceita CPF formatado
     customer_phone: Optional[str] = Field(None, min_length=10, max_length=20)
     consent_version: str = Field(..., min_length=1, max_length=10)
+    signature: Optional[str] = Field(None, description="Assinatura digital do cliente (base64)")
     services: List[TicketServiceItem]  # Agora aceita múltiplos serviços
     extras: Optional[List[TicketExtraCreate]] = []
 

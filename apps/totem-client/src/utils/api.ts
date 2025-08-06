@@ -107,8 +107,9 @@ export const api = {
     extras?: Array<{ id: string; quantity: number; price: number }>
   ): Promise<Ticket> {
     const tenantId = (import.meta as any).env?.VITE_TENANT_ID || '7f02a566-2406-436d-b10d-90ecddd3fe2d';
-    const response = await baseApi.post('/tickets', {
-      tenant_id: tenantId, // Adicionado
+    
+    const payload: any = {
+      tenant_id: tenantId,
       services: services.map(s => ({
         service_id: s.id,
         price: s.price
@@ -122,7 +123,14 @@ export const api = {
         quantity: e.quantity, 
         price: e.price 
       })) : []
-    });
+    };
+    
+    // Adicionar assinatura se disponível
+    if (customer.signature) {
+      payload.signature = customer.signature;
+    }
+    
+    const response = await baseApi.post('/tickets', payload);
     
     // Retornar apenas os dados do ticket, não o objeto Axios completo
     return response.data;

@@ -30,6 +30,20 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
   // 2. NÃO estivermos em desenvolvimento OU não tivermos configurado para desativar em dev
   const kioskModeActive = enabled && (!isDevelopment || !disableKioskInDev);
 
+  // Carregar estado de interação do localStorage
+  useEffect(() => {
+    try {
+      const hasInteracted = localStorage.getItem('kiosk_user_interacted') === 'true';
+      if (hasInteracted) {
+        console.log("Estado de interação carregado do localStorage: usuário já interagiu");
+        setUserInteracted(true);
+        setShowPrompt(false);
+      }
+    } catch (e) {
+      console.warn("Não foi possível carregar do localStorage:", e);
+    }
+  }, []);
+
   // Detectar tipo de dispositivo
   useEffect(() => {
     const detectDevice = () => {
@@ -213,9 +227,11 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
                          !!(document as any).msFullscreenElement;
                          
     console.log("Estado da tela cheia alterado:", isInFullscreen ? "ATIVO" : "INATIVO");
+    console.log("Usuário já interagiu:", userInteracted);
+    console.log("Modo quiosque ativo:", kioskModeActive);
     setIsFullscreen(isInFullscreen);
     
-    // Se saiu do modo tela cheia e o modo quiosque está ativado, tenta reativar
+    // Se saiu do modo tela cheia e o modo quiosque está ativo, tenta reativar
     // Mas apenas se não estivermos na rota de administração e não for PWA
     if (!isInFullscreen && kioskModeActive && fullscreenSupported && !isPWA && !isMobileDevice) {
       // Verificar se não estamos na página de administração
@@ -223,8 +239,19 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
       
       if (!isAdminPage) {
         console.log("Tentando reativar modo tela cheia após saída...");
-        // Mostrar o prompt novamente se sair da tela cheia
-        setShowPrompt(true);
+        console.log("Usuário já interagiu anteriormente:", userInteracted);
+        
+        // Se o usuário já interagiu, tentar reativar imediatamente
+        if (userInteracted) {
+          console.log("Reativando tela cheia imediatamente (usuário já interagiu)");
+          setTimeout(() => {
+            enableFullscreen();
+          }, 100);
+        } else {
+          // Se não interagiu ainda, mostrar o prompt
+          console.log("Mostrando prompt para reativar tela cheia");
+          setShowPrompt(true);
+        }
       }
     }
   };
@@ -265,43 +292,42 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
     return false;
   };
 
-  // Detectar interação do usuário para ativar o modo tela cheia
-  const handleUserInteraction = (e?: Event) => {
-    // Se o evento veio de um elemento interativo (botão, link, etc.), não processar
-    if (e && e.target) {
-      const target = e.target as HTMLElement;
-      console.log('🔍 DEBUG - KioskMode: Evento detectado em:', target.tagName, target.className);
-      
-      const isInteractive = target.tagName === 'BUTTON' || 
-                           target.tagName === 'A' || 
-                           target.tagName === 'INPUT' || 
-                           target.tagName === 'SELECT' || 
-                           target.tagName === 'TEXTAREA' ||
-                           target.closest('button') ||
-                           target.closest('a') ||
-                           target.closest('input') ||
-                           target.closest('select') ||
-                           target.closest('textarea') ||
-                           target.closest('[role="button"]') ||
-                           target.closest('[onclick]');
-      
-      if (isInteractive) {
-        console.log('🔍 DEBUG - KioskMode: Elemento interativo detectado, permitindo evento');
-        // Permitir que o evento continue normalmente para elementos interativos
-        return;
-      }
-    }
+  // Função para detectar interação do usuário
+  const handleUserInteraction = () => {
+    // Verificar se estamos na página de administração
+    const isAdminPage = window.location.pathname.includes('/admin');
+    if (isAdminPage) return;
     
-    console.log("Interação do usuário detectada");
+    // Verificar se o clique foi em um elemento interativo
+    const target = event?.target as HTMLElement;
+    const isInteractive = target?.tagName === 'BUTTON' || 
+                         target?.tagName === 'A' || 
+                         target?.tagName === 'INPUT' || 
+                         target?.tagName === 'SELECT' || 
+                         target?.tagName === 'TEXTAREA' ||
+                         target?.closest('button') ||
+                         target?.closest('a') ||
+                         target?.closest('input') ||
+                         target?.closest('select') ||
+                         target?.closest('textarea');
     
-    // Se já estamos em modo PWA ou dispositivo móvel, não precisamos fazer nada
-    if (isPWA || isMobileDevice) {
+    // Se for um elemento interativo, não tentar entrar em tela cheia
+    if (isInteractive) {
       return;
     }
     
     if (!userInteracted && kioskModeActive) {
       console.log("Marcando usuário como tendo interagido");
       setUserInteracted(true);
+      
+      // Persistir no localStorage para garantir que não seja perdido
+      try {
+        localStorage.setItem('kiosk_user_interacted', 'true');
+        console.log("Estado de interação salvo no localStorage");
+      } catch (e) {
+        console.warn("Não foi possível salvar no localStorage:", e);
+      }
+      
       setShowPrompt(false);
       
       // Se o navegador suporta tela cheia, tentamos ativar
@@ -313,6 +339,7 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
       }
     } else if (kioskModeActive && !isFullscreen && fullscreenSupported && !isPWA && !isMobileDevice) {
       // Se o usuário já interagiu mas não estamos em tela cheia, tentar novamente
+      console.log("Usuário já interagiu, tentando reativar tela cheia");
       setTimeout(() => {
         enableFullscreen();
       }, 100);
@@ -478,14 +505,25 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
                              !!(document as any).mozFullScreenElement || 
                              !!(document as any).msFullscreenElement;
         
-        // Se não estamos em tela cheia e não estamos na página de admin, mostrar o prompt
+        // Se não estamos em tela cheia e não estamos na página de admin
         if (!isInFullscreen && !window.location.pathname.includes('/admin')) {
-          console.log("Verificação periódica: não estamos em tela cheia, mostrando prompt");
-          setShowPrompt(true);
+          console.log("Verificação periódica: não estamos em tela cheia");
+          console.log("Usuário já interagiu:", userInteracted);
+          
+          if (userInteracted) {
+            // Se o usuário já interagiu, tentar reativar imediatamente
+            console.log("Tentando reativar tela cheia (usuário já interagiu)");
+            enableFullscreen();
+            setShowPrompt(false);
+          } else {
+            // Se não interagiu ainda, mostrar o prompt
+            console.log("Mostrando prompt para ativar tela cheia");
+            setShowPrompt(true);
+          }
         } else {
           setShowPrompt(false);
         }
-      }, 5000); // Verificar a cada 5 segundos
+      }, 3000); // Verificar a cada 3 segundos (mais agressivo)
       
       return () => {
         clearInterval(retryTimer);
@@ -493,7 +531,7 @@ const KioskMode: React.FC<KioskModeProps> = ({ children, enabled = true }) => {
     }
     
     return undefined;
-  }, [kioskModeActive, isFullscreen, fullscreenSupported, isPWA, isMobileDevice]);
+  }, [kioskModeActive, isFullscreen, fullscreenSupported, isPWA, isMobileDevice, userInteracted]);
 
   useEffect(() => {
     if (kioskModeActive) {

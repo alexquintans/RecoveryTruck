@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Optional, List
 from uuid import UUID
 from datetime import datetime, timezone
 
@@ -16,7 +16,7 @@ from apps.api.schemas.ticket_service_progress import (
 from apps.api.dependencies import get_current_operator
 from apps.api.models import Operator
 
-router = APIRouter(prefix="/ticket-service-progress", tags=["ticket-service-progress"])
+router = APIRouter(tags=["ticket-service-progress"])
 
 @router.get("/ticket/{ticket_id}", response_model=TicketServiceProgressList)
 async def get_ticket_service_progress(

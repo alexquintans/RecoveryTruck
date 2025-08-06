@@ -1197,6 +1197,43 @@ async def create_ticket(
     db.add(ticket)
     db.flush()  # para garantir que ticket.id está disponível
 
+    # SALVAR ASSINATURA NA TABELA CONSENT (se fornecida)
+    if ticket_in.signature:
+        logger.info(f"🔍 DEBUG - Salvando assinatura para ticket {ticket.id}")
+        
+        # Criar um PaymentSession temporário para vincular o consentimento
+        # (já que Consent precisa de payment_session_id)
+        temp_payment_session = PaymentSession(
+            tenant_id=ticket_in.tenant_id,
+            service_id=None,  # Será atualizado quando o pagamento for criado
+            customer_name=ticket_in.customer_name,
+            customer_cpf=ticket_in.customer_cpf,
+            customer_phone=ticket_in.customer_phone,
+            consent_version=ticket_in.consent_version,
+            payment_method="none",  # Temporário
+            amount=0.0,  # Será atualizado quando o pagamento for criado
+            status="pending",
+            expires_at=datetime.utcnow() + timedelta(hours=1)
+        )
+        db.add(temp_payment_session)
+        db.flush()  # para garantir que temp_payment_session.id está disponível
+        
+        # Criar o consentimento
+        consent = Consent(
+            tenant_id=ticket_in.tenant_id,
+            payment_session_id=temp_payment_session.id,
+            version=ticket_in.consent_version,
+            signature=ticket_in.signature,
+            ip_address=None,  # Pode ser adicionado se necessário
+            user_agent=None   # Pode ser adicionado se necessário
+        )
+        db.add(consent)
+        
+        # Vincular o ticket ao payment session temporário
+        ticket.payment_session_id = temp_payment_session.id
+        
+        logger.info(f"✅ Assinatura salva com sucesso para ticket {ticket.id}")
+
     # Adicionar serviços associados
     for service_item in ticket_in.services:
         ticket_service = TicketService(
@@ -1272,24 +1309,30 @@ async def create_ticket(
         extra_name = extra.name if extra else f"Extra {te.extra_id}"
         
         extras_out.append(TicketExtraOut(
-            id=te.id, 
-            extra_id=te.extra_id, 
-            name=extra_name,  # Incluindo o nome do extra
-            quantity=te.quantity, 
-            price=float(te.price)
+            id=te.id,
+            extra_id=te.extra_id,
+            quantity=te.quantity,
+            price=te.price
         ))
-
+    
+    # Converter serviços para schema de saída
+    services_out = []
+    for ts in ticket.services:
+        services_out.append(TicketServiceItem(
+            service_id=ts.service_id,
+            price=ts.price
+        ))
+    
     return TicketOut(
         id=ticket.id,
         tenant_id=ticket.tenant_id,
         ticket_number=ticket.ticket_number,
-        number=f"#{str(ticket.ticket_number).zfill(3)}",  # Usando zfill() em vez de padStart()
         status=ticket.status,
         customer_name=ticket.customer_name,
-        customer_cpf=ticket.customer_cpf or "",
-        customer_phone=ticket.customer_phone or "",
+        customer_cpf=ticket.customer_cpf,
+        customer_phone=ticket.customer_phone,
         consent_version=ticket.consent_version,
-        services=ticket_in.services,
+        services=services_out,
         extras=extras_out,
         created_at=ticket.created_at,
         updated_at=ticket.updated_at,
