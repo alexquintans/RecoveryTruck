@@ -713,7 +713,7 @@ const OperatorPage: React.FC = () => {
                 }}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg shadow-lg hover:bg-red-700 transition-all font-semibold hover:scale-105"
               >
-                Encerrar Operação
+                Finalizar e Sair
               </button>
               <Link to="/" className="text-primary underline text-base hover:text-primary/80 transition-colors">← Dashboard</Link>
           </div>
@@ -810,7 +810,7 @@ const OperatorPage: React.FC = () => {
                       />
                     <div className={`w-11 h-6 rounded-full transition-colors duration-200 ${service.isActive ? 'bg-[#3B82F6]' : 'bg-[#D9D9D9]'}`}></div>
                     <div className={`absolute ml-1 mt-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${service.isActive ? 'translate-x-5' : ''}`}></div>
-                    <span className="text-sm text-[#1F526B] font-medium">Toggle</span>
+                    <span className="text-sm text-[#1F526B] font-medium">Ativar/Desativar</span>
                     </label>
                 </div>
               ))}
@@ -859,7 +859,7 @@ const OperatorPage: React.FC = () => {
                       />
                       <div className={`w-11 h-6 rounded-full transition-colors duration-200 ${equipment.isActive ? 'bg-[#3B82F6]' : 'bg-[#D9D9D9]'}`}></div>
                       <div className={`absolute ml-1 mt-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${equipment.isActive ? 'translate-x-5' : ''}`}></div>
-                      <span className="text-sm text-[#1F526B] font-medium">Toggle</span>
+                      <span className="text-sm text-[#1F526B] font-medium">Ativar/Desativar</span>
                     </label>
                 </div>
               ))}
@@ -940,7 +940,7 @@ const OperatorPage: React.FC = () => {
                       />
                     <div className={`w-11 h-6 rounded-full transition-colors duration-200 ${extra.isActive ? 'bg-[#3B82F6]' : 'bg-[#D9D9D9]'}`}></div>
                     <div className={`absolute ml-1 mt-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${extra.isActive ? 'translate-x-5' : ''}`}></div>
-                    <span className="text-sm text-[#1F526B] font-medium">Toggle</span>
+                    <span className="text-sm text-[#1F526B] font-medium">Ativar/Desativar</span>
                     </label>
                 </div>
               ))}
@@ -1027,7 +1027,7 @@ const OperatorPage: React.FC = () => {
               }}
               className="px-6 py-2 bg-[#3B82F6] text-white rounded-lg font-semibold shadow-lg hover:bg-[#2563EB] active:scale-95 transition-all hover:shadow-xl"
             >
-              Salvar e Continuar
+              Salvar Configurações e Iniciar Atendimento
             </button>
           </div>
 
@@ -1332,7 +1332,7 @@ const OperatorPage: React.FC = () => {
               className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg shadow hover:bg-red-700 transition-all"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              Encerrar Operação
+              Finalizar e Sair
             </button>
             <Link to="/" className="text-blue-600 underline text-base">← Dashboard</Link>
           </div>
@@ -1973,7 +1973,7 @@ const OperatorPage: React.FC = () => {
             onClick={() => setCurrentStep('config')}
             className="px-6 py-2 border border-gray-400 text-gray-700 rounded-lg bg-white hover:bg-gray-100 transition-all"
           >
-            Voltar às Configurações
+            Voltar para Configurar Serviços e Equipamentos
           </button>
         </div>
     </div>
