@@ -122,9 +122,11 @@ export function useTicketQueue() {
     },
     onError: (error) => {
       console.log('🔌 WebSocket error:', error);
+      // Não deixar o erro do WebSocket quebrar a aplicação
     },
     onClose: () => {
       console.log('🔌 WebSocket fechado');
+      // Não deixar o fechamento do WebSocket quebrar a aplicação
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onMessage: (msg: any) => {
@@ -209,7 +211,11 @@ export function useTicketQueue() {
         : 'in_use',
   }));
 
-  const operationConfig = (operationQuery.data as any) ?? { is_operating: false, service_duration: 10, equipment_counts: {} };
+  const operationConfig = (operationQuery.data as any) ?? { 
+    is_operating: false, 
+    service_duration: 10, 
+    equipment_counts: {} 
+  };
   
   const { myTickets: _, ...queueQueryWithoutMyTickets } = queueQuery;
   

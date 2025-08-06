@@ -241,6 +241,7 @@ const OperatorPage: React.FC = () => {
 
   // Estados existentes
   const [activeTab, setActiveTab] = useState('operation');
+  const [activeModal, setActiveModal] = useState<string | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [extras, setExtras] = useState<Extra[]>([]);
   const [equipments, setEquipments] = useState<Equipment[]>([]);
@@ -277,6 +278,18 @@ const OperatorPage: React.FC = () => {
     getProgressStatusColor,
     getProgressStatusText
   } = useServiceProgress();
+
+  // Usar o hook para ações do operador
+  const {
+    callTicket,
+    callLoading,
+    startService,
+    startLoading,
+    completeService,
+    completeLoading,
+    cancelTicket,
+    cancelLoading
+  } = useOperatorActions();
 
   // NOVO: useEffect para carregar progresso dos serviços automaticamente
   useEffect(() => {
@@ -1977,6 +1990,13 @@ const OperatorPage: React.FC = () => {
       }
     }
   }, [operationConfig, currentStep]);
+
+  // Fallback para garantir que sempre tenha uma etapa definida
+  useEffect(() => {
+    if (currentStep === null) {
+      setCurrentStep('name');
+    }
+  }, [currentStep]);
 
   // Renderizar componente baseado na etapa atual
   if (!currentStep) {
