@@ -26,7 +26,8 @@ from schemas import (
     ServiceForTicket,
     TicketServiceWithDetails,
     ExtraForTicket,
-    TicketExtraWithDetails
+    TicketExtraWithDetails,
+    TicketServiceItem
 )
 from auth import get_current_operator
 from services.websocket import websocket_manager
@@ -1300,7 +1301,6 @@ async def create_ticket(
 
     # Broadcast da atualização da fila para todos os clientes
     try:
-        from ..services.websocket import websocket_manager
         await websocket_manager.broadcast_queue_update(str(ticket.tenant_id), {
             "type": "queue_update",
             "data": {
@@ -1414,7 +1414,7 @@ async def create_payment_for_ticket(
                 raise HTTPException(status_code=400, detail="Token de acesso do Mercado Pago não configurado")
             
             # Importar e usar o adaptador do Mercado Pago
-            from apps.api.services.payment.adapters.mercadopago import MercadoPagoAdapter
+            from services.payment.adapters.mercadopago import MercadoPagoAdapter
             
             adapter = MercadoPagoAdapter(mercadopago_config)
             logger.info(f"🔍 DEBUG - MercadoPagoAdapter criado com sucesso")
@@ -1520,7 +1520,6 @@ async def confirm_payment(
 
     # Opcional: enviar update pelo websocket
     try:
-        from ..services.websocket import websocket_manager
         await websocket_manager.broadcast_queue_update(str(ticket.tenant_id), {
             "ticket_id": str(ticket.id),
             "payment_confirmed": True,
