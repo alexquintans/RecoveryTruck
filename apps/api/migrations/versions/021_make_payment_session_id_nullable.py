@@ -1,7 +1,7 @@
 """make payment_session_id nullable in tickets
 
-Revision ID: 019
-Revises: 018
+Revision ID: 021
+Revises: 020
 Create Date: 2025-08-06 21:15:00.000000
 
 """
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '019'
-down_revision = '018'
+revision = '021'
+down_revision = '020'
 branch_labels = None
 depends_on = None
 
