@@ -1337,6 +1337,11 @@ async def create_ticket(
             price=ts.price
         ))
     
+    # Debug: Log dos dados antes de criar TicketOut
+    logger.info(f"🔍 DEBUG - Criando TicketOut com dados:")
+    logger.info(f"🔍 DEBUG - customer_cpf: {ticket.customer_cpf} (tipo: {type(ticket.customer_cpf)})")
+    logger.info(f"🔍 DEBUG - customer_phone: {ticket.customer_phone} (tipo: {type(ticket.customer_phone)})")
+    
     return TicketOut(
         id=ticket.id,
         tenant_id=ticket.tenant_id,

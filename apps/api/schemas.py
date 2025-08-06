@@ -439,8 +439,8 @@ class TicketOut(BaseModel):
     ticket_number: int
     status: str
     customer_name: str
-    customer_cpf: str
-    customer_phone: str
+    customer_cpf: Optional[str] = None
+    customer_phone: Optional[str] = None
     consent_version: str
     services: List[TicketServiceItem]
     extras: List[TicketExtraOut] = []
