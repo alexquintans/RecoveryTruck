@@ -226,6 +226,8 @@ const OperatorPage: React.FC = () => {
     myTickets,
     tickets,
     equipment,
+    pendingPaymentTickets,
+    refetch,
     ...ticketQueueRest
   } = useTicketQueue();
 
@@ -234,6 +236,9 @@ const OperatorPage: React.FC = () => {
 
   // Obter tenantId do usuário
   const tenantId = user?.tenant_id || '';
+
+  // Obter operatorId do usuário
+  const operatorId = user?.id || '';
 
   // Novo: Estado de etapa do fluxo
   const [currentStep, setCurrentStep] = useState<string | null>(null);
@@ -288,7 +293,11 @@ const OperatorPage: React.FC = () => {
     completeService,
     completeLoading,
     cancelTicket,
-    cancelLoading
+    cancelLoading,
+    confirmPayment,
+    confirmLoading,
+    moveToQueue,
+    moveToQueueLoading
   } = useOperatorActions();
 
   // NOVO: useEffect para carregar progresso dos serviços automaticamente
@@ -637,6 +646,17 @@ const OperatorPage: React.FC = () => {
   function closeModal(){
     setActiveModal(null);
   }
+
+  // Função para alternar modos de pagamento
+  const togglePaymentMode = (mode: string) => {
+    setPaymentModes(prev => {
+      if (prev.includes(mode)) {
+        return prev.filter(m => m !== mode);
+      } else {
+        return [...prev, mode];
+      }
+    });
+  };
 
   // Funções para atualizar campos dos serviços e extras
   function updateServiceField(id: string, field: string, value: any) {
