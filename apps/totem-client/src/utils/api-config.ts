@@ -22,8 +22,7 @@ totemApi.interceptors.request.use(
       config.headers['X-Tenant-Id'] = tenantId;
     }
     
-    // Adicionar headers para CORS
-    config.headers['Origin'] = window.location.origin;
+    // Não definir Origin manualmente - o navegador faz isso automaticamente
     
     return config;
   },

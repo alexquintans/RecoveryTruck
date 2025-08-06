@@ -44,7 +44,18 @@ export default defineConfig({
         target: 'https://recoverytruck-production.up.railway.app',
         changeOrigin: true,
         secure: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+        rewrite: (path) => path.replace(/^\/api/, ''),
+        configure: (proxy, options) => {
+          proxy.on('error', (err, req, res) => {
+            console.log('🔍 DEBUG - Proxy error:', err);
+          });
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            console.log('🔍 DEBUG - Proxy request:', req.method, req.url);
+          });
+          proxy.on('proxyRes', (proxyRes, req, res) => {
+            console.log('🔍 DEBUG - Proxy response:', proxyRes.statusCode, req.url);
+          });
+        }
       }
     }
   },

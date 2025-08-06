@@ -96,7 +96,15 @@ export const api = {
       ...(customer.phone ? { customer_phone: customer.phone } : {}),
       ...(isDev ? { mock: true } : {})
     };
+    
+    // Debug: Log do payload
+    console.log('🔍 DEBUG - Criando payment session com payload:', JSON.stringify(payload, null, 2));
+    
     const response = await totemApi.post('/payment_sessions', payload, { withAuth: false });
+    
+    // Debug: Log da resposta
+    console.log('🔍 DEBUG - Resposta do payment session:', response.data);
+    
     return response.data;
   },
 
@@ -130,7 +138,13 @@ export const api = {
       payload.signature = customer.signature;
     }
     
+    // Debug: Log do payload
+    console.log('🔍 DEBUG - Criando ticket com payload:', JSON.stringify(payload, null, 2));
+    
     const response = await totemApi.post('/tickets', payload);
+    
+    // Debug: Log da resposta
+    console.log('🔍 DEBUG - Resposta do ticket:', response.data);
     
     // Retornar apenas os dados do ticket, não o objeto Axios completo
     return response.data;
@@ -138,9 +152,16 @@ export const api = {
 
   /** Criar sessão de pagamento para um ticket existente */
   async createPaymentForTicket(ticketId: string, paymentMethod: PaymentMethod): Promise<PaymentSession> {
+    // Debug: Log dos parâmetros
+    console.log('🔍 DEBUG - Criando payment para ticket:', { ticketId, paymentMethod });
+    
     const response = await totemApi.post(`/tickets/${ticketId}/create-payment`, {
       payment_method: paymentMethod,
     });
+    
+    // Debug: Log da resposta
+    console.log('🔍 DEBUG - Resposta do payment:', response.data);
+    
     return response.data;
   },
 
