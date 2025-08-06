@@ -1175,6 +1175,11 @@ async def create_ticket(
     ticket_in: TicketCreate,
     db: Session = Depends(get_db)
 ):
+    # Debug: Log dos dados recebidos
+    logger.info(f"🔍 DEBUG - Criando ticket com dados: {ticket_in}")
+    logger.info(f"🔍 DEBUG - Services: {ticket_in.services}")
+    logger.info(f"🔍 DEBUG - Extras: {ticket_in.extras}")
+    logger.info(f"🔍 DEBUG - Signature: {ticket_in.signature is not None}")
     # Get next ticket number for this tenant
     last_ticket = db.query(Ticket).filter(
         Ticket.tenant_id == ticket_in.tenant_id
@@ -1203,9 +1208,18 @@ async def create_ticket(
         
         # Criar um PaymentSession temporário para vincular o consentimento
         # (já que Consent precisa de payment_session_id)
+        # Pegar o service_id do primeiro serviço do ticket
+        service_id = ticket_in.services[0].service_id if ticket_in.services else None
+        
+        if not service_id:
+            raise HTTPException(
+                status_code=400, 
+                detail="Ticket deve ter pelo menos um serviço para criar payment session"
+            )
+        
         temp_payment_session = PaymentSession(
             tenant_id=ticket_in.tenant_id,
-            service_id=None,  # Será atualizado quando o pagamento for criado
+            service_id=service_id,  # Usar o service_id do primeiro serviço
             customer_name=ticket_in.customer_name,
             customer_cpf=ticket_in.customer_cpf,
             customer_phone=ticket_in.customer_phone,

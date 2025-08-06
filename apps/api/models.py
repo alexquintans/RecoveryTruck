@@ -168,7 +168,7 @@ class Ticket(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
-    payment_session_id = Column(UUID(as_uuid=True), ForeignKey("payment_sessions.id"), nullable=False)
+    payment_session_id = Column(UUID(as_uuid=True), ForeignKey("payment_sessions.id"), nullable=True)
     ticket_number = Column(Integer, nullable=False)
     
     # Estados: paid -> printing -> in_queue -> called -> in_progress -> completed
