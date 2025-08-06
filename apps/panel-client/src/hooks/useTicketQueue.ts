@@ -211,8 +211,10 @@ export function useTicketQueue() {
 
   const operationConfig = (operationQuery.data as any) ?? { is_operating: false, service_duration: 10, equipment_counts: {} };
   
+  const { myTickets: _, ...queueQueryWithoutMyTickets } = queueQuery;
+  
   return {
-    ...queueQuery,
+    ...queueQueryWithoutMyTickets,
     tickets: queueTickets,
     myTickets,
     completedTickets,

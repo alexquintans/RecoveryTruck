@@ -223,8 +223,14 @@ const OperatorPage: React.FC = () => {
   const queryClient = useQueryClient();
   const {
     operationConfig,
+    myTickets,
+    tickets,
+    equipment,
     ...ticketQueueRest
   } = useTicketQueue();
+
+  // Garantir que myTickets sempre seja um array
+  const safeMyTickets = myTickets || [];
 
   // Novo: Estado de etapa do fluxo
   const [currentStep, setCurrentStep] = useState<string | null>(null);
@@ -272,15 +278,15 @@ const OperatorPage: React.FC = () => {
   // NOVO: useEffect para carregar progresso dos serviços automaticamente
   useEffect(() => {
     const loadServiceProgress = async () => {
-      if (myTickets.length > 0) {
-        for (const ticket of myTickets) {
+      if (safeMyTickets.length > 0) {
+        for (const ticket of safeMyTickets) {
           await fetchServiceProgress(ticket.id);
         }
       }
     };
 
     loadServiceProgress();
-  }, [myTickets, fetchServiceProgress]);
+  }, [safeMyTickets, fetchServiceProgress]);
 
   // NOVO: Funções para verificar status do ticket
   const getTicketOverallStatus = (ticketId: string) => {
@@ -711,7 +717,7 @@ const OperatorPage: React.FC = () => {
             servicos={services.filter(s => s.isActive).length}
             equipamentos={equipments.filter(e => e.isActive).length}
             extras={extras.filter(e => e.isActive).length}
-            tickets={myTickets.length}
+            tickets={safeMyTickets.length}
           />
 
           {/* Serviços Disponíveis */}
@@ -1330,7 +1336,7 @@ const OperatorPage: React.FC = () => {
           servicos={services.filter(s => s.isActive).length}
           equipamentos={equipments.filter(e => e.isActive).length}
           extras={extras.filter(e => e.isActive).length}
-          tickets={myTickets.length}
+          tickets={safeMyTickets.length}
         />
         </div>
         {/* Seleção de Equipamentos */}
@@ -1586,10 +1592,10 @@ const OperatorPage: React.FC = () => {
                 🔄
               </button>
             </div>
-            {myTickets.length === 0 ? (
+            {safeMyTickets.length === 0 ? (
               <div className="text-gray-400 text-center py-8">Nenhum ticket em atendimento</div>
             ) : (
-              myTickets.map(ticket => {
+              safeMyTickets.map(ticket => {
                 console.log('Ticket em andamento:', ticket);
                 return (
                   <div
