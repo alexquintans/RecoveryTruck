@@ -6,7 +6,10 @@ import axios from 'axios';
  */
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore - import.meta.env disponível em projetos Vite
-export const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000';
+const isDev = (import.meta as any).env?.DEV === true;
+export const API_URL = isDev 
+  ? '/api' // Usar proxy em desenvolvimento
+  : ((import.meta as any).env?.VITE_API_URL || 'http://localhost:8000');
 
 /**
  * Opções para requisições fetch
@@ -144,6 +147,18 @@ api.interceptors.response.use(
       logout();
       // Emitir evento para redirecionar
       window.dispatchEvent(new CustomEvent('auth:logout'));
+    }
+    
+    // Tratamento específico para erros de CORS
+    if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+      console.error('Erro de CORS detectado. Verifique se o servidor está configurado corretamente.');
+      // Emitir evento para notificar sobre erro de CORS
+      window.dispatchEvent(new CustomEvent('cors:error', { 
+        detail: { 
+          message: 'Erro de conexão com o servidor. Verifique sua conexão com a internet.',
+          originalError: error 
+        } 
+      }));
     }
     
     return Promise.reject(error);

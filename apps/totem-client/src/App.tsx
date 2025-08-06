@@ -18,6 +18,7 @@ import AdminAccess from './components/AdminAccess';
 import FullscreenButton from './components/FullscreenButton';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { RequireStep } from './components/RequireStep';
+import { ErrorHandler } from './components/ErrorHandler';
 
 function App() {
   // Estado para controlar o modo quiosque
@@ -51,12 +52,13 @@ function App() {
   }, []);
   
   return (
-    <KioskMode enabled={kioskEnabled}>
-      {showPWAPrompt && (
-        <PWAInstallPrompt onClose={() => setShowPWAPrompt(false)} />
-      )}
-      
-      <AnimatePresence mode="wait">
+    <ErrorHandler>
+      <KioskMode enabled={kioskEnabled}>
+        {showPWAPrompt && (
+          <PWAInstallPrompt onClose={() => setShowPWAPrompt(false)} />
+        )}
+        
+        <AnimatePresence mode="wait">
         <Routes>
           {/* Rotas públicas */}
           <Route path="/" element={<Layout />}>
@@ -140,8 +142,9 @@ function App() {
             </AdminAccess>
           } />
         </Routes>
-      </AnimatePresence>
-    </KioskMode>
+        </AnimatePresence>
+      </KioskMode>
+    </ErrorHandler>
   );
 }
 

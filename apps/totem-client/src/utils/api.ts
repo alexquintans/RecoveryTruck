@@ -1,4 +1,4 @@
-import { api as baseApi } from '@totem/utils';
+import { totemApi } from './api-config';
 import type { Service, Customer, PaymentMethod, Ticket } from '../types';
 
 /**
@@ -72,7 +72,7 @@ type BackendPaymentMethod = 'credit' | 'debit' | 'pix' | 'tap' | 'cash';
 export const api = {
   /** Listar serviços disponíveis */
   async getServices(tenantId: string): Promise<Service[]> {
-    const response = await baseApi.get('/services/public', { params: { tenant_id: tenantId } });
+    const response = await totemApi.get('/services/public', { params: { tenant_id: tenantId } });
     return response.data.services; // <-- A CORREÇÃO: extrair a lista de serviços do objeto de resposta.
   },
 
@@ -96,7 +96,7 @@ export const api = {
       ...(customer.phone ? { customer_phone: customer.phone } : {}),
       ...(isDev ? { mock: true } : {})
     };
-    const response = await baseApi.post('/payment_sessions', payload, { withAuth: false });
+    const response = await totemApi.post('/payment_sessions', payload, { withAuth: false });
     return response.data;
   },
 
@@ -130,7 +130,7 @@ export const api = {
       payload.signature = customer.signature;
     }
     
-    const response = await baseApi.post('/tickets', payload);
+    const response = await totemApi.post('/tickets', payload);
     
     // Retornar apenas os dados do ticket, não o objeto Axios completo
     return response.data;
@@ -138,7 +138,7 @@ export const api = {
 
   /** Criar sessão de pagamento para um ticket existente */
   async createPaymentForTicket(ticketId: string, paymentMethod: PaymentMethod): Promise<PaymentSession> {
-    const response = await baseApi.post(`/tickets/${ticketId}/create-payment`, {
+    const response = await totemApi.post(`/tickets/${ticketId}/create-payment`, {
       payment_method: paymentMethod,
     });
     return response.data;
@@ -146,19 +146,19 @@ export const api = {
 
   /** Buscar status da sessão de pagamento */
   async getPaymentSession(sessionId: string): Promise<PaymentSession> {
-    const response = await baseApi.get(`/payment_sessions/${sessionId}`, { withAuth: false });
+    const response = await totemApi.get(`/payment_sessions/${sessionId}`, { withAuth: false });
     return response.data;
   },
 
   /** Obter ticket (após pagamento) */
   async getTicket(ticketId: string): Promise<Ticket> {
-    const response = await baseApi.get(`/tickets/${ticketId}`);
+    const response = await totemApi.get(`/tickets/${ticketId}`);
     return response.data;
   },
 
   /** Buscar configuração vigente da operação (serviços e extras públicos) */
   async getOperationConfig(tenantId: string) {
-    const response = await baseApi.get(`/operation/config`, { params: { tenant_id: tenantId } });
+    const response = await totemApi.get(`/operation/config`, { params: { tenant_id: tenantId } });
     // Garante que a resposta sempre tenha arrays, mesmo que a API não os envie.
     return {
       ...response.data,
@@ -170,7 +170,7 @@ export const api = {
 
   /** Buscar fila de tickets (para exibição pública) */
   async getQueue(tenantId: string): Promise<QueueInfo> {
-    const response = await baseApi.get('/tickets/queue/public', { 
+    const response = await totemApi.get('/tickets/queue/public', { 
       params: { 
         tenant_id: tenantId,
         include_called: true,
@@ -183,7 +183,7 @@ export const api = {
 
   /** Buscar ticket específico na fila */
   async getTicketInQueue(ticketId: string, tenantId: string): Promise<QueueTicket | null> {
-    const response = await baseApi.get(`/tickets/${ticketId}`, { 
+    const response = await totemApi.get(`/tickets/${ticketId}`, { 
       params: { tenant_id: tenantId }
     });
     return response.data;
@@ -191,7 +191,7 @@ export const api = {
 
   /** Buscar cliente na base de dados */
   async searchCustomer(searchTerm: string): Promise<Customer | null> {
-    const response = await baseApi.get('/customers/search', { 
+    const response = await totemApi.get('/customers/search', { 
       params: { 
         q: searchTerm,
         tenant_id: (import.meta as any).env?.VITE_TENANT_ID || '7f02a566-2406-436d-b10d-90ecddd3fe2d'
