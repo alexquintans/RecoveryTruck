@@ -16,7 +16,7 @@ const TicketPage: React.FC = () => {
   const [countdown, setCountdown] = useState(10); // 10 segundos
   const [operationConfig, setOperationConfig] = useState<any>(null);
   const [showThankYou, setShowThankYou] = useState(false);
-  const [thankYouCountdown, setThankYouCountdown] = useState(3);
+  const [thankYouCountdown, setThankYouCountdown] = useState(5);
   
   // Debug: logar dados críticos
   console.log('TicketPage - currentTicket:', currentTicket);
