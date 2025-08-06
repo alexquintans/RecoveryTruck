@@ -241,8 +241,29 @@ const OperatorPage: React.FC = () => {
   const operatorId = user?.id || '';
 
   // Novo: Estado de etapa do fluxo
-  const [currentStep, setCurrentStep] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState<string | null>(() => {
+    // Tentar recuperar do localStorage
+    const saved = localStorage.getItem('operator_current_step');
+    return saved || null;
+  });
   const [operatorName, setOperatorName] = useState('');
+
+  // Função para persistir o currentStep
+  const setCurrentStepWithPersistence = (step: string | null) => {
+    setCurrentStep(step);
+    if (step) {
+      localStorage.setItem('operator_current_step', step);
+    } else {
+      localStorage.removeItem('operator_current_step');
+    }
+  };
+
+  // Função para limpar o estado quando a operação for encerrada
+  const clearOperatorState = () => {
+    localStorage.removeItem('operator_current_step');
+    localStorage.removeItem('operator_config');
+    setCurrentStepWithPersistence(null);
+  };
 
   // Estados existentes
   const [activeTab, setActiveTab] = useState('operation');
@@ -685,7 +706,7 @@ const OperatorPage: React.FC = () => {
           <form onSubmit={(e) => {
             e.preventDefault();
             if (operatorName.trim()) {
-              setCurrentStep('config');
+                              setCurrentStepWithPersistence('config');
             }
           }} className="w-full space-y-4 mt-2">
             <div>
@@ -729,8 +750,7 @@ const OperatorPage: React.FC = () => {
                       alert('Falha ao encerrar operação no backend!');
                     }
                     alert('Operação encerrada com sucesso!');
-                    setCurrentStep('name');
-                    localStorage.removeItem('operator_config');
+                    clearOperatorState();
                     navigate('/');
                   }
                 }}
@@ -1009,7 +1029,7 @@ const OperatorPage: React.FC = () => {
           {/* Botões de ação */}
           <div className="flex justify-between pt-8 border-t mt-8">
             <button 
-              onClick={() => setCurrentStep('name')}
+              onClick={() => setCurrentStepWithPersistence('name')}
               className="px-6 py-2 border border-accent text-text rounded-lg bg-white hover:bg-accent/50 transition-all font-semibold hover:shadow-md"
             >
               Voltar
@@ -1042,7 +1062,7 @@ const OperatorPage: React.FC = () => {
                 };
                 try {
                   await saveOperationConfig(configPayload);
-                  setCurrentStep('operation');
+                  setCurrentStepWithPersistence('operation');
                   alert('Configuração salva e operação iniciada com sucesso!');
                 } catch (err) {
                   alert('Erro ao salvar configuração da operação!');
@@ -1345,11 +1365,10 @@ const OperatorPage: React.FC = () => {
           <div className="flex items-center gap-4">
             <button
               onClick={() => {
-                if (confirm('Tem certeza que deseja encerrar a operação?')) {
-                  alert('Operação encerrada com sucesso!');
-                  setCurrentStep('name');
-                  localStorage.removeItem('operator_config');
-                }
+                                  if (confirm('Tem certeza que deseja encerrar a operação?')) {
+                    alert('Operação encerrada com sucesso!');
+                    clearOperatorState();
+                  }
               }}
               className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg shadow hover:bg-red-700 transition-all"
             >
@@ -1992,7 +2011,7 @@ const OperatorPage: React.FC = () => {
         {/* Botão para voltar à configuração */}
         <div className="flex justify-center mt-6">
           <button 
-            onClick={() => setCurrentStep('config')}
+                            onClick={() => setCurrentStepWithPersistence('config')}
             className="px-6 py-2 border border-gray-400 text-gray-700 rounded-lg bg-white hover:bg-gray-100 transition-all"
           >
             Voltar para Configurar Serviços e Equipamentos
@@ -2004,11 +2023,20 @@ const OperatorPage: React.FC = () => {
 
   // Novo: Definir etapa inicial baseada no status da operação
   useEffect(() => {
-    if (currentStep === null && operationConfig) {
-      if (operationConfig.isOperating) {
-        setCurrentStep('operation');
+    console.log('🔍 DEBUG - Verificando etapa inicial:', {
+      currentStep,
+      operationConfig,
+      isOperating: operationConfig?.isOperating
+    });
+    
+    if (currentStep === null) {
+      // Verificar se a operação já está ativa
+      if (operationConfig && operationConfig.isOperating) {
+        console.log('🔍 Operação já ativa, indo direto para o painel de operação');
+        setCurrentStepWithPersistence('operation');
       } else {
-        setCurrentStep('name');
+        console.log('🔍 Operação não ativa, iniciando configuração');
+        setCurrentStepWithPersistence('name');
       }
     }
   }, [operationConfig, currentStep]);
@@ -2016,9 +2044,19 @@ const OperatorPage: React.FC = () => {
   // Fallback para garantir que sempre tenha uma etapa definida
   useEffect(() => {
     if (currentStep === null) {
-      setCurrentStep('name');
+      setCurrentStepWithPersistence('name');
     }
   }, [currentStep]);
+
+  // Verificação adicional: se a operação estiver ativa e o usuário estiver em uma etapa de configuração,
+  // redirecionar para a operação
+  useEffect(() => {
+    if (operationConfig && operationConfig.isOperating && 
+        (currentStep === 'name' || currentStep === 'config')) {
+      console.log('🔍 Operação ativa detectada durante configuração, redirecionando para operação');
+      setCurrentStepWithPersistence('operation');
+    }
+  }, [operationConfig, currentStep]);
 
   // Renderizar componente baseado na etapa atual
   if (!currentStep) {

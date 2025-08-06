@@ -217,7 +217,19 @@ export function useTicketQueue() {
     equipment_counts: {} 
   };
   
+  // Debug: log do operationConfig
+  console.log('🔍 DEBUG - operationConfig raw:', operationConfig);
+  console.log('🔍 DEBUG - operationConfig.is_operating:', operationConfig.is_operating);
+  
   const { myTickets: _, ...queueQueryWithoutMyTickets } = queueQuery;
+  
+  const normalizedOperationConfig = {
+    isOperating: operationConfig.is_operating ?? false,
+    serviceDuration: operationConfig.service_duration ?? 10,
+    equipmentCounts: operationConfig.equipment_counts ?? {},
+  };
+  
+  console.log('🔍 DEBUG - normalizedOperationConfig:', normalizedOperationConfig);
   
   return {
     ...queueQueryWithoutMyTickets,
@@ -227,11 +239,7 @@ export function useTicketQueue() {
     cancelledTickets,
     pendingPaymentTickets,
     equipment,
-    operationConfig: {
-      isOperating: operationConfig.is_operating ?? false,
-      serviceDuration: operationConfig.service_duration ?? 10,
-      equipmentCounts: operationConfig.equipment_counts ?? {},
-    },
+    operationConfig: normalizedOperationConfig,
     refetchOperation: () => queryClient.invalidateQueries({ queryKey: ['operation'] }),
     refetch: () => {
       queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
