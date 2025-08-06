@@ -232,6 +232,9 @@ const OperatorPage: React.FC = () => {
   // Garantir que myTickets sempre seja um array
   const safeMyTickets = myTickets || [];
 
+  // Obter tenantId do usuário
+  const tenantId = user?.tenant_id || '';
+
   // Novo: Estado de etapa do fluxo
   const [currentStep, setCurrentStep] = useState<string | null>(null);
   const [operatorName, setOperatorName] = useState('');
