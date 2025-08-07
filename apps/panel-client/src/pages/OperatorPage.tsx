@@ -677,9 +677,6 @@ const OperatorPage: React.FC = () => {
     );
   };
 
-  // Estados para configuração
-  const [currentPaymentModes, setCurrentPaymentModes] = useState<string[]>([]);
-  
   useEffect(() => {
     const fetchPaymentConfig = async () => {
       try {
