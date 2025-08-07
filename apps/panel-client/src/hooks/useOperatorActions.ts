@@ -40,9 +40,15 @@ export function useOperatorActions() {
 
   const confirmPaymentMutation = useMutation({
     mutationFn: ({ ticketId }: { ticketId: string }) => ticketService.confirmPayment(ticketId),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('🔍 DEBUG - confirmPayment onSuccess:', data);
       queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
       queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['tickets', 'pending-payment'] });
+      console.log('🔍 DEBUG - Cache invalidado para confirmPayment');
+    },
+    onError: (error) => {
+      console.error('❌ ERRO em confirmPayment:', error);
     },
   });
 
