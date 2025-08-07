@@ -93,7 +93,6 @@ interface Equipment {
   serviceId: string;
 }
 
-// NOVO: Interface para progresso individual dos serviços
 interface ServiceProgress {
   id: string;
   ticket_service_id: string;
@@ -124,6 +123,21 @@ interface Ticket {
   extras?: { name: string; quantity: number }[]; // Adicionado para extras
   // NOVO: Progresso individual dos serviços
   serviceProgress?: ServiceProgress[];
+}
+
+// NOVO: Interface para filas por serviço
+interface ServiceQueue {
+  serviceId: string;
+  serviceName: string;
+  tickets: Ticket[];
+}
+
+// NOVO: Interface para prioridade do ticket
+interface TicketPriority {
+  isFirstService: boolean;
+  isLastService: boolean;
+  serviceOrder: number;
+  totalServices: number;
 }
 
 // Dicionário de correção para nomes especiais
@@ -217,6 +231,155 @@ function ResumoVisual({ servicos, equipamentos, extras, tickets }) {
   );
 }
 
+// NOVO: Componente TicketCard melhorado para filas por serviço
+const TicketCard = ({ 
+  ticket, 
+  currentService, 
+  onCall, 
+  selectedEquipment, 
+  callLoading 
+}: { 
+  ticket: Ticket; 
+  currentService: string; 
+  onCall: (ticket: Ticket, serviceId: string) => void;
+  selectedEquipment: string;
+  callLoading: boolean;
+}) => {
+  const priority = getTicketPriority(ticket, currentService);
+  const services = ticket.services || [ticket.service];
+  const currentServiceData = services.find(s => s.id === currentService);
+  
+  // Calcular tempo de espera
+  const created = ticket.createdAt ? new Date(ticket.createdAt) : null;
+  const now = new Date();
+  const waitingMinutes = created ? Math.floor((now.getTime() - created.getTime()) / 60000) : null;
+  
+  return (
+    <div className={`flex items-center justify-between bg-white rounded-2xl border p-5 shadow-md hover:shadow-xl transition-transform hover:-translate-y-1 group focus-within:ring-2 focus-within:ring-blue-400 ${
+      priority.isFirstService ? 'border-blue-300 bg-blue-50' : 'border-blue-200'
+    }`}>
+      <div className="flex flex-col gap-1 w-full">
+        <div className="flex items-center gap-3 mb-1">
+          <span className="flex items-center justify-center w-12 h-12 rounded-full bg-blue-50 text-blue-700 text-3xl font-extrabold border-2 border-blue-200 shadow-sm">
+            <svg className="w-6 h-6 mr-1 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <rect x="4" y="8" width="16" height="8" rx="4" strokeWidth="2" />
+              <path d="M8 12h8" strokeWidth="2" />
+            </svg>
+            {ticket.number}
+          </span>
+          
+          {/* Indicador de múltiplos serviços */}
+          {services.length > 1 && (
+            <div className="flex items-center gap-2">
+              <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">
+                {priority.serviceOrder}/{priority.totalServices}
+              </span>
+              {priority.isFirstService && (
+                <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium">
+                  Primeiro
+                </span>
+              )}
+            </div>
+          )}
+          
+          {/* Tempo de espera */}
+          {waitingMinutes !== null && (
+            <span className="ml-4 flex items-center gap-1 text-xs text-gray-500">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                <path d="M12 7v5l3 3" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+              {waitingMinutes} min
+            </span>
+          )}
+        </div>
+        
+        <div className="text-base font-semibold text-gray-800">{ticket.customer_name || ticket.customer?.name}</div>
+        
+        {/* Serviço atual */}
+        <div className="mt-2">
+          <div className="flex items-center gap-2 mb-1">
+            <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" fill="#3B82F6" />
+              <path d="M8 12h8" stroke="white" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            <span className="text-xs font-semibold text-gray-600">SERVIÇO ATUAL:</span>
+          </div>
+          <span className="bg-blue-100 text-blue-700 rounded-full px-3 py-1 text-xs font-medium shadow-sm border border-blue-200">
+            {currentServiceData?.name}
+            {currentServiceData?.duration && (
+              <span className="ml-1 text-blue-600">({currentServiceData.duration}min)</span>
+            )}
+            {currentServiceData?.price && (
+              <span className="ml-1 text-blue-600">R$ {currentServiceData.price.toFixed(2).replace('.', ',')}</span>
+            )}
+          </span>
+        </div>
+        
+        {/* Outros serviços (se houver múltiplos) */}
+        {services.length > 1 && (
+          <div className="mt-2">
+            <div className="flex items-center gap-2 mb-1">
+              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+              <span className="text-xs font-semibold text-gray-600">TAMBÉM AGUARDA:</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {services.filter(s => s.id !== currentService).map((service, idx) => (
+                <span key={service.id || idx} className="bg-gray-100 text-gray-700 rounded-full px-3 py-1 text-xs font-medium shadow-sm border border-gray-200">
+                  {service.name}
+                  {service.duration && (
+                    <span className="ml-1 text-gray-600">({service.duration}min)</span>
+                  )}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Extras */}
+        {ticket.extras && ticket.extras.length > 0 && (
+          <div className="mt-2">
+            <div className="flex items-center gap-2 mb-1">
+              <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect x="4" y="8" width="16" height="8" rx="4" fill="#10B981" />
+                <rect x="7" y="11" width="10" height="2" rx="1" fill="white" />
+              </svg>
+              <span className="text-xs font-semibold text-gray-600">EXTRAS:</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {ticket.extras.map((extra, idx) => (
+                <span key={extra.id || idx} className="bg-green-100 text-green-700 rounded-full px-3 py-1 text-xs font-medium shadow-sm border border-green-200">
+                  {extra.name} {extra.quantity > 1 && `(${extra.quantity}x)`}
+                  {extra.price && (
+                    <span className="ml-1 text-green-600">R$ {extra.price.toFixed(2).replace('.', ',')}</span>
+                  )}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        <div className="text-xs text-gray-400 mt-1">
+          {ticket.createdAt && new Date(ticket.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+        </div>
+      </div>
+      
+      <div className="flex gap-2 ml-6">
+        <button
+          disabled={callLoading || !selectedEquipment}
+          onClick={() => onCall(ticket, currentService)}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold"
+        >
+          {callLoading ? 'Chamando...' : 'Chamar'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const OperatorPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -241,7 +404,7 @@ const OperatorPage: React.FC = () => {
   // Obter operatorId do usuário
   const operatorId = user?.id || '';
 
-  // Novo: Estado de etapa do fluxo
+  // NOVO: Estado de etapa do fluxo
   const [currentStep, setCurrentStep] = useState<string | null>(() => {
     // Tentar recuperar do localStorage
     const saved = localStorage.getItem('operator_current_step');
@@ -1450,6 +1613,92 @@ const OperatorPage: React.FC = () => {
       );
     };
 
+    // NOVO: Estado para controle das filas por serviço
+    const [activeServiceTab, setActiveServiceTab] = useState<string>('');
+    const [serviceQueues, setServiceQueues] = useState<ServiceQueue[]>([]);
+
+    // NOVO: Função para organizar tickets por serviço
+    const organizeTicketsByService = (tickets: Ticket[], activeServices: Service[]) => {
+      return activeServices.map(service => ({
+        serviceId: service.id,
+        serviceName: service.name,
+        tickets: tickets.filter(ticket => 
+          ticket.services?.some(s => s.id === service.id) ||
+          ticket.service?.id === service.id
+        )
+      }));
+    };
+
+    // NOVO: Função para calcular prioridade do ticket
+    const getTicketPriority = (ticket: Ticket, currentServiceId: string): TicketPriority => {
+      const services = ticket.services || [ticket.service];
+      const currentServiceIndex = services.findIndex(s => s.id === currentServiceId);
+      
+      return {
+        isFirstService: currentServiceIndex === 0,
+        isLastService: currentServiceIndex === services.length - 1,
+        serviceOrder: currentServiceIndex + 1,
+        totalServices: services.length
+      };
+    };
+
+    // NOVO: Função para obter tickets de um serviço específico
+    const getTicketsForService = (serviceId: string) => {
+      const queue = serviceQueues.find(q => q.serviceId === serviceId);
+      return queue?.tickets || [];
+    };
+
+    // NOVO: Função de chamada inteligente
+    const handleCallTicket = async (ticket: Ticket, serviceId: string) => {
+      console.log('🔍 DEBUG - Chamando ticket:', ticket.id, 'com equipamento:', selectedEquipment);
+      console.log('🔍 DEBUG - Status do ticket:', ticket.status);
+      
+      // Verificar se o ticket já foi chamado
+      if (ticket.status === 'called') {
+        console.log('🔍 DEBUG - Ticket já foi chamado, pulando...');
+        alert('Este ticket já foi chamado!');
+        return;
+      }
+      
+      // Verificar se o ticket está na fila
+      if (ticket.status !== 'in_queue') {
+        console.log('🔍 DEBUG - Ticket não está na fila, pulando...');
+        alert('Este ticket não está na fila!');
+        return;
+      }
+      
+      // Verificar se é o primeiro serviço do ticket
+      const services = ticket.services || [ticket.service];
+      const isFirstService = services[0]?.id === serviceId;
+      
+      try {
+        if (isFirstService) {
+          // Chamar o ticket completo
+          await callTicket(ticket.id, selectedEquipment);
+        } else {
+          // Chamar apenas o serviço específico
+          await callTicket(ticket.id, selectedEquipment);
+          // TODO: Implementar chamada específica por serviço quando backend suportar
+          console.log('🔍 DEBUG - Chamando serviço específico:', serviceId);
+        }
+      } catch (error) {
+        console.error('❌ ERRO ao chamar ticket:', error);
+        alert('Erro ao chamar ticket!');
+      }
+    };
+
+    // NOVO: Efeito para organizar filas quando tickets ou serviços mudam
+    useEffect(() => {
+      const activeServices = services.filter(s => s.isActive);
+      const queues = organizeTicketsByService(tickets, activeServices);
+      setServiceQueues(queues);
+      
+      // Definir primeira fila como ativa se não houver uma ativa
+      if (queues.length > 0 && !activeServiceTab) {
+        setActiveServiceTab(queues[0].serviceId);
+      }
+    }, [tickets, services, activeServiceTab]);
+
     return (
       <div className="p-4 space-y-8 max-w-6xl mx-auto">
         {/* Cabeçalho moderno */}
@@ -1516,10 +1765,10 @@ const OperatorPage: React.FC = () => {
 
         {/* Fila e Meus Tickets */}
         <div className="grid gap-6">
-          {/* Fila */}
+          {/* NOVO: Filas por Serviço */}
           <section className="bg-white p-6 rounded-xl shadow flex flex-col gap-4">
             <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold mb-2">Fila</h2>
+              <h2 className="text-xl font-semibold mb-2">Filas por Serviço</h2>
               <div className="flex gap-2">
                 <button
                   onClick={() => {
@@ -1535,206 +1784,67 @@ const OperatorPage: React.FC = () => {
                 </button>
               </div>
             </div>
-            {/* Debug: Log dos tickets recebidos */}
-            {console.log('🔍 DEBUG - Tickets recebidos:', tickets)}
-            {console.log('🔍 DEBUG - Tickets com status in_queue:', tickets.filter(t => t.status === 'in_queue'))}
-            {console.log('🔍 DEBUG - Outros status encontrados:', [...new Set(tickets.map(t => t.status))])}
-            {console.log('🔍 DEBUG - Ticket #38:', tickets.find(t => t.number === '#038' || t.number === '38' || t.ticket_number === 38))}
-            {console.log('🔍 DEBUG - Todos os tickets com pending_payment:', tickets.filter(t => t.status === 'pending_payment'))}
-            {tickets.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-gray-400">
-                <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2" /><path d="M8 12h4l3 6" strokeWidth="2" /></svg>
-                <span className="text-base">Nenhum ticket na fila</span>
+
+            {/* Tabs dos Serviços */}
+            {serviceQueues.length > 0 ? (
+              <div className="service-queues">
+                <div className="queue-tabs flex flex-wrap gap-2 mb-4">
+                  {serviceQueues.map(service => (
+                    <button 
+                      key={service.serviceId}
+                      className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                        activeServiceTab === service.serviceId 
+                          ? 'bg-blue-600 text-white shadow-lg' 
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                      onClick={() => setActiveServiceTab(service.serviceId)}
+                    >
+                      {service.serviceName}
+                      <span className="ml-2 px-2 py-1 bg-white bg-opacity-20 rounded-full text-xs">
+                        {service.tickets.length}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                
+                {/* Conteúdo da fila ativa */}
+                <div className="queue-content">
+                  {(() => {
+                    const activeQueue = serviceQueues.find(q => q.serviceId === activeServiceTab);
+                    const activeTickets = activeQueue?.tickets || [];
+                    
+                    return activeTickets.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+                        <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                          <path d="M8 12h4l3 6" strokeWidth="2" />
+                        </svg>
+                        <span className="text-base">Nenhum ticket na fila de {activeQueue?.serviceName}</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-3">
+                        {activeTickets.map((ticket) => (
+                          <TicketCard 
+                            key={ticket.id}
+                            ticket={ticket}
+                            currentService={activeServiceTab}
+                            onCall={handleCallTicket}
+                            selectedEquipment={selectedEquipment}
+                            callLoading={callLoading}
+                          />
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
             ) : (
-              <div className="flex flex-col gap-3">
-                {tickets.map((ticket) => {
-                  // Calcular tempo de espera
-                  const created = ticket.createdAt ? new Date(ticket.createdAt) : null;
-                  const now = new Date();
-                  const waitingMinutes = created ? Math.floor((now.getTime() - created.getTime()) / 60000) : null;
-                  return (
-                    <div
-                      key={ticket.id}
-                      className="flex items-center justify-between bg-white rounded-2xl border border-blue-200 p-5 shadow-md hover:shadow-xl transition-transform hover:-translate-y-1 group focus-within:ring-2 focus-within:ring-blue-400"
-                      tabIndex={0}
-                      aria-label={`Ticket ${ticket.number}`}
-                    >
-                      <div className="flex flex-col gap-1 w-full">
-                        <div className="flex items-center gap-3 mb-1">
-                          <span className="flex items-center justify-center w-12 h-12 rounded-full bg-blue-50 text-blue-700 text-3xl font-extrabold border-2 border-blue-200 shadow-sm">
-                            <svg className="w-6 h-6 mr-1 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="8" rx="4" strokeWidth="2" /><path d="M8 12h8" strokeWidth="2" /></svg>
-                            {ticket.number}
-                          </span>
-                          <StatusBadge status={ticket.status} />
-                          {/* Badge de prioridade se existir */}
-                          {ticket.priority && (
-                            <span className={`ml-2 px-2 py-0.5 rounded text-xs font-semibold ${ticket.priority === 'high' ? 'bg-red-100 text-red-700' : ticket.priority === 'low' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'}`}>{ticket.priority === 'high' ? 'Prioritário' : ticket.priority === 'low' ? 'Baixa' : 'Normal'}</span>
-                          )}
-                          {/* Tempo de espera */}
-                          {waitingMinutes !== null && (
-                            <span className="ml-4 flex items-center gap-1 text-xs text-gray-500">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2" /><path d="M12 7v5l3 3" strokeWidth="2" strokeLinecap="round" /></svg>
-                              {waitingMinutes} min
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-base font-semibold text-gray-800">{ticket.customer_name || ticket.customer?.name}</div>
-                        
-                        {/* Seção de Serviços */}
-                        {(ticket.services && ticket.services.length > 0) || ticket.service ? (
-                          <div className="mt-2">
-                            <div className="flex items-center gap-2 mb-1">
-                              <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <circle cx="12" cy="12" r="10" fill="#3B82F6" />
-                                <path d="M8 12h8" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                              </svg>
-                              <span className="text-xs font-semibold text-gray-600">SERVIÇOS:</span>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              {ticket.services && ticket.services.length > 0 ? (
-                                ticket.services.map((service, idx) => (
-                                  <span key={service.id || idx} className="bg-blue-100 text-blue-700 rounded-full px-3 py-1 text-xs font-medium shadow-sm border border-blue-200">
-                                    {service.name}
-                                    {service.duration && (
-                                      <span className="ml-1 text-blue-600">({service.duration}min)</span>
-                                    )}
-                                    {service.price && (
-                                      <span className="ml-1 text-blue-600">R$ {service.price.toFixed(2).replace('.', ',')}</span>
-                                    )}
-                                  </span>
-                                ))
-                              ) : (
-                                <span className="bg-blue-100 text-blue-700 rounded-full px-3 py-1 text-xs font-medium shadow-sm border border-blue-200">
-                                  {ticket.service?.name}
-                                  {ticket.service?.duration && (
-                                    <span className="ml-1 text-blue-600">({ticket.service.duration}min)</span>
-                                  )}
-                                  {ticket.service?.price && (
-                                    <span className="ml-1 text-blue-600">R$ {ticket.service.price.toFixed(2).replace('.', ',')}</span>
-                                  )}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        ) : null}
-                        
-                        {/* Seção de Extras */}
-                        {ticket.extras && ticket.extras.length > 0 && (
-                          <div className="mt-2">
-                            <div className="flex items-center gap-2 mb-1">
-                              <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <rect x="4" y="8" width="16" height="8" rx="4" fill="#10B981" />
-                                <rect x="7" y="11" width="10" height="2" rx="1" fill="white" />
-                              </svg>
-                              <span className="text-xs font-semibold text-gray-600">EXTRAS:</span>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              {ticket.extras.map((extra, idx) => (
-                                <span key={extra.id || idx} className="bg-green-100 text-green-700 rounded-full px-3 py-1 text-xs font-medium shadow-sm border border-green-200">
-                                  {extra.name} {extra.quantity > 1 && `(${extra.quantity}x)`}
-                                  {extra.price && (
-                                    <span className="ml-1 text-green-600">R$ {extra.price.toFixed(2).replace('.', ',')}</span>
-                                  )}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* Valor Total com Desconto (se disponível) */}
-                        {((ticket.services && ticket.services.length > 0) || ticket.service) && ticket.extras && ticket.extras.length > 0 && (
-                          <div className="mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
-                            <div className="text-xs font-semibold text-gray-700 mb-1">VALOR TOTAL:</div>
-                            <div className="text-sm font-bold text-gray-800">
-                              {(() => {
-                                const services = ticket.services || (ticket.service ? [ticket.service] : []);
-                                const { subtotal, discount, total } = calculateTotalWithDiscount(services, ticket.extras);
-                                
-                                return (
-                                  <div>
-                                    <div>Subtotal: R$ {subtotal.toFixed(2).replace('.', ',')}</div>
-                                    {discount > 0 && (
-                                      <div className="text-green-600 text-xs">Desconto: -R$ {discount.toFixed(2).replace('.', ',')}</div>
-                                    )}
-                                    <div className="font-bold">Total: R$ {total.toFixed(2).replace('.', ',')}</div>
-                                  </div>
-                                );
-                              })()}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* Duração Total (se disponível) */}
-                        {(ticket.services && ticket.services.length > 0) && (
-                          <div className="mt-1">
-                            <div className="flex items-center gap-1">
-                              <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-                                <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                              </svg>
-                              <span className="text-xs text-gray-500">
-                                Duração: {ticket.services.reduce((sum, s) => sum + (s.duration || 0), 0)} min
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                        
-                        <div className="text-xs text-gray-400 mt-1">{ticket.createdAt && new Date(ticket.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
-                      </div>
-                      <div className="flex gap-2 ml-6">
-                        <button
-                          disabled={callLoading || !selectedEquipment}
-                          onClick={async () => {
-                            console.log('🔍 DEBUG - Chamando ticket:', ticket.id, 'com equipamento:', selectedEquipment);
-                            console.log('🔍 DEBUG - Status do ticket:', ticket.status);
-                            
-                            // Verificar se o ticket já foi chamado
-                            if (ticket.status === 'called') {
-                              console.log('🔍 DEBUG - Ticket já foi chamado, pulando...');
-                              alert('Este ticket já foi chamado!');
-                              return;
-                            }
-                            
-                            // Verificar se o ticket está na fila
-                            if (ticket.status !== 'in_queue') {
-                              console.log('🔍 DEBUG - Ticket não está na fila, pulando...');
-                              alert('Este ticket não está na fila!');
-                              return;
-                            }
-                            
-                            await callTicket({ ticketId: ticket.id, equipmentId: selectedEquipment });
-                            console.log('🔍 DEBUG - Ticket chamado, refetching...');
-                            await refetch();
-                            console.log('🔍 DEBUG - Refetch concluído');
-                          }}
-                          className="px-7 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-400 focus:outline-none transition-all scale-100 group-hover:scale-105 disabled:bg-gray-300 disabled:text-gray-500"
-                          aria-label={`Chamar ticket ${ticket.number}`}
-                        >
-                          Chamar
-                        </button>
-                        <button
-                          disabled={cancelLoading}
-                          onClick={async () => {
-                            const reason = prompt('Motivo do cancelamento:');
-                            if (reason && reason.trim()) {
-                              if (confirm(`Confirmar cancelamento do ticket ${ticket.number}?\nMotivo: ${reason}`)) {
-                                await cancelTicket({ ticketId: ticket.id, reason: reason.trim() });
-                                await refetch();
-                              }
-                            } else if (reason !== null) {
-                              alert('Por favor, informe o motivo do cancelamento.');
-                            }
-                          }}
-                          className="px-5 py-3 bg-red-500 text-white rounded-xl font-bold shadow-lg hover:bg-red-600 focus:ring-2 focus:ring-red-400 focus:outline-none transition-all scale-100 group-hover:scale-105 disabled:bg-gray-300 disabled:text-gray-500"
-                          aria-label={`Cancelar ticket ${ticket.number}`}
-                        >
-                          {cancelLoading ? 'Cancelando...' : 'Cancelar'}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+                <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                  <path d="M8 12h4l3 6" strokeWidth="2" />
+                </svg>
+                <span className="text-base">Nenhum serviço ativo</span>
               </div>
             )}
           </section>
