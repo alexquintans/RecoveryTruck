@@ -404,7 +404,7 @@ const OperatorPage: React.FC = () => {
   // Obter operatorId do usuário
   const operatorId = user?.id || '';
 
-  // NOVO: Estado de etapa do fluxo
+  // TODOS OS HOOKS DEVEM SER CHAMADOS NO TOPO
   const [currentStep, setCurrentStep] = useState<string | null>(() => {
     // Tentar recuperar do localStorage
     const saved = localStorage.getItem('operator_current_step');
@@ -412,6 +412,66 @@ const OperatorPage: React.FC = () => {
   });
   const [operatorName, setOperatorName] = useState('');
   const [isSavingConfig, setIsSavingConfig] = useState(false);
+  const [activeTab, setActiveTab] = useState('operation');
+  const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
+  const [extras, setExtras] = useState<Extra[]>([]);
+  const [equipments, setEquipments] = useState<Equipment[]>([]);
+  const [paymentModes, setPaymentModes] = useState<string[]>(['none']);
+  const [currentPaymentModes, setCurrentPaymentModes] = useState<string[]>([]);
+  const [serviceForm, setServiceForm] = useState({
+    name: '',
+    description: '',
+    price: 0,
+    duration: 10,
+    equipment_count: 1,
+    type: 'default',
+    color: '#3B82F6'
+  });
+  const [extraForm, setExtraForm] = useState({
+    name: '',
+    description: '',
+    price: 0,
+    category: 'default',
+    stock: 0
+  });
+  const [editingService, setEditingService] = useState<Service | null>(null);
+  const [editingExtra, setEditingExtra] = useState<Extra | null>(null);
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [showExtraModal, setShowExtraModal] = useState(false);
+  const [selectedEquipment, setSelectedEquipment] = useState<string>('');
+
+  // NOVO: Estado para controle das filas por serviço
+  const [activeServiceTab, setActiveServiceTab] = useState<string>('');
+  const [serviceQueues, setServiceQueues] = useState<ServiceQueue[]>([]);
+
+  // NOVO: Usar o hook para progresso dos serviços
+  const {
+    serviceProgress,
+    loading: progressLoading,
+    fetchServiceProgress,
+    startServiceProgress,
+    completeServiceProgress,
+    cancelServiceProgress,
+    getProgressStatusColor,
+    getProgressStatusText
+  } = useServiceProgress();
+
+  // Usar o hook para ações do operador
+  const {
+    callTicket,
+    callLoading,
+    startService,
+    startLoading,
+    completeService,
+    completeLoading,
+    cancelTicket,
+    cancelLoading,
+    confirmPayment,
+    confirmLoading,
+    moveToQueue,
+    moveToQueueLoading
+  } = useOperatorActions();
 
   // Função para persistir o currentStep
   const setCurrentStepWithPersistence = (step: string | null) => {
@@ -434,65 +494,6 @@ const OperatorPage: React.FC = () => {
     console.log('🔍 DEBUG - Estado do operador limpo');
   };
 
-  // Estados existentes
-  const [activeTab, setActiveTab] = useState('operation');
-  const [activeModal, setActiveModal] = useState<string | null>(null);
-  const [services, setServices] = useState<Service[]>([]);
-  const [extras, setExtras] = useState<Extra[]>([]);
-  const [equipments, setEquipments] = useState<Equipment[]>([]);
-  const [paymentModes, setPaymentModes] = useState<string[]>(['none']);
-  const [serviceForm, setServiceForm] = useState({
-    name: '',
-    description: '',
-    price: 0,
-    duration: 10,
-    equipment_count: 1,
-    type: 'default',
-    color: '#3B82F6'
-  });
-  const [extraForm, setExtraForm] = useState({
-    name: '',
-    description: '',
-    price: 0,
-    category: 'default',
-    stock: 0
-  });
-  const [editingService, setEditingService] = useState<Service | null>(null);
-  const [editingExtra, setEditingExtra] = useState<Extra | null>(null);
-  const [showServiceModal, setShowServiceModal] = useState(false);
-  const [showExtraModal, setShowExtraModal] = useState(false);
-
-  // NOVO: Usar o hook para progresso dos serviços
-  const {
-    serviceProgress,
-    loading: progressLoading,
-    fetchServiceProgress,
-    startServiceProgress,
-    completeServiceProgress,
-    cancelServiceProgress,
-    getProgressStatusColor,
-    getProgressStatusText
-  } = useServiceProgress();
-
-  // Estado para equipamento selecionado (movido para o escopo principal)
-  const [selectedEquipment, setSelectedEquipment] = useState<string>('');
-
-  // Usar o hook para ações do operador
-  const {
-    callTicket,
-    callLoading,
-    startService,
-    startLoading,
-    completeService,
-    completeLoading,
-    cancelTicket,
-    cancelLoading,
-    confirmPayment,
-    confirmLoading,
-    moveToQueue,
-    moveToQueueLoading
-  } = useOperatorActions();
-
   // NOVO: useEffect para carregar progresso dos serviços automaticamente
   useEffect(() => {
     const loadServiceProgress = async () => {
@@ -506,92 +507,61 @@ const OperatorPage: React.FC = () => {
     loadServiceProgress();
   }, [safeMyTickets, fetchServiceProgress]);
 
-  // NOVO: Funções para verificar status do ticket
+  // Funções utilitárias
   const getTicketOverallStatus = (ticketId: string) => {
-    const progress = serviceProgress[ticketId] || [];
-    if (progress.length === 0) return 'unknown';
+    const progress = serviceProgress[ticketId];
+    if (!progress || progress.length === 0) return 'pending';
     
-    const allCompleted = progress.every(p => p.status === 'completed');
-    const anyInProgress = progress.some(p => p.status === 'in_progress');
-    const anyCancelled = progress.some(p => p.status === 'cancelled');
+    const completed = progress.filter(p => p.status === 'completed').length;
+    const total = progress.length;
     
-    if (allCompleted) return 'completed';
-    if (anyCancelled) return 'cancelled';
-    if (anyInProgress) return 'in_progress';
-    return 'pending';
+    if (completed === 0) return 'pending';
+    if (completed === total) return 'completed';
+    return 'in_progress';
   };
 
   const getTicketProgressSummary = (ticketId: string) => {
-    const progress = serviceProgress[ticketId] || [];
-    if (progress.length === 0) return { total: 0, completed: 0, inProgress: 0, pending: 0 };
+    const progress = serviceProgress[ticketId];
+    if (!progress || progress.length === 0) return { completed: 0, total: 0 };
     
-    return {
-      total: progress.length,
-      completed: progress.filter(p => p.status === 'completed').length,
-      inProgress: progress.filter(p => p.status === 'in_progress').length,
-      pending: progress.filter(p => p.status === 'pending').length
-    };
+    const completed = progress.filter(p => p.status === 'completed').length;
+    const total = progress.length;
+    
+    return { completed, total };
   };
 
   const canCompleteTicket = (ticketId: string) => {
-    const progress = serviceProgress[ticketId] || [];
-    if (progress.length === 0) return false;
+    const progress = serviceProgress[ticketId];
+    if (!progress || progress.length === 0) return false;
     
-    // Só pode completar se todos os serviços estiverem completos
     return progress.every(p => p.status === 'completed');
   };
 
-  // NOVO: Componente de resumo visual do progresso
   const ProgressSummary = ({ ticketId }: { ticketId: string }) => {
-    const summary = getTicketProgressSummary(ticketId);
-    const overallStatus = getTicketOverallStatus(ticketId);
+    const { completed, total } = getTicketProgressSummary(ticketId);
+    const status = getTicketOverallStatus(ticketId);
     
-    if (summary.total === 0) return null;
+    if (total === 0) {
+      return (
+        <div className="text-sm text-gray-500">
+          Carregando progresso dos serviços...
+        </div>
+      );
+    }
     
     return (
-      <div className="mb-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-semibold text-gray-700">Progresso Geral</span>
-          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-            overallStatus === 'completed' ? 'bg-green-100 text-green-700 border border-green-300' :
-            overallStatus === 'in_progress' ? 'bg-blue-100 text-blue-700 border border-blue-300' :
-            overallStatus === 'cancelled' ? 'bg-red-100 text-red-700 border border-red-300' :
-            'bg-gray-100 text-gray-700 border border-gray-300'
-          }`}>
-            {overallStatus === 'completed' ? '✓ Concluído' :
-             overallStatus === 'in_progress' ? '⟳ Em Andamento' :
-             overallStatus === 'cancelled' ? '✗ Cancelado' :
-             '⏳ Pendente'}
+      <div className="text-sm">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="font-medium">Progresso Geral:</span>
+          <span className={`px-2 py-1 rounded text-xs font-medium ${getProgressStatusColor(status)}`}>
+            {completed} / {total} {status === 'completed' ? '✅' : status === 'in_progress' ? '🔄' : '⏳'}
           </span>
         </div>
-        
-        <div className="flex items-center gap-4 text-xs">
-          <div className="flex items-center gap-1">
-            <span className="text-gray-600">Total:</span>
-            <span className="font-bold text-gray-800">{summary.total}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="text-green-600">✓</span>
-            <span className="text-green-700 font-medium">{summary.completed}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="text-blue-600">⟳</span>
-            <span className="text-blue-700 font-medium">{summary.inProgress}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="text-gray-600">⏳</span>
-            <span className="text-gray-700 font-medium">{summary.pending}</span>
-          </div>
-        </div>
-        
-        {/* Barra de progresso */}
-        <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+        <div className="w-full bg-gray-200 rounded-full h-2">
           <div 
-            className="bg-gradient-to-r from-green-500 to-blue-500 h-2 rounded-full transition-all duration-300"
-            style={{ 
-              width: `${summary.total > 0 ? (summary.completed / summary.total) * 100 : 0}%` 
-            }}
-          ></div>
+            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+            style={{ width: `${total > 0 ? (completed / total) * 100 : 0}%` }}
+          />
         </div>
       </div>
     );
@@ -1612,10 +1582,6 @@ const OperatorPage: React.FC = () => {
         </div>
       );
     };
-
-    // NOVO: Estado para controle das filas por serviço
-    const [activeServiceTab, setActiveServiceTab] = useState<string>('');
-    const [serviceQueues, setServiceQueues] = useState<ServiceQueue[]>([]);
 
     // NOVO: Função para organizar tickets por serviço
     const organizeTicketsByService = (tickets: Ticket[], activeServices: Service[]) => {
