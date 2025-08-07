@@ -228,6 +228,7 @@ const OperatorPage: React.FC = () => {
     equipment,
     pendingPaymentTickets,
     refetch,
+    refetchOperation,
     ...ticketQueueRest
   } = useTicketQueue();
 
