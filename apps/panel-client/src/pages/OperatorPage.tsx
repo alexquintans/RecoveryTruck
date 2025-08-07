@@ -1619,10 +1619,13 @@ const OperatorPage: React.FC = () => {
 
     // NOVO: Função para organizar tickets por serviço
     const organizeTicketsByService = (tickets: Ticket[], activeServices: Service[]) => {
+      // Filtrar apenas tickets que estão na fila (in_queue), excluindo pending_payment
+      const queueTickets = tickets.filter(ticket => ticket.status === 'in_queue');
+      
       return activeServices.map(service => ({
         serviceId: service.id,
         serviceName: service.name,
-        tickets: tickets.filter(ticket => 
+        tickets: queueTickets.filter(ticket => 
           ticket.services?.some(s => s.id === service.id) ||
           ticket.service?.id === service.id
         )
@@ -1660,7 +1663,7 @@ const OperatorPage: React.FC = () => {
         return;
       }
       
-      // Verificar se o ticket está na fila
+      // Verificar se o ticket está na fila (apenas in_queue, não pending_payment)
       if (ticket.status !== 'in_queue') {
         console.log('🔍 DEBUG - Ticket não está na fila, pulando...');
         alert('Este ticket não está na fila!');
