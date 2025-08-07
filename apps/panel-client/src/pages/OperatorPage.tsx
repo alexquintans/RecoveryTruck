@@ -1070,9 +1070,13 @@ const OperatorPage: React.FC = () => {
                   await saveOperationConfig(configPayload);
                   setCurrentStepWithPersistence('operation');
                   alert('Configuração salva e operação iniciada com sucesso!');
+                  
+                  // Aguardar um pouco antes de resetar o estado para evitar conflitos
+                  setTimeout(() => {
+                    setIsSavingConfig(false);
+                  }, 2000);
                 } catch (err) {
                   alert('Erro ao salvar configuração da operação!');
-                } finally {
                   setIsSavingConfig(false);
                 }
               }}
@@ -2069,17 +2073,6 @@ const OperatorPage: React.FC = () => {
 
   // NOVO: Verificar se a operação foi encerrada e redirecionar para setup
   useEffect(() => {
-    // Se a operação não está ativa mas o usuário está na etapa de operação,
-    // significa que a operação foi encerrada
-    if (operationConfig && !operationConfig.isOperating && currentStep === 'operation') {
-      console.log('🔍 Operação encerrada detectada, redirecionando para setup');
-      clearOperatorState(); // Limpar estado do operador
-      setCurrentStepWithPersistence('name'); // Voltar para o início
-    }
-  }, [operationConfig, currentStep]);
-
-  // NOVO: Verificação adicional para detectar mudanças no status da operação
-  useEffect(() => {
     console.log('🔍 DEBUG - Status da operação mudou:', {
       isOperating: operationConfig?.isOperating,
       currentStep,
@@ -2093,13 +2086,19 @@ const OperatorPage: React.FC = () => {
       return;
     }
     
-    // Se a operação foi encerrada (estava ativa e agora não está)
-    // E o usuário está na etapa de operação
+    // Não redirecionar se acabou de salvar (aguardar um pouco)
+    if (currentStep === 'operation' && operationConfig?.isOperating) {
+      console.log('🔍 Operação ativa detectada, não redirecionando');
+      return;
+    }
+    
+    // Se a operação não está ativa mas o usuário está na etapa de operação,
+    // significa que a operação foi encerrada
     if (operationConfig && !operationConfig.isOperating && currentStep === 'operation') {
-      console.log('🔍 Operação encerrada detectada via mudança de status');
+      console.log('🔍 Operação encerrada detectada, redirecionando para setup');
       alert('A operação foi encerrada. Você será redirecionado para o setup.');
-      clearOperatorState();
-      setCurrentStepWithPersistence('name');
+      clearOperatorState(); // Limpar estado do operador
+      setCurrentStepWithPersistence('name'); // Voltar para o início
     }
   }, [operationConfig?.isOperating, currentStep, isSavingConfig]);
 
