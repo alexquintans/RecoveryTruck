@@ -1042,6 +1042,8 @@ const OperatorPage: React.FC = () => {
             <button 
               onClick={async () => {
                 setIsSavingConfig(true);
+                console.log('🔍 DEBUG - Iniciando salvamento da configuração...');
+                
                 // Montar o payload conforme esperado pelo backend
                 const configPayload = {
                   tenant_id: tenantId,
@@ -1066,16 +1068,34 @@ const OperatorPage: React.FC = () => {
                   })),
                   payment_modes: paymentModes,
                 };
+                
+                console.log('🔍 DEBUG - Payload da configuração:', configPayload);
+                
                 try {
-                  await saveOperationConfig(configPayload);
+                  const result = await saveOperationConfig(configPayload);
+                  console.log('🔍 DEBUG - Resultado do salvamento:', result);
+                  
+                  // Forçar atualização do cache da operação
+                  await refetchOperation();
+                  
+                  // Aguardar um pouco para garantir que o backend processou
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+                  
+                  // Forçar nova atualização
+                  await refetchOperation();
+                  
+                  console.log('🔍 DEBUG - Operação atualizada, verificando status...');
+                  
                   setCurrentStepWithPersistence('operation');
                   alert('Configuração salva e operação iniciada com sucesso!');
                   
                   // Aguardar um pouco antes de resetar o estado para evitar conflitos
                   setTimeout(() => {
                     setIsSavingConfig(false);
+                    console.log('🔍 DEBUG - Estado isSavingConfig resetado');
                   }, 2000);
                 } catch (err) {
+                  console.error('❌ ERRO ao salvar configuração:', err);
                   alert('Erro ao salvar configuração da operação!');
                   setIsSavingConfig(false);
                 }
@@ -2092,14 +2112,20 @@ const OperatorPage: React.FC = () => {
       return;
     }
     
-    // Se a operação não está ativa mas o usuário está na etapa de operação,
-    // significa que a operação foi encerrada
-    if (operationConfig && !operationConfig.isOperating && currentStep === 'operation') {
-      console.log('🔍 Operação encerrada detectada, redirecionando para setup');
-      alert('A operação foi encerrada. Você será redirecionado para o setup.');
-      clearOperatorState(); // Limpar estado do operador
-      setCurrentStepWithPersistence('name'); // Voltar para o início
-    }
+    // Aguardar um pouco antes de considerar que a operação foi encerrada
+    // para dar tempo do backend processar as mudanças
+    const timeoutId = setTimeout(() => {
+      // Se a operação não está ativa mas o usuário está na etapa de operação,
+      // significa que a operação foi encerrada
+      if (operationConfig && !operationConfig.isOperating && currentStep === 'operation') {
+        console.log('🔍 Operação encerrada detectada após delay, redirecionando para setup');
+        alert('A operação foi encerrada. Você será redirecionado para o setup.');
+        clearOperatorState(); // Limpar estado do operador
+        setCurrentStepWithPersistence('name'); // Voltar para o início
+      }
+    }, 3000); // Aguardar 3 segundos
+    
+    return () => clearTimeout(timeoutId);
   }, [operationConfig?.isOperating, currentStep, isSavingConfig]);
 
   // Renderizar componente baseado na etapa atual
