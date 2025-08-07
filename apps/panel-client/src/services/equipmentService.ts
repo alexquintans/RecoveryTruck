@@ -3,7 +3,7 @@ import { withTenant } from '../utils/withTenant';
 
 export const equipmentService = {
   async list() {
-    const response = await api.get('/operation/equipment');
+    const response = await api.get('/operation/equipment', { params: withTenant() });
     return response.data;
   },
   async getOperation() {

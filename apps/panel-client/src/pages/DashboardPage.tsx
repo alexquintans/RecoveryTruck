@@ -77,15 +77,20 @@ export default function DashboardPage() {
     ...cancelledTickets,
   ];
   
+  // Remover duplicatas baseado no ID do ticket
+  const uniqueTickets = allTickets.filter((ticket, index, self) => 
+    index === self.findIndex(t => t.id === ticket.id)
+  );
+  
   const ticketCounts = {
     inQueue: tickets.filter((t: any) => t.status === 'in_queue').length,
     inProgress: myTickets.filter((t: any) => t.status === 'in_progress').length,
     called: myTickets.filter((t: any) => t.status === 'called').length,
     completed: completedTickets.length,
     cancelled: cancelledTickets.length,
-    total: allTickets.length,
-    // Contagem corrigida para "Em Atendimento" incluir chamados e em progresso
-    inService: myTickets.filter((t: any) => t.status === 'in_progress' || t.status === 'called').length,
+    total: uniqueTickets.length,
+    // Contagem corrigida para "Em Atendimento" - apenas tickets em progresso (não chamados)
+    inService: myTickets.filter((t: any) => t.status === 'in_progress').length,
   };
 
   const equipmentCounts = {
@@ -107,6 +112,32 @@ export default function DashboardPage() {
       return bDate.getTime() - aDate.getTime();
     })
     .slice(0, 5);
+
+  // Debug logs para verificar integridade dos dados
+  useEffect(() => {
+    console.log('🔍 DEBUG - Dashboard Data Integrity:', {
+      tickets: {
+        queue: tickets.length,
+        myTickets: myTickets.length,
+        completed: completedTickets.length,
+        cancelled: cancelledTickets.length,
+        total: allTickets.length,
+        unique: uniqueTickets.length
+      },
+      equipment: {
+        total: equipment.length,
+        available: equipmentCounts.available,
+        inUse: equipmentCounts.inUse,
+        maintenance: equipmentCounts.maintenance,
+        utilization: utilization
+      },
+      operation: {
+        isOperating: operationConfig.isOperating,
+        serviceDuration: operationConfig.serviceDuration,
+        tenantId
+      }
+    });
+  }, [tickets, myTickets, completedTickets, cancelledTickets, equipment, operationConfig, tenantId]);
 
   return (
     <div className="dashboard-container p-4 space-y-6">
@@ -182,15 +213,36 @@ export default function DashboardPage() {
         <div className="bg-white rounded-lg shadow p-6 space-y-4">
           <h2 className="text-xl font-semibold">Tickets</h2>
           <div className="grid grid-cols-3 gap-4 text-center text-sm">
-            <Stat label="Fila" value={ticketCounts.inQueue} color="blue" />
+            <Stat 
+              label="Fila" 
+              value={ticketCounts.inQueue} 
+              color="blue" 
+              tooltip={`${ticketCounts.inQueue} tickets aguardando atendimento`}
+            />
             <Stat
               label="Em Atendimento"
               value={ticketCounts.inService}
               color="yellow"
+              tooltip={`${ticketCounts.inService} tickets sendo atendidos ativamente`}
             />
-            <Stat label="Concluídos" value={ticketCounts.completed} color="green" />
-            <Stat label="Cancelados" value={ticketCounts.cancelled} color="red" />
-            <Stat label="Total" value={ticketCounts.total} color="gray" />
+            <Stat 
+              label="Concluídos" 
+              value={ticketCounts.completed} 
+              color="green" 
+              tooltip={`${ticketCounts.completed} tickets finalizados hoje`}
+            />
+            <Stat 
+              label="Cancelados" 
+              value={ticketCounts.cancelled} 
+              color="red" 
+              tooltip={`${ticketCounts.cancelled} tickets cancelados hoje`}
+            />
+            <Stat 
+              label="Total" 
+              value={ticketCounts.total} 
+              color="gray" 
+              tooltip={`${ticketCounts.total} tickets processados hoje`}
+            />
           </div>
         </div>
 
@@ -204,15 +256,35 @@ export default function DashboardPage() {
             </div>
             <div className="w-full bg-gray-200 h-2 rounded-full">
               <div
-                className="h-2 bg-blue-600 rounded-full"
+                className="h-2 bg-blue-600 rounded-full transition-all duration-300"
                 style={{ width: `${utilization}%` }}
               />
             </div>
             <div className="grid grid-cols-3 gap-2 text-center mt-2">
-              <Stat label="Disponíveis" value={equipmentCounts.available} color="green" />
-              <Stat label="Em Uso" value={equipmentCounts.inUse} color="yellow" />
-              <Stat label="Manutenção" value={equipmentCounts.maintenance} color="red" />
+              <Stat 
+                label="Disponíveis" 
+                value={equipmentCounts.available} 
+                color="green" 
+                tooltip={`${equipmentCounts.available} de ${equipmentCounts.total} equipamentos disponíveis`}
+              />
+              <Stat 
+                label="Em Uso" 
+                value={equipmentCounts.inUse} 
+                color="yellow" 
+                tooltip={`${equipmentCounts.inUse} equipamentos em uso ativo`}
+              />
+              <Stat 
+                label="Manutenção" 
+                value={equipmentCounts.maintenance} 
+                color="red" 
+                tooltip={`${equipmentCounts.maintenance} equipamentos em manutenção`}
+              />
             </div>
+            {equipmentCounts.total === 0 && (
+              <div className="text-center text-gray-500 text-xs mt-2">
+                Nenhum equipamento configurado
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -275,7 +347,7 @@ export default function DashboardPage() {
   );
 }
 
-function Stat({ label, value, color }: { label: string; value: number; color: string }) {
+function Stat({ label, value, color, tooltip }: { label: string; value: number; color: string; tooltip?: string }) {
   const colorMap: Record<string, string> = {
     blue: 'text-blue-600 bg-blue-50',
     green: 'text-green-600 bg-green-50',
@@ -283,10 +355,24 @@ function Stat({ label, value, color }: { label: string; value: number; color: st
     red: 'text-red-600 bg-red-50',
     gray: 'text-gray-600 bg-gray-50',
   };
-  return (
+  
+  const content = (
     <div className={`p-4 rounded-lg ${colorMap[color]} flex flex-col items-center gap-1`}>
       <span className="text-2xl font-bold">{value}</span>
       <span className="text-xs text-gray-700">{label}</span>
     </div>
   );
+
+  if (tooltip) {
+    return (
+      <div className="relative group">
+        {content}
+        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+          {tooltip}
+        </div>
+      </div>
+    );
+  }
+
+  return content;
 } 

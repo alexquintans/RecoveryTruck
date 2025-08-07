@@ -25,7 +25,8 @@ export function useTicketQueue() {
     queryFn: async () => {
       try {
         const result = await ticketService.getMyTickets();
-        return result;
+        // Filtrar apenas tickets da operação ativa
+        return result.filter((ticket: any) => ticket.status !== 'completed' && ticket.status !== 'cancelled');
       } catch (error) {
         console.error('❌ ERRO em getMyTickets:', error);
         throw error;
@@ -201,16 +202,6 @@ export function useTicketQueue() {
   const pendingPaymentTickets = ((pendingPaymentQuery.data as any[]) ?? []).map(normalizeTicket);
 
   // Mapear equipamentos para status amigável do dashboard
-  const equipment = ((equipmentQuery.data as any[]) ?? []).map((e) => ({
-    ...e,
-    status:
-      e.status === 'online'
-        ? 'available'
-        : e.status === 'maintenance'
-        ? 'maintenance'
-        : 'in_use',
-  }));
-
   const operationConfig = (operationQuery.data as any) ?? { 
     is_operating: false, 
     service_duration: 10, 
@@ -231,6 +222,19 @@ export function useTicketQueue() {
   
   console.log('🔍 DEBUG - normalizedOperationConfig:', normalizedOperationConfig);
   
+  const equipment = ((equipmentQuery.data as any[]) ?? []).map((e) => ({
+    ...e,
+    status:
+      e.status === 'online'
+        ? 'available'
+        : e.status === 'maintenance'
+        ? 'maintenance'
+        : 'in_use',
+  })).filter((e) => {
+    // Filtrar apenas equipamentos da operação ativa
+    return e.operation_id === operationConfig.operation_id || !e.operation_id;
+  });
+
   return {
     ...queueQueryWithoutMyTickets,
     tickets: queueTickets,
