@@ -746,20 +746,77 @@ const OperatorPage: React.FC = () => {
           <div className="flex items-center gap-4">
                           <button
                 onClick={async () => {
-                  if (confirm('Tem certeza que deseja encerrar a operação?')) {
-                    try {
-                      await equipmentService.stopOperation();
-                    } catch (e) {
-                      alert('Falha ao encerrar operação no backend!');
-                    }
-                    alert('Operação encerrada com sucesso!');
-                    clearOperatorState();
-                    navigate('/');
+                  console.log('🔍 DEBUG - Iniciando processo de salvamento...');
+                  console.log('🔍 DEBUG - Estado atual:', {
+                    isSavingConfig,
+                    currentStep,
+                    operatorName,
+                    tenantId,
+                    operatorId
+                  });
+                  
+                  setIsSavingConfig(true);
+                  console.log('🔍 DEBUG - Iniciando salvamento da configuração...');
+                  
+                  // Montar o payload conforme esperado pelo backend
+                  const configPayload = {
+                    tenant_id: tenantId,
+                    operator_id: operatorId,
+                    services: services.map(s => ({
+                      service_id: s.id,
+                      active: !!s.isActive,
+                      duration: s.duration,
+                      price: s.price,
+                      equipment_count: s.equipment_count,
+                    })),
+                    equipments: equipments.map(e => ({
+                      equipment_id: e.id,
+                      active: !!e.isActive,
+                      quantity: e.count,
+                    })),
+                    extras: extras.map(x => ({
+                      extra_id: x.id,
+                      active: !!x.isActive,
+                      stock: x.stock,
+                      price: x.price,
+                    })),
+                    payment_modes: paymentModes,
+                  };
+                  
+                  console.log('🔍 DEBUG - Payload da configuração:', configPayload);
+                  console.log('🔍 DEBUG - Chamando saveOperationConfig...');
+                  
+                  try {
+                    const result = await saveOperationConfig(configPayload);
+                    console.log('🔍 DEBUG - Resultado do salvamento:', result);
+                    
+                    // Aguardar um pouco para garantir que o backend processou
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                    // Forçar atualização do cache da operação
+                    await refetchOperation();
+                    
+                    console.log('🔍 DEBUG - Operação atualizada, verificando status...');
+                    
+                    setCurrentStepWithPersistence('operation');
+                    alert('Configuração salva e operação iniciada com sucesso!');
+                    
+                    // Aguardar um pouco antes de resetar o estado para evitar conflitos
+                    setTimeout(() => {
+                      setIsSavingConfig(false);
+                      console.log('🔍 DEBUG - Estado isSavingConfig resetado');
+                    }, 2000);
+                  } catch (err) {
+                    console.error('❌ ERRO ao salvar configuração:', err);
+                    console.error('❌ ERRO - Stack trace:', err.stack);
+                    alert('Erro ao salvar configuração da operação!');
+                    setIsSavingConfig(false);
                   }
                 }}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg shadow-lg hover:bg-red-700 transition-all font-semibold hover:scale-105"
+                className="px-6 py-2 bg-[#3B82F6] text-white rounded-lg font-semibold shadow-lg hover:bg-[#2563EB] active:scale-95 transition-all hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isSavingConfig}
               >
-                Finalizar e Sair
+                {isSavingConfig ? 'Salvando...' : 'Salvar Configurações e Iniciar Atendimento'}
               </button>
               <Link to="/" className="text-primary underline text-base hover:text-primary/80 transition-colors">← Dashboard</Link>
           </div>
@@ -1039,6 +1096,15 @@ const OperatorPage: React.FC = () => {
             </button>
             <button 
               onClick={async () => {
+                console.log('🔍 DEBUG - Iniciando processo de salvamento...');
+                console.log('🔍 DEBUG - Estado atual:', {
+                  isSavingConfig,
+                  currentStep,
+                  operatorName,
+                  tenantId,
+                  operatorId
+                });
+                
                 setIsSavingConfig(true);
                 console.log('🔍 DEBUG - Iniciando salvamento da configuração...');
                 
@@ -1068,6 +1134,7 @@ const OperatorPage: React.FC = () => {
                 };
                 
                 console.log('🔍 DEBUG - Payload da configuração:', configPayload);
+                console.log('🔍 DEBUG - Chamando saveOperationConfig...');
                 
                 try {
                   const result = await saveOperationConfig(configPayload);
@@ -1091,6 +1158,7 @@ const OperatorPage: React.FC = () => {
                   }, 2000);
                 } catch (err) {
                   console.error('❌ ERRO ao salvar configuração:', err);
+                  console.error('❌ ERRO - Stack trace:', err.stack);
                   alert('Erro ao salvar configuração da operação!');
                   setIsSavingConfig(false);
                 }
@@ -1393,10 +1461,16 @@ const OperatorPage: React.FC = () => {
           <div className="flex items-center gap-4">
             <button
               onClick={() => {
-                                  if (confirm('Tem certeza que deseja encerrar a operação?')) {
-                    alert('Operação encerrada com sucesso!');
-                    clearOperatorState();
+                if (confirm('Tem certeza que deseja encerrar a operação?')) {
+                  try {
+                    equipmentService.stopOperation();
+                  } catch (e) {
+                    alert('Falha ao encerrar operação no backend!');
                   }
+                  alert('Operação encerrada com sucesso!');
+                  clearOperatorState();
+                  navigate('/');
+                }
               }}
               className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg shadow hover:bg-red-700 transition-all"
             >
