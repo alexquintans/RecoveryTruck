@@ -227,11 +227,33 @@ export async function saveOperationConfig(payload: any) {
   if (payload.tenant_id) {
     url.searchParams.append('tenant_id', payload.tenant_id);
   }
+  
+  console.log('🔍 DEBUG - saveOperationConfig - URL:', url.toString());
+  console.log('🔍 DEBUG - saveOperationConfig - Payload:', payload);
+  
   const res = await fetch(url.toString(), {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error('Falha ao salvar configuração da operação');
-  return res.json();
+  
+  console.log('🔍 DEBUG - saveOperationConfig - Status:', res.status);
+  console.log('🔍 DEBUG - saveOperationConfig - OK:', res.ok);
+  
+  const responseText = await res.text();
+  console.log('🔍 DEBUG - saveOperationConfig - Response Text:', responseText);
+  
+  if (!res.ok) {
+    console.error('❌ ERRO - saveOperationConfig - Status:', res.status, 'Response:', responseText);
+    throw new Error(`Falha ao salvar configuração da operação: ${res.status} - ${responseText}`);
+  }
+  
+  try {
+    const responseJson = JSON.parse(responseText);
+    console.log('🔍 DEBUG - saveOperationConfig - Response JSON:', responseJson);
+    return responseJson;
+  } catch (parseError) {
+    console.error('❌ ERRO - saveOperationConfig - Parse Error:', parseError);
+    throw new Error(`Resposta inválida do servidor: ${responseText}`);
+  }
 } 

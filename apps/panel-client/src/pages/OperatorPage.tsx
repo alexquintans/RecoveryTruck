@@ -617,9 +617,7 @@ const OperatorPage: React.FC = () => {
     if (!editingExtra) return;
     try {
       await apiUpdateExtra(editingExtra.id, extraForm);
-      setExtras(prev => 
-        prev.map(e => e.id === editingExtra.id ? { ...extraForm, id: editingExtra.id } : e)
-      );
+      setExtras(prev => prev.map(e => e.id === editingExtra.id ? { ...extraForm, id: editingExtra.id } : e));
       setEditingExtra(null);
       setExtraForm({
         name: '',
@@ -1075,13 +1073,10 @@ const OperatorPage: React.FC = () => {
                   const result = await saveOperationConfig(configPayload);
                   console.log('🔍 DEBUG - Resultado do salvamento:', result);
                   
-                  // Forçar atualização do cache da operação
-                  await refetchOperation();
-                  
                   // Aguardar um pouco para garantir que o backend processou
                   await new Promise(resolve => setTimeout(resolve, 1000));
                   
-                  // Forçar nova atualização
+                  // Forçar atualização do cache da operação
                   await refetchOperation();
                   
                   console.log('🔍 DEBUG - Operação atualizada, verificando status...');
@@ -2112,20 +2107,14 @@ const OperatorPage: React.FC = () => {
       return;
     }
     
-    // Aguardar um pouco antes de considerar que a operação foi encerrada
-    // para dar tempo do backend processar as mudanças
-    const timeoutId = setTimeout(() => {
-      // Se a operação não está ativa mas o usuário está na etapa de operação,
-      // significa que a operação foi encerrada
-      if (operationConfig && !operationConfig.isOperating && currentStep === 'operation') {
-        console.log('🔍 Operação encerrada detectada após delay, redirecionando para setup');
-        alert('A operação foi encerrada. Você será redirecionado para o setup.');
-        clearOperatorState(); // Limpar estado do operador
-        setCurrentStepWithPersistence('name'); // Voltar para o início
-      }
-    }, 3000); // Aguardar 3 segundos
-    
-    return () => clearTimeout(timeoutId);
+    // Se a operação não está ativa mas o usuário está na etapa de operação,
+    // significa que a operação foi encerrada
+    if (operationConfig && !operationConfig.isOperating && currentStep === 'operation') {
+      console.log('🔍 Operação encerrada detectada, redirecionando para setup');
+      alert('A operação foi encerrada. Você será redirecionado para o setup.');
+      clearOperatorState(); // Limpar estado do operador
+      setCurrentStepWithPersistence('name'); // Voltar para o início
+    }
   }, [operationConfig?.isOperating, currentStep, isSavingConfig]);
 
   // Renderizar componente baseado na etapa atual
