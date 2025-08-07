@@ -444,26 +444,14 @@ const OperatorPage: React.FC = () => {
   const { preferences, updatePreference, updateMultiplePreferences, clearPreferences } = useOperatorPreferences();
   
   // Estados com persistência melhorada
-  const [operatorName, setOperatorName] = useState(() => {
-    return operatorConfig?.operatorName || '';
-  });
+  const [operatorName, setOperatorName] = useState('');
   const [isSavingConfig, setIsSavingConfig] = useState(false);
-  const [activeTab, setActiveTab] = useState(() => {
-    return preferences.activeTab;
-  });
+  const [activeTab, setActiveTab] = useState('operation');
   const [activeModal, setActiveModal] = useState<string | null>(null);
-  const [services, setServices] = useState<Service[]>(() => {
-    return operatorConfig?.services || [];
-  });
-  const [extras, setExtras] = useState<Extra[]>(() => {
-    return operatorConfig?.extras || [];
-  });
-  const [equipments, setEquipments] = useState<Equipment[]>(() => {
-    return operatorConfig?.equipments || [];
-  });
-  const [paymentModes, setPaymentModes] = useState<string[]>(() => {
-    return operatorConfig?.paymentModes || ['none'];
-  });
+  const [services, setServices] = useState<Service[]>([]);
+  const [extras, setExtras] = useState<Extra[]>([]);
+  const [equipments, setEquipments] = useState<Equipment[]>([]);
+  const [paymentModes, setPaymentModes] = useState<string[]>(['none']);
   const [currentPaymentModes, setCurrentPaymentModes] = useState<string[]>([]);
   const [serviceForm, setServiceForm] = useState({
     name: '',
@@ -485,14 +473,10 @@ const OperatorPage: React.FC = () => {
   const [editingExtra, setEditingExtra] = useState<Extra | null>(null);
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [showExtraModal, setShowExtraModal] = useState(false);
-  const [selectedEquipment, setSelectedEquipment] = useState<string>(() => {
-    return preferences.selectedEquipment;
-  });
+  const [selectedEquipment, setSelectedEquipment] = useState<string>('');
 
   // NOVO: Estado para controle das filas por serviço com persistência
-  const [activeServiceTab, setActiveServiceTab] = useState<string>(() => {
-    return preferences.activeServiceTab;
-  });
+  const [activeServiceTab, setActiveServiceTab] = useState<string>('');
   const [serviceQueues, setServiceQueues] = useState<ServiceQueue[]>([]);
 
   // NOVO: Usar o hook para progresso dos serviços
@@ -506,6 +490,25 @@ const OperatorPage: React.FC = () => {
     getProgressStatusColor,
     getProgressStatusText
   } = useServiceProgress();
+
+  // Inicializar estados com valores dos hooks
+  useEffect(() => {
+    if (operatorConfig) {
+      setOperatorName(operatorConfig.operatorName || '');
+      setServices(operatorConfig.services || []);
+      setExtras(operatorConfig.extras || []);
+      setEquipments(operatorConfig.equipments || []);
+      setPaymentModes(operatorConfig.paymentModes || ['none']);
+    }
+  }, [operatorConfig]);
+
+  useEffect(() => {
+    if (preferences) {
+      setActiveTab(preferences.activeTab);
+      setSelectedEquipment(preferences.selectedEquipment);
+      setActiveServiceTab(preferences.activeServiceTab);
+    }
+  }, [preferences]);
 
   // Usar o hook para ações do operador
   const {
