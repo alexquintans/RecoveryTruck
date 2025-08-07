@@ -247,6 +247,7 @@ const OperatorPage: React.FC = () => {
     return saved || null;
   });
   const [operatorName, setOperatorName] = useState('');
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
 
   // Função para persistir o currentStep
   const setCurrentStepWithPersistence = (step: string | null) => {
@@ -1040,6 +1041,7 @@ const OperatorPage: React.FC = () => {
             </button>
             <button 
               onClick={async () => {
+                setIsSavingConfig(true);
                 // Montar o payload conforme esperado pelo backend
                 const configPayload = {
                   tenant_id: tenantId,
@@ -1070,11 +1072,14 @@ const OperatorPage: React.FC = () => {
                   alert('Configuração salva e operação iniciada com sucesso!');
                 } catch (err) {
                   alert('Erro ao salvar configuração da operação!');
+                } finally {
+                  setIsSavingConfig(false);
                 }
               }}
-              className="px-6 py-2 bg-[#3B82F6] text-white rounded-lg font-semibold shadow-lg hover:bg-[#2563EB] active:scale-95 transition-all hover:shadow-xl"
+              className="px-6 py-2 bg-[#3B82F6] text-white rounded-lg font-semibold shadow-lg hover:bg-[#2563EB] active:scale-95 transition-all hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isSavingConfig}
             >
-              Salvar Configurações e Iniciar Atendimento
+              {isSavingConfig ? 'Salvando...' : 'Salvar Configurações e Iniciar Atendimento'}
             </button>
           </div>
 
@@ -2078,17 +2083,25 @@ const OperatorPage: React.FC = () => {
     console.log('🔍 DEBUG - Status da operação mudou:', {
       isOperating: operationConfig?.isOperating,
       currentStep,
-      operatorName
+      operatorName,
+      isSavingConfig
     });
     
+    // Não redirecionar se estiver salvando configuração
+    if (isSavingConfig) {
+      console.log('🔍 Salvando configuração, ignorando mudanças de status');
+      return;
+    }
+    
     // Se a operação foi encerrada (estava ativa e agora não está)
+    // E o usuário está na etapa de operação
     if (operationConfig && !operationConfig.isOperating && currentStep === 'operation') {
       console.log('🔍 Operação encerrada detectada via mudança de status');
       alert('A operação foi encerrada. Você será redirecionado para o setup.');
       clearOperatorState();
       setCurrentStepWithPersistence('name');
     }
-  }, [operationConfig?.isOperating]);
+  }, [operationConfig?.isOperating, currentStep, isSavingConfig]);
 
   // Renderizar componente baseado na etapa atual
   if (!currentStep) {
