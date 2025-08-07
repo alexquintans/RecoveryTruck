@@ -4,6 +4,8 @@ import { useTicketQueue } from '../hooks/useTicketQueue';
 import { useOperatorActions } from '../hooks/useOperatorActions';
 import { useAuth } from '../hooks/useAuth';
 import { useServiceProgress } from '../hooks/useServiceProgress';
+import { useOperatorConfig } from '../hooks/useOperatorConfig';
+import { useOperatorPreferences } from '../hooks/useOperatorPreferences';
 import { fetchServices, fetchEquipments, fetchExtras, createService, createExtra, updateService as apiUpdateService, deleteService as apiDeleteService, updateExtra as apiUpdateExtra, deleteExtra as apiDeleteExtra, saveOperationConfig } from '../services/operatorConfigService';
 import { ServiceModal } from '../components/ServiceModal';
 import { ExtraModal } from '../components/ExtraModal';
@@ -113,14 +115,37 @@ interface Ticket {
   id: string;
   status: string;
   number?: string;
-  service?: { name: string };  // Formato antigo
-  services?: { name: string }[];  // Formato novo
+  service?: { 
+    id: string;
+    name: string; 
+    price?: number;
+    duration?: number;
+  };  // Formato antigo
+  services?: { 
+    id: string;
+    name: string; 
+    price?: number;
+    duration?: number;
+  }[];  // Formato novo
   equipmentId?: string;
   operatorId?: string;
   createdAt?: string;
   calledAt?: string;
   priority?: string;
-  extras?: { name: string; quantity: number }[]; // Adicionado para extras
+  customer_name?: string;
+  customer?: {
+    name: string;
+  };
+  payment_confirmed?: boolean;
+  extras?: { 
+    id?: string;
+    name: string; 
+    quantity: number;
+    price?: number;
+    extra?: {
+      name: string;
+    };
+  }[]; // Adicionado para extras
   // NOVO: Progresso individual dos serviços
   serviceProgress?: ServiceProgress[];
 }
@@ -333,6 +358,9 @@ const TicketCard = ({
                   {service.duration && (
                     <span className="ml-1 text-gray-600">({service.duration}min)</span>
                   )}
+                  {service.price && (
+                    <span className="ml-1 text-gray-600">R$ {service.price.toFixed(2).replace('.', ',')}</span>
+                  )}
                 </span>
               ))}
             </div>
@@ -410,14 +438,32 @@ const OperatorPage: React.FC = () => {
     const saved = localStorage.getItem('operator_current_step');
     return saved || null;
   });
-  const [operatorName, setOperatorName] = useState('');
+  
+  // NOVO: Hooks para persistência de configuração e preferências
+  const { config: operatorConfig, saveConfig, clearConfig, updateConfigField } = useOperatorConfig();
+  const { preferences, updatePreference, updateMultiplePreferences, clearPreferences } = useOperatorPreferences();
+  
+  // Estados com persistência melhorada
+  const [operatorName, setOperatorName] = useState(() => {
+    return operatorConfig?.operatorName || '';
+  });
   const [isSavingConfig, setIsSavingConfig] = useState(false);
-  const [activeTab, setActiveTab] = useState('operation');
+  const [activeTab, setActiveTab] = useState(() => {
+    return preferences.activeTab;
+  });
   const [activeModal, setActiveModal] = useState<string | null>(null);
-  const [services, setServices] = useState<Service[]>([]);
-  const [extras, setExtras] = useState<Extra[]>([]);
-  const [equipments, setEquipments] = useState<Equipment[]>([]);
-  const [paymentModes, setPaymentModes] = useState<string[]>(['none']);
+  const [services, setServices] = useState<Service[]>(() => {
+    return operatorConfig?.services || [];
+  });
+  const [extras, setExtras] = useState<Extra[]>(() => {
+    return operatorConfig?.extras || [];
+  });
+  const [equipments, setEquipments] = useState<Equipment[]>(() => {
+    return operatorConfig?.equipments || [];
+  });
+  const [paymentModes, setPaymentModes] = useState<string[]>(() => {
+    return operatorConfig?.paymentModes || ['none'];
+  });
   const [currentPaymentModes, setCurrentPaymentModes] = useState<string[]>([]);
   const [serviceForm, setServiceForm] = useState({
     name: '',
@@ -439,10 +485,14 @@ const OperatorPage: React.FC = () => {
   const [editingExtra, setEditingExtra] = useState<Extra | null>(null);
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [showExtraModal, setShowExtraModal] = useState(false);
-  const [selectedEquipment, setSelectedEquipment] = useState<string>('');
+  const [selectedEquipment, setSelectedEquipment] = useState<string>(() => {
+    return preferences.selectedEquipment;
+  });
 
-  // NOVO: Estado para controle das filas por serviço
-  const [activeServiceTab, setActiveServiceTab] = useState<string>('');
+  // NOVO: Estado para controle das filas por serviço com persistência
+  const [activeServiceTab, setActiveServiceTab] = useState<string>(() => {
+    return preferences.activeServiceTab;
+  });
   const [serviceQueues, setServiceQueues] = useState<ServiceQueue[]>([]);
 
   // NOVO: Usar o hook para progresso dos serviços
@@ -483,15 +533,75 @@ const OperatorPage: React.FC = () => {
     }
   };
 
+  // NOVO: Funções para persistir mudanças de estado
+  const setOperatorNameWithPersistence = (name: string) => {
+    setOperatorName(name);
+    updateConfigField('operatorName', name);
+  };
+
+  const setActiveTabWithPersistence = (tab: string) => {
+    setActiveTab(tab);
+    updatePreference('activeTab', tab);
+  };
+
+  const setSelectedEquipmentWithPersistence = (equipmentId: string) => {
+    setSelectedEquipment(equipmentId);
+    updatePreference('selectedEquipment', equipmentId);
+  };
+
+  const setActiveServiceTabWithPersistence = (serviceTab: string) => {
+    setActiveServiceTab(serviceTab);
+    updatePreference('activeServiceTab', serviceTab);
+  };
+
+  const setServicesWithPersistence = (newServices: Service[]) => {
+    setServices(newServices);
+    updateConfigField('services', newServices);
+  };
+
+  const setExtrasWithPersistence = (newExtras: Extra[]) => {
+    setExtras(newExtras);
+    updateConfigField('extras', newExtras);
+  };
+
+  const setEquipmentsWithPersistence = (newEquipments: Equipment[]) => {
+    setEquipments(newEquipments);
+    updateConfigField('equipments', newEquipments);
+  };
+
+  const setPaymentModesWithPersistence = (newPaymentModes: string[]) => {
+    setPaymentModes(newPaymentModes);
+    updateConfigField('paymentModes', newPaymentModes);
+  };
+
   // Função para limpar o estado quando a operação for encerrada
   const clearOperatorState = () => {
     console.log('🔍 DEBUG - Limpando estado do operador');
+    
+    // Limpar localStorage
     localStorage.removeItem('operator_current_step');
     localStorage.removeItem('operator_config');
     localStorage.removeItem('operator_name');
+    localStorage.removeItem('operator_selected_equipment');
+    localStorage.removeItem('operator_active_tab');
+    localStorage.removeItem('operator_active_service_tab');
+    localStorage.removeItem('operator_preferences');
+    
+    // Limpar estado React
     setCurrentStepWithPersistence(null);
     setOperatorName('');
-    console.log('🔍 DEBUG - Estado do operador limpo');
+    setSelectedEquipment('');
+    setActiveTabWithPersistence('operation');
+    setActiveServiceTab('');
+    
+    // Limpar configuração e preferências
+    clearConfig();
+    clearPreferences();
+    
+    // Limpar cache do React Query
+    queryClient.clear();
+    
+    console.log('🔍 DEBUG - Estado do operador limpo completamente');
   };
 
   // NOVO: useEffect para carregar progresso dos serviços automaticamente
@@ -626,20 +736,20 @@ const OperatorPage: React.FC = () => {
   const toggleService = async (serviceId: string, currentActive: boolean) => {
     try {
       await apiUpdateService(serviceId, { is_active: !currentActive });
-    setServices(prevServices =>
-      prevServices.map(service =>
-        service.id === serviceId
-            ? { ...service, isActive: !currentActive }
-          : service
-      )
-    );
+      setServicesWithPersistence(prevServices =>
+        prevServices.map(service =>
+          service.id === serviceId
+              ? { ...service, isActive: !currentActive }
+            : service
+        )
+      );
     } catch (e) {
       alert('Erro ao atualizar serviço!');
     }
   };
 
   const updateServiceDuration = (serviceId: string, duration: number) => {
-    setServices(prevServices =>
+    setServicesWithPersistence(prevServices =>
       prevServices.map(service =>
         service.id === serviceId
           ? { ...service, duration }
@@ -653,7 +763,7 @@ const OperatorPage: React.FC = () => {
       ...serviceForm,
       id: Date.now().toString()
     };
-    setServices(prev => [...prev, newService]);
+    setServicesWithPersistence(prev => [...prev, newService]);
     setServiceForm({
       name: '',
       description: '',
@@ -676,7 +786,7 @@ const OperatorPage: React.FC = () => {
   const updateService = async (serviceId: string, data: Partial<Service>) => {
     try {
       const updated = await apiUpdateService(serviceId, data);
-      setServices(prev => prev.map(s => s.id === serviceId ? { ...data, id: s.id } : s));
+      setServicesWithPersistence(prev => prev.map(s => s.id === serviceId ? { ...data, id: s.id } : s));
       setEditingService(null);
       setServiceForm({
         name: '',
@@ -697,7 +807,7 @@ const OperatorPage: React.FC = () => {
   const deleteService = async (serviceId: string) => {
     try {
       await apiDeleteService(serviceId);
-      setServices(prev => prev.filter(s => s.id !== serviceId));
+      setServicesWithPersistence(prev => prev.filter(s => s.id !== serviceId));
     } catch(err) {
       alert('Falha ao excluir serviço');
     }
@@ -705,7 +815,7 @@ const OperatorPage: React.FC = () => {
 
   // Funções para manipular extras
   const toggleExtra = (extraId: string) => {
-    setExtras(prevExtras =>
+    setExtrasWithPersistence(prevExtras =>
       prevExtras.map(extra =>
         extra.id === extraId
           ? { ...extra, isActive: !extra.isActive }
@@ -715,7 +825,7 @@ const OperatorPage: React.FC = () => {
   };
 
   const updateExtraStock = (extraId: string, stock: number) => {
-    setExtras(prevExtras =>
+    setExtrasWithPersistence(prevExtras =>
       prevExtras.map(extra =>
         extra.id === extraId
           ? { ...extra, stock }
@@ -729,7 +839,7 @@ const OperatorPage: React.FC = () => {
       ...extraForm,
       id: Date.now().toString()
     };
-    setExtras(prev => [...prev, newExtra]);
+    setExtrasWithPersistence(prev => [...prev, newExtra]);
     setExtraForm({
       name: '',
       description: '',
@@ -778,7 +888,7 @@ const OperatorPage: React.FC = () => {
 
   // Funções para equipamentos
   const updateEquipmentCount = (equipmentId: string, count: number) => {
-    setEquipments(prev =>
+    setEquipmentsWithPersistence(prev =>
       prev.map(eq =>
         eq.id === equipmentId
           ? { ...eq, count: Math.max(0, count) }
@@ -788,7 +898,7 @@ const OperatorPage: React.FC = () => {
   };
 
   const toggleEquipment = (equipmentId: string) => {
-    setEquipments(prev =>
+    setEquipmentsWithPersistence(prev =>
       prev.map(eq =>
         eq.id === equipmentId
           ? { ...eq, isActive: !eq.isActive }
@@ -810,7 +920,7 @@ const OperatorPage: React.FC = () => {
 
   // Função para alternar modos de pagamento
   const togglePaymentMode = (mode: string) => {
-    setPaymentModes(prev => {
+    setPaymentModesWithPersistence(prev => {
       if (prev.includes(mode)) {
         return prev.filter(m => m !== mode);
       } else {
@@ -821,10 +931,10 @@ const OperatorPage: React.FC = () => {
 
   // Funções para atualizar campos dos serviços e extras
   function updateServiceField(id: string, field: string, value: any) {
-    setServices(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
+    setServicesWithPersistence(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
   }
   function updateExtraField(id: string, field: string, value: any) {
-    setExtras(prev => prev.map(x => x.id === id ? { ...x, [field]: value } : x));
+    setExtrasWithPersistence(prev => prev.map(x => x.id === id ? { ...x, [field]: value } : x));
   }
 
   // Renderizar etapa do nome
@@ -850,8 +960,8 @@ const OperatorPage: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Operador</label>
               <input
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all text-gray-800 bg-gray-50"
-                value={operatorName}
-                onChange={(e) => setOperatorName(e.target.value)}
+                              value={operatorName}
+              onChange={(e) => setOperatorNameWithPersistence(e.target.value)}
                 placeholder="Digite seu nome"
                 required
                 autoFocus
