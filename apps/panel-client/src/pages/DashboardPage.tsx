@@ -23,6 +23,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [services, setServices] = useState<any[]>([]);
+  const [isStoppingOperation, setIsStoppingOperation] = useState(false);
   const tenantId = user?.tenant_id
     || tickets[0]?.tenant_id
     || myTickets[0]?.tenant_id
@@ -192,17 +193,55 @@ export default function DashboardPage() {
             Painel de Exibição
           </Link>
           {operationConfig.isOperating && (
-            <button
-              onClick={async () => {
-                if (confirm('Tem certeza que deseja encerrar a operação?')) {
-                  await equipmentService.stopOperation();
-                  refetchOperation();
-                }
-              }}
-              className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
-            >
-              Encerrar Operação
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={async () => {
+                  // Verificar se há tickets em andamento
+                  const ticketsInProgress = myTickets.filter((t: any) => 
+                    t.status === 'in_progress' || t.status === 'called'
+                  );
+                  
+                  if (ticketsInProgress.length > 0) {
+                    const confirmMessage = `Existem ${ticketsInProgress.length} ticket(s) em andamento. Encerrar a operação irá cancelar todos os atendimentos ativos. Deseja continuar?`;
+                    if (!confirm(confirmMessage)) {
+                      return;
+                    }
+                  } else {
+                    if (!confirm('Tem certeza que deseja encerrar a operação?')) {
+                      return;
+                    }
+                  }
+                  
+                  setIsStoppingOperation(true);
+                  try {
+                    await equipmentService.stopOperation();
+                    await refetchOperation();
+                    alert('Operação encerrada com sucesso!');
+                  } catch (error) {
+                    console.error('Erro ao encerrar operação:', error);
+                    alert('Erro ao encerrar operação. Tente novamente.');
+                  } finally {
+                    setIsStoppingOperation(false);
+                  }
+                }}
+                className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                disabled={isStoppingOperation}
+              >
+                {isStoppingOperation ? 'Encerrando...' : 'Encerrar Operação'}
+              </button>
+              
+              {/* Indicador de tickets em andamento */}
+              {myTickets.filter((t: any) => t.status === 'in_progress' || t.status === 'called').length > 0 && (
+                <div className="flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-md text-xs">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                  <span>
+                    {myTickets.filter((t: any) => t.status === 'in_progress' || t.status === 'called').length} ticket(s) em andamento
+                  </span>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </section>

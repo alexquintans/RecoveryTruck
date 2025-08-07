@@ -260,9 +260,13 @@ const OperatorPage: React.FC = () => {
 
   // Função para limpar o estado quando a operação for encerrada
   const clearOperatorState = () => {
+    console.log('🔍 DEBUG - Limpando estado do operador');
     localStorage.removeItem('operator_current_step');
     localStorage.removeItem('operator_config');
+    localStorage.removeItem('operator_name');
     setCurrentStepWithPersistence(null);
+    setOperatorName('');
+    console.log('🔍 DEBUG - Estado do operador limpo');
   };
 
   // Estados existentes
@@ -2057,6 +2061,34 @@ const OperatorPage: React.FC = () => {
       setCurrentStepWithPersistence('operation');
     }
   }, [operationConfig, currentStep]);
+
+  // NOVO: Verificar se a operação foi encerrada e redirecionar para setup
+  useEffect(() => {
+    // Se a operação não está ativa mas o usuário está na etapa de operação,
+    // significa que a operação foi encerrada
+    if (operationConfig && !operationConfig.isOperating && currentStep === 'operation') {
+      console.log('🔍 Operação encerrada detectada, redirecionando para setup');
+      clearOperatorState(); // Limpar estado do operador
+      setCurrentStepWithPersistence('name'); // Voltar para o início
+    }
+  }, [operationConfig, currentStep]);
+
+  // NOVO: Verificação adicional para detectar mudanças no status da operação
+  useEffect(() => {
+    console.log('🔍 DEBUG - Status da operação mudou:', {
+      isOperating: operationConfig?.isOperating,
+      currentStep,
+      operatorName
+    });
+    
+    // Se a operação foi encerrada (estava ativa e agora não está)
+    if (operationConfig && !operationConfig.isOperating && currentStep === 'operation') {
+      console.log('🔍 Operação encerrada detectada via mudança de status');
+      alert('A operação foi encerrada. Você será redirecionado para o setup.');
+      clearOperatorState();
+      setCurrentStepWithPersistence('name');
+    }
+  }, [operationConfig?.isOperating]);
 
   // Renderizar componente baseado na etapa atual
   if (!currentStep) {
