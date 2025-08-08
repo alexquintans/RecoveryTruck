@@ -1525,7 +1525,8 @@ async def confirm_payment(
 
     # Opcional: enviar update pelo websocket
     try:
-        await websocket_manager.broadcast_queue_update(str(ticket.tenant_id), {
+        await websocket_manager.broadcast_to_tenant(str(ticket.tenant_id), {
+            "type": "payment_update",
             "ticket_id": str(ticket.id),
             "payment_confirmed": True,
             "status": "in_queue"

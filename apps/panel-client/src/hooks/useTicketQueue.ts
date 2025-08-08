@@ -89,6 +89,9 @@ export function useTicketQueue() {
     refetchInterval: 30_000, // Refetch a cada 30 segundos
   });
 
+  // Debug: log dos tickets aguardando confirmação de pagamento
+  console.log('🔍 DEBUG - pendingPaymentQuery.data:', pendingPaymentQuery.data);
+
   // Construir URL de WebSocket
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
@@ -158,6 +161,13 @@ export function useTicketQueue() {
       if (type === 'ticket_called') {
         console.log('🔍 DEBUG - Ticket called received:', data);
         // Invalidar ambas as queries quando um ticket é chamado
+        queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
+        queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+      }
+      if (type === 'payment_update') {
+        console.log('🔍 DEBUG - Payment update received:', data);
+        // Invalidar queries relacionadas a pagamento quando um pagamento for confirmado
+        queryClient.invalidateQueries({ queryKey: ['tickets', 'pending-payment'] });
         queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
         queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
       }

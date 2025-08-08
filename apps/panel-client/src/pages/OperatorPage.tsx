@@ -444,14 +444,26 @@ const OperatorPage: React.FC = () => {
   const { preferences, updatePreference, updateMultiplePreferences, clearPreferences } = useOperatorPreferences();
   
   // Estados com persistência melhorada
-  const [operatorName, setOperatorName] = useState('');
+  const [operatorName, setOperatorName] = useState(() => {
+    return operatorConfig?.operatorName || '';
+  });
   const [isSavingConfig, setIsSavingConfig] = useState(false);
-  const [activeTab, setActiveTab] = useState('operation');
+  const [activeTab, setActiveTab] = useState(() => {
+    return preferences.activeTab;
+  });
   const [activeModal, setActiveModal] = useState<string | null>(null);
-  const [services, setServices] = useState<Service[]>([]);
-  const [extras, setExtras] = useState<Extra[]>([]);
-  const [equipments, setEquipments] = useState<Equipment[]>([]);
-  const [paymentModes, setPaymentModes] = useState<string[]>(['none']);
+  const [services, setServices] = useState<Service[]>(() => {
+    return operatorConfig?.services || [];
+  });
+  const [extras, setExtras] = useState<Extra[]>(() => {
+    return operatorConfig?.extras || [];
+  });
+  const [equipments, setEquipments] = useState<Equipment[]>(() => {
+    return operatorConfig?.equipments || [];
+  });
+  const [paymentModes, setPaymentModes] = useState<string[]>(() => {
+    return operatorConfig?.paymentModes || ['none'];
+  });
   const [currentPaymentModes, setCurrentPaymentModes] = useState<string[]>([]);
   const [serviceForm, setServiceForm] = useState({
     name: '',
@@ -473,10 +485,14 @@ const OperatorPage: React.FC = () => {
   const [editingExtra, setEditingExtra] = useState<Extra | null>(null);
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [showExtraModal, setShowExtraModal] = useState(false);
-  const [selectedEquipment, setSelectedEquipment] = useState<string>('');
+  const [selectedEquipment, setSelectedEquipment] = useState<string>(() => {
+    return preferences.selectedEquipment;
+  });
 
   // NOVO: Estado para controle das filas por serviço com persistência
-  const [activeServiceTab, setActiveServiceTab] = useState<string>('');
+  const [activeServiceTab, setActiveServiceTab] = useState<string>(() => {
+    return preferences.activeServiceTab;
+  });
   const [serviceQueues, setServiceQueues] = useState<ServiceQueue[]>([]);
 
   // NOVO: Usar o hook para progresso dos serviços
@@ -490,25 +506,6 @@ const OperatorPage: React.FC = () => {
     getProgressStatusColor,
     getProgressStatusText
   } = useServiceProgress();
-
-  // Inicializar estados com valores dos hooks
-  useEffect(() => {
-    if (operatorConfig) {
-      setOperatorName(operatorConfig.operatorName || '');
-      setServices(operatorConfig.services || []);
-      setExtras(operatorConfig.extras || []);
-      setEquipments(operatorConfig.equipments || []);
-      setPaymentModes(operatorConfig.paymentModes || ['none']);
-    }
-  }, [operatorConfig]);
-
-  useEffect(() => {
-    if (preferences) {
-      setActiveTab(preferences.activeTab);
-      setSelectedEquipment(preferences.selectedEquipment);
-      setActiveServiceTab(preferences.activeServiceTab);
-    }
-  }, [preferences]);
 
   // Usar o hook para ações do operador
   const {
@@ -679,7 +676,7 @@ const OperatorPage: React.FC = () => {
       </div>
     );
   };
-
+  
   useEffect(() => {
     const fetchPaymentConfig = async () => {
       try {
@@ -737,12 +734,12 @@ const OperatorPage: React.FC = () => {
     try {
       await apiUpdateService(serviceId, { is_active: !currentActive });
       setServicesWithPersistence(prevServices =>
-        prevServices.map(service =>
-          service.id === serviceId
-              ? { ...service, isActive: !currentActive }
-            : service
-        )
-      );
+      prevServices.map(service =>
+        service.id === serviceId
+            ? { ...service, isActive: !currentActive }
+          : service
+      )
+    );
     } catch (e) {
       alert('Erro ao atualizar serviço!');
     }
@@ -960,7 +957,7 @@ const OperatorPage: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Operador</label>
               <input
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all text-gray-800 bg-gray-50"
-                              value={operatorName}
+                value={operatorName}
               onChange={(e) => setOperatorNameWithPersistence(e.target.value)}
                 placeholder="Digite seu nome"
                 required
@@ -1790,16 +1787,16 @@ const OperatorPage: React.FC = () => {
           <div className="flex items-center gap-4">
             <button
               onClick={() => {
-                if (confirm('Tem certeza que deseja encerrar a operação?')) {
+                                  if (confirm('Tem certeza que deseja encerrar a operação?')) {
                   try {
                     equipmentService.stopOperation();
                   } catch (e) {
                     alert('Falha ao encerrar operação no backend!');
                   }
-                  alert('Operação encerrada com sucesso!');
-                  clearOperatorState();
+                    alert('Operação encerrada com sucesso!');
+                    clearOperatorState();
                   navigate('/');
-                }
+                  }
               }}
               className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg shadow hover:bg-red-700 transition-all"
             >
@@ -1881,10 +1878,10 @@ const OperatorPage: React.FC = () => {
                       {service.serviceName}
                       <span className="ml-2 px-2 py-1 bg-white bg-opacity-20 rounded-full text-xs">
                         {service.tickets.length}
-                      </span>
+                          </span>
                     </button>
                   ))}
-                </div>
+                        </div>
                 
                 {/* Conteúdo da fila ativa */}
                 <div className="queue-content">
@@ -1897,9 +1894,9 @@ const OperatorPage: React.FC = () => {
                         <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <circle cx="12" cy="12" r="10" strokeWidth="2" />
                           <path d="M8 12h4l3 6" strokeWidth="2" />
-                        </svg>
+                              </svg>
                         <span className="text-base">Nenhum ticket na fila de {activeQueue?.serviceName}</span>
-                      </div>
+                            </div>
                     ) : (
                       <div className="flex flex-col gap-3">
                         {activeTickets.map((ticket) => (
@@ -1912,17 +1909,17 @@ const OperatorPage: React.FC = () => {
                             callLoading={callLoading}
                           />
                         ))}
-                      </div>
-                    );
-                  })()}
-                </div>
-              </div>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-8 text-gray-400">
                 <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <circle cx="12" cy="12" r="10" strokeWidth="2" />
                   <path d="M8 12h4l3 6" strokeWidth="2" />
-                </svg>
+                              </svg>
                 <span className="text-base">Nenhum serviço ativo</span>
               </div>
             )}

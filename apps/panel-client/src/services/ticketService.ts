@@ -86,7 +86,7 @@ export const ticketService = {
   },
 
   getPendingPayment: async () => {
-    const response = await api.get('/tickets/status/pending-payment');
+    const response = await api.get('/tickets/status/pending-payment', { params: withTenant() });
     return response.data;
   },
 }; 
