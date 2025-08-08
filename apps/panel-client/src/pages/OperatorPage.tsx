@@ -649,12 +649,21 @@ const OperatorPage: React.FC = () => {
 
   const getTicketProgressSummary = useCallback((ticketId: string) => {
     const progress = serviceProgress[ticketId];
-    if (!progress || progress.length === 0) return { completed: 0, total: 0 };
+    if (!progress || progress.length === 0) return { completed: 0, total: 0, inProgress: 0, pending: 0 };
     
     const completed = progress.filter(p => p.status === 'completed').length;
+    const inProgress = progress.filter(p => p.status === 'in_progress').length;
+    const pending = progress.filter(p => p.status === 'pending').length;
     const total = progress.length;
     
-    return { completed, total };
+    return { completed, total, inProgress, pending };
+  }, [serviceProgress]);
+
+  const canCompleteTicket = useCallback((ticketId: string) => {
+    const progress = serviceProgress[ticketId];
+    if (!progress || progress.length === 0) return false;
+    
+    return progress.every(p => p.status === 'completed');
   }, [serviceProgress]);
 
   // CORRIGIDO: useEffect para buscar configuração de pagamento
@@ -2117,8 +2126,36 @@ const OperatorPage: React.FC = () => {
                           );
                         })()}
                         
-                        {/* NOVO: Componente de resumo visual */}
-                        <ProgressSummary ticketId={ticket.id} />
+                        {/* Resumo visual do progresso */}
+                        {(() => {
+                          const summary = getTicketProgressSummary(ticket.id);
+                          const overallStatus = getTicketOverallStatus(ticket.id);
+                          
+                          return (
+                            <div className="mb-3 p-2 bg-gray-50 rounded-lg">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="font-medium">Progresso Geral:</span>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  overallStatus === 'completed' ? 'bg-green-100 text-green-700' :
+                                  overallStatus === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                                  overallStatus === 'cancelled' ? 'bg-red-100 text-red-700' :
+                                  'bg-gray-100 text-gray-700'
+                                }`}>
+                                  {overallStatus === 'completed' ? 'Concluído' :
+                                   overallStatus === 'in_progress' ? 'Em Andamento' :
+                                   overallStatus === 'cancelled' ? 'Cancelado' :
+                                   'Pendente'}
+                                </span>
+                              </div>
+                              <div className="flex gap-2 mt-1 text-xs text-gray-600">
+                                <span>Total: {summary.total}</span>
+                                <span className="text-green-600">✓ {summary.completed}</span>
+                                <span className="text-blue-600">⟳ {summary.inProgress}</span>
+                                <span className="text-gray-600">⏳ {summary.pending}</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
                         
                         {/* Carregar progresso dos serviços */}
                         {(() => {
