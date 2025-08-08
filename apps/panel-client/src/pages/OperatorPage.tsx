@@ -281,27 +281,32 @@ const TicketCard = ({
   
   return (
     <div className={`flex items-center justify-between bg-white rounded-2xl border p-5 shadow-md hover:shadow-xl transition-transform hover:-translate-y-1 group focus-within:ring-2 focus-within:ring-blue-400 ${
-      priority.isFirstService ? 'border-blue-300 bg-blue-50' : 'border-blue-200'
+      priority.isFirstService ? 'border-blue-300 bg-blue-50 ring-2 ring-blue-200' : 'border-blue-200'
     }`}>
       <div className="flex flex-col gap-1 w-full">
         <div className="flex items-center gap-3 mb-1">
+          {/* Número do ticket */}
           <span className="flex items-center justify-center w-12 h-12 rounded-full bg-blue-50 text-blue-700 text-3xl font-extrabold border-2 border-blue-200 shadow-sm">
-            <svg className="w-6 h-6 mr-1 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <rect x="4" y="8" width="16" height="8" rx="4" strokeWidth="2" />
-              <path d="M8 12h8" strokeWidth="2" />
-            </svg>
             {ticket.number}
           </span>
           
-          {/* Indicador de múltiplos serviços */}
+          {/* Indicadores de múltiplos serviços - MELHORADO */}
           {services.length > 1 && (
             <div className="flex items-center gap-2">
-              <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">
+              {/* Badge de ordem do serviço */}
+              <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium border border-blue-200">
                 {priority.serviceOrder}/{priority.totalServices}
               </span>
+              {/* Badge de primeiro serviço */}
               {priority.isFirstService && (
-                <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium">
-                  Primeiro
+                <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium border border-green-200">
+                  🥇 Primeiro
+                </span>
+              )}
+              {/* Badge de último serviço */}
+              {priority.isLastService && !priority.isFirstService && (
+                <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded-full text-xs font-medium border border-orange-200">
+                  🏁 Último
                 </span>
               )}
             </div>
@@ -309,7 +314,7 @@ const TicketCard = ({
           
           {/* Tempo de espera */}
           {waitingMinutes !== null && (
-            <span className="ml-4 flex items-center gap-1 text-xs text-gray-500">
+            <span className="ml-4 flex items-center gap-1 text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-full">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="10" strokeWidth="2" />
                 <path d="M12 7v5l3 3" strokeWidth="2" strokeLinecap="round" />
@@ -319,9 +324,10 @@ const TicketCard = ({
           )}
         </div>
         
+        {/* Nome do cliente */}
         <div className="text-base font-semibold text-gray-800">{ticket.customer_name || ticket.customer?.name}</div>
         
-        {/* Serviço atual */}
+        {/* Serviço atual - MELHORADO */}
         <div className="mt-2">
           <div className="flex items-center gap-2 mb-1">
             <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -341,7 +347,7 @@ const TicketCard = ({
           </span>
         </div>
         
-        {/* Outros serviços (se houver múltiplos) */}
+        {/* Outros serviços (se houver múltiplos) - MELHORADO */}
         {services.length > 1 && (
           <div className="mt-2">
             <div className="flex items-center gap-2 mb-1">
@@ -390,18 +396,24 @@ const TicketCard = ({
           </div>
         )}
         
+        {/* Horário de criação */}
         <div className="text-xs text-gray-400 mt-1">
           {ticket.createdAt && new Date(ticket.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
         </div>
       </div>
       
+      {/* Botão de chamada - MELHORADO */}
       <div className="flex gap-2 ml-6">
         <button
           disabled={callLoading || !selectedEquipment}
           onClick={() => onCall(ticket, currentService)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold"
+          className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+            priority.isFirstService 
+              ? 'bg-green-600 hover:bg-green-700 text-white' 
+              : 'bg-blue-600 hover:bg-blue-700 text-white'
+          } disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg`}
         >
-          {callLoading ? 'Chamando...' : 'Chamar'}
+          {callLoading ? 'Chamando...' : priority.isFirstService ? '🥇 Chamar Primeiro' : 'Chamar'}
         </button>
       </div>
     </div>
@@ -1763,7 +1775,7 @@ const OperatorPage: React.FC = () => {
       return queue?.tickets || [];
     };
 
-    // CORRIGIDO: Função de chamada inteligente - definida como função normal
+    // CORRIGIDO: Função de chamada inteligente - MELHORADA conforme NewTickets.md
     const handleCallTicket = async (ticket: Ticket, serviceId: string) => {
       console.log('🔍 DEBUG - Chamando ticket:', ticket.id, 'com equipamento:', selectedEquipment);
       console.log('🔍 DEBUG - Status do ticket:', ticket.status);
@@ -1788,17 +1800,29 @@ const OperatorPage: React.FC = () => {
       
       try {
         if (isFirstService) {
-          // Chamar o ticket completo
+          // Chamar o ticket completo (primeiro serviço)
+          console.log('🔍 DEBUG - Chamando ticket completo (primeiro serviço)');
           await callTicket(ticket.id, selectedEquipment);
         } else {
-          // Chamar apenas o serviço específico
-          await callTicket(ticket.id, selectedEquipment);
-          // TODO: Implementar chamada específica por serviço quando backend suportar
+          // Chamar apenas o serviço específico (não é o primeiro)
           console.log('🔍 DEBUG - Chamando serviço específico:', serviceId);
+          // TODO: Implementar chamada específica por serviço quando backend suportar
+          // Por enquanto, chama o ticket completo
+          await callTicket(ticket.id, selectedEquipment);
         }
+        
+        // Mostrar feedback visual
+        const serviceName = services.find(s => s.id === serviceId)?.name || 'Serviço';
+        const message = isFirstService 
+          ? `Ticket #${ticket.number} chamado para ${serviceName} (primeiro serviço)`
+          : `Ticket #${ticket.number} chamado para ${serviceName}`;
+        
+        // TODO: Implementar notificação toast
+        console.log('✅', message);
+        
       } catch (error) {
         console.error('❌ ERRO ao chamar ticket:', error);
-        alert('Erro ao chamar ticket!');
+        alert('Erro ao chamar ticket! Verifique se o equipamento está selecionado.');
       }
     };
 
@@ -1908,66 +1932,106 @@ const OperatorPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Tabs dos Serviços */}
+            {/* Tabs dos Serviços - MELHORADO */}
             {serviceQueues.length > 0 ? (
               <div className="service-queues">
-                <div className="queue-tabs flex flex-wrap gap-2 mb-4">
+                <div className="queue-tabs flex flex-wrap gap-2 mb-6 bg-gray-50 p-4 rounded-xl">
                   {serviceQueues.map(service => (
                     <button 
                       key={service.serviceId}
-                      className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                      className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 flex items-center gap-2 ${
                         activeServiceTab === service.serviceId 
-                          ? 'bg-blue-600 text-white shadow-lg' 
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          ? 'bg-blue-600 text-white shadow-lg transform scale-105' 
+                          : 'bg-white text-gray-700 hover:bg-gray-100 shadow-md hover:shadow-lg'
                       }`}
-                      onClick={() => setActiveServiceTab(service.serviceId)}
+                      onClick={() => {
+                        setActiveServiceTab(service.serviceId);
+                        try {
+                          updatePreference('activeServiceTab', service.serviceId);
+                        } catch (error) {
+                          console.error('Erro ao atualizar preferência:', error);
+                        }
+                      }}
                     >
-                      {service.serviceName}
-                      <span className="ml-2 px-2 py-1 bg-white bg-opacity-20 rounded-full text-xs">
+                      <span className="font-semibold">{service.serviceName}</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                        activeServiceTab === service.serviceId 
+                          ? 'bg-white bg-opacity-20 text-white' 
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
                         {service.tickets.length}
-                          </span>
+                      </span>
                     </button>
                   ))}
-                        </div>
+                </div>
                 
-                {/* Conteúdo da fila ativa */}
+                {/* Conteúdo da fila ativa - MELHORADO */}
                 <div className="queue-content">
                   {(() => {
                     const activeQueue = serviceQueues.find(q => q.serviceId === activeServiceTab);
                     const activeTickets = activeQueue?.tickets || [];
                     
                     return activeTickets.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-8 text-gray-400">
-                        <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="flex flex-col items-center justify-center py-12 text-gray-400 bg-gray-50 rounded-xl">
+                        <svg className="w-16 h-16 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <circle cx="12" cy="12" r="10" strokeWidth="2" />
                           <path d="M8 12h4l3 6" strokeWidth="2" />
-                              </svg>
-                        <span className="text-base">Nenhum ticket na fila de {activeQueue?.serviceName}</span>
-                            </div>
+                        </svg>
+                        <span className="text-lg font-medium">Nenhum ticket na fila de {activeQueue?.serviceName}</span>
+                        <span className="text-sm text-gray-400 mt-1">Os tickets aparecerão aqui quando chegarem</span>
+                      </div>
                     ) : (
-                      <div className="flex flex-col gap-3">
-                        {activeTickets.map((ticket) => (
-                          <TicketCard 
-                            key={ticket.id}
-                            ticket={ticket}
-                            currentService={activeServiceTab}
-                            onCall={handleCallTicket}
-                            selectedEquipment={selectedEquipment}
-                            callLoading={callLoading}
-                          />
-                        ))}
-                                  </div>
-                                );
-                              })()}
+                      <div className="flex flex-col gap-4">
+                        {/* Header da fila */}
+                        <div className="flex items-center justify-between bg-blue-50 p-4 rounded-xl border border-blue-200">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                              <span className="text-white font-bold text-sm">{activeTickets.length}</span>
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-blue-900">{activeQueue?.serviceName}</h3>
+                              <p className="text-sm text-blue-600">
+                                {activeTickets.length === 1 ? '1 ticket na fila' : `${activeTickets.length} tickets na fila`}
+                              </p>
                             </div>
                           </div>
+                          <div className="text-right">
+                            <div className="text-xs text-blue-600">Tempo estimado</div>
+                            <div className="font-semibold text-blue-900">
+                              {activeTickets.reduce((total, ticket) => {
+                                const service = ticket.services?.find(s => s.id === activeServiceTab) || ticket.service;
+                                return total + (service?.duration || 0);
+                              }, 0)} min
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Lista de tickets */}
+                        <div className="space-y-4">
+                          {activeTickets.map((ticket) => (
+                            <TicketCard 
+                              key={ticket.id}
+                              ticket={ticket}
+                              currentService={activeServiceTab}
+                              onCall={handleCallTicket}
+                              selectedEquipment={selectedEquipment}
+                              callLoading={callLoading}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-gray-400">
-                <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex flex-col items-center justify-center py-12 text-gray-400 bg-gray-50 rounded-xl">
+                <svg className="w-16 h-16 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <circle cx="12" cy="12" r="10" strokeWidth="2" />
                   <path d="M8 12h4l3 6" strokeWidth="2" />
-                              </svg>
-                <span className="text-base">Nenhum serviço ativo</span>
+                </svg>
+                <span className="text-lg font-medium">Nenhum serviço ativo</span>
+                <span className="text-sm text-gray-400 mt-1">Ative pelo menos um serviço para ver as filas</span>
               </div>
             )}
           </section>
