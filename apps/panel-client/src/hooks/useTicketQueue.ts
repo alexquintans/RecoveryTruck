@@ -89,9 +89,6 @@ export function useTicketQueue() {
     refetchInterval: 30_000, // Refetch a cada 30 segundos
   });
 
-  // Debug: log dos tickets aguardando confirmação de pagamento
-  console.log('🔍 DEBUG - pendingPaymentQuery.data:', pendingPaymentQuery.data);
-
   // Construir URL de WebSocket
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
@@ -104,27 +101,16 @@ export function useTicketQueue() {
   const tenantId = user?.tenant_id || (import.meta as any).env?.VITE_TENANT_ID || '7f02a566-2406-436d-b10d-90ecddd3fe2d';
   const token = getAuthToken();
   
-  // Debug: verificar variáveis de ambiente
-  console.log('🔍 DEBUG - VITE_WS_URL:', (import.meta as any).env?.VITE_WS_URL);
-  console.log('🔍 DEBUG - VITE_API_URL:', (import.meta as any).env?.VITE_API_URL);
-  console.log('🔍 DEBUG - VITE_TENANT_ID:', (import.meta as any).env?.VITE_TENANT_ID);
-  console.log('🔍 DEBUG - baseWs:', baseWs);
-  console.log('🔍 DEBUG - tenantId:', tenantId);
-  
   // Corrigir URL do WebSocket para usar query parameters
   const wsUrl = `${baseWs}?tenant_id=${tenantId}&client_type=operator${token ? `&token=${token}` : ''}`;
   
-  console.log('🔍 DEBUG - wsUrl final:', wsUrl);
-
-
-
   // Reativando WebSocket
   useWebSocket({
     url: wsUrl,
     onOpen: () => {
       console.log('🔌 WebSocket conectado com sucesso!');
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.log('🔌 WebSocket error:', error);
       // Não deixar o erro do WebSocket quebrar a aplicação
     },
@@ -134,20 +120,16 @@ export function useTicketQueue() {
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onMessage: (msg: any) => {
-      console.log('🔍 DEBUG - WebSocket message received:', msg);
       if (!msg || typeof msg !== 'object') return;
       const { type, data } = msg as any;
       
       if (type === 'queue_update') {
-        console.log('🔍 DEBUG - Queue update received:', data);
         queryClient.setQueryData(['tickets', 'queue'], data);
       }
       if (type === 'equipment_update') {
-        console.log('🔍 DEBUG - Equipment update received:', data);
         queryClient.invalidateQueries({ queryKey: ['equipment'] });
       }
       if (type === 'ticket_update') {
-        console.log('🔍 DEBUG - Ticket update received:', data);
         // Atualizar ticket-specifico dentro do cache
         queryClient.setQueryData<any>(['tickets', 'queue'], (old: any) => {
           if (!old || !old.items) return old;
@@ -159,13 +141,11 @@ export function useTicketQueue() {
         queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
       }
       if (type === 'ticket_called') {
-        console.log('🔍 DEBUG - Ticket called received:', data);
         // Invalidar ambas as queries quando um ticket é chamado
         queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
         queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
       }
       if (type === 'payment_update') {
-        console.log('🔍 DEBUG - Payment update received:', data);
         // Invalidar queries relacionadas a pagamento quando um pagamento for confirmado
         queryClient.invalidateQueries({ queryKey: ['tickets', 'pending-payment'] });
         queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
@@ -218,10 +198,6 @@ export function useTicketQueue() {
     equipment_counts: {} 
   };
   
-  // Debug: log do operationConfig
-  console.log('🔍 DEBUG - operationConfig raw:', operationConfig);
-  console.log('🔍 DEBUG - operationConfig.is_operating:', operationConfig.is_operating);
-  
   const { myTickets: _, ...queueQueryWithoutMyTickets } = queueQuery;
   
   const normalizedOperationConfig = {
@@ -229,8 +205,6 @@ export function useTicketQueue() {
     serviceDuration: operationConfig.service_duration ?? 10,
     equipmentCounts: operationConfig.equipment_counts ?? {},
   };
-  
-  console.log('🔍 DEBUG - normalizedOperationConfig:', normalizedOperationConfig);
   
   const equipment = ((equipmentQuery.data as any[]) ?? []).map((e) => ({
     ...e,

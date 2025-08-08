@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTicketQueue } from '../hooks/useTicketQueue';
 import { useOperatorActions } from '../hooks/useOperatorActions';
@@ -604,21 +604,27 @@ const OperatorPage: React.FC = () => {
     console.log('🔍 DEBUG - Estado do operador limpo completamente');
   };
 
-  // NOVO: useEffect para carregar progresso dos serviços automaticamente
+  // CORRIGIDO: useEffect para carregar progresso dos serviços automaticamente
+  // Problema: fetchServiceProgress estava sendo recriada a cada render
+  // Solução: fetchServiceProgress já é memoizado pelo hook useServiceProgress
   useEffect(() => {
-    const loadServiceProgress = async () => {
-      if (safeMyTickets.length > 0) {
+    if (currentStep === 'operation' && safeMyTickets.length > 0) {
+      const loadServiceProgress = async () => {
         for (const ticket of safeMyTickets) {
-          await fetchServiceProgress(ticket.id);
+          try {
+            await fetchServiceProgress(ticket.id);
+          } catch (error) {
+            console.error('Erro ao carregar progresso do ticket:', ticket.id, error);
+          }
         }
-      }
-    };
+      };
+      
+      loadServiceProgress();
+    }
+  }, [safeMyTickets, currentStep, fetchServiceProgress]); // fetchServiceProgress já é memoizado pelo hook
 
-    loadServiceProgress();
-  }, [safeMyTickets, fetchServiceProgress]);
-
-  // Funções utilitárias
-  const getTicketOverallStatus = (ticketId: string) => {
+  // CORRIGIDO: Funções utilitárias agora usam useCallback para evitar recriações
+  const getTicketOverallStatus = useCallback((ticketId: string) => {
     const progress = serviceProgress[ticketId];
     if (!progress || progress.length === 0) return 'pending';
     
@@ -628,26 +634,28 @@ const OperatorPage: React.FC = () => {
     if (completed === 0) return 'pending';
     if (completed === total) return 'completed';
     return 'in_progress';
-  };
+  }, [serviceProgress]);
 
-  const getTicketProgressSummary = (ticketId: string) => {
+  const getTicketProgressSummary = useCallback((ticketId: string) => {
     const progress = serviceProgress[ticketId];
-    if (!progress || progress.length === 0) return { completed: 0, total: 0 };
+    if (!progress || progress.length === 0) return { completed: 0, total: 0, inProgress: 0, pending: 0 };
     
     const completed = progress.filter(p => p.status === 'completed').length;
+    const inProgress = progress.filter(p => p.status === 'in_progress').length;
+    const pending = progress.filter(p => p.status === 'pending').length;
     const total = progress.length;
     
-    return { completed, total };
-  };
+    return { completed, total, inProgress, pending };
+  }, [serviceProgress]);
 
-  const canCompleteTicket = (ticketId: string) => {
+  const canCompleteTicket = useCallback((ticketId: string) => {
     const progress = serviceProgress[ticketId];
     if (!progress || progress.length === 0) return false;
     
     return progress.every(p => p.status === 'completed');
-  };
+  }, [serviceProgress]);
 
-  const ProgressSummary = ({ ticketId }: { ticketId: string }) => {
+  const ProgressSummary = useCallback(({ ticketId }: { ticketId: string }) => {
     const { completed, total } = getTicketProgressSummary(ticketId);
     const status = getTicketOverallStatus(ticketId);
     
@@ -675,58 +683,78 @@ const OperatorPage: React.FC = () => {
         </div>
       </div>
     );
-  };
+  }, [getTicketProgressSummary, getTicketOverallStatus, getProgressStatusColor]);
   
+  // CORRIGIDO: useEffect para buscar configuração de pagamento
+  // Problema: Não tinha dependências corretas
+  // Solução: Adicionadas dependências tenantId e currentStep
   useEffect(() => {
-    const fetchPaymentConfig = async () => {
-      try {
-        const response = await fetch(`/api/operation/config?tenant_id=${tenantId}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'X-Tenant-Id': tenantId,
+    if (tenantId && currentStep === 'config') {
+      const fetchPaymentConfig = async () => {
+        try {
+          const response = await fetch(`/api/operation/config?tenant_id=${tenantId}`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              'X-Tenant-Id': tenantId,
+            }
+          });
+          if (response.ok) {
+            const config = await response.json();
+            setCurrentPaymentModes(config.payment_modes || []);
           }
-        });
-        if (response.ok) {
-          const config = await response.json();
-          setCurrentPaymentModes(config.payment_modes || []);
+        } catch (error) {
+          console.error('Erro ao buscar configuração de pagamento:', error);
         }
-      } catch (error) {
-        console.error('Erro ao buscar configuração de pagamento:', error);
-      }
-    };
-    
-    if (tenantId) {
+      };
+      
       fetchPaymentConfig();
     }
-  }, [tenantId]);
+  }, [tenantId, currentStep]);
 
   // Verificar se o modo de pagamento é "none"
   const isPaymentNone = currentPaymentModes.includes('none');
   
-  // Buscar dados reais da API ao montar o componente
+  // CORRIGIDO: useEffect para buscar dados da API
+  // Problema: Não tinha dependências corretas
+  // Solução: Adicionadas dependências tenantId e currentStep
   useEffect(() => {
-    if (tenantId) {
-      fetchServices({ tenant_id: tenantId }).then(data => setServices(data.items || data)).catch(() => {});
-      fetchEquipments({ tenant_id: tenantId }).then(data => {
-        const list = (data.items || data).map((eq: any) => ({
-          id: eq.id,
-          name: eq.name || eq.identifier || 'Equipamento',
-          type: eq.type,
-          serviceId: eq.service_id,
-          count: 1,
-          isActive: true,
-        }));
-        setEquipments(list);
-      }).catch(() => {});
-      fetchExtras({ tenant_id: tenantId }).then(data => setExtras(data.items || data)).catch(() => {});
+    if (tenantId && (currentStep === 'config' || currentStep === 'operation')) {
+      const loadData = async () => {
+        try {
+          const [servicesData, equipmentsData, extrasData] = await Promise.all([
+            fetchServices({ tenant_id: tenantId }).catch(() => ({ items: [] })),
+            fetchEquipments({ tenant_id: tenantId }).catch(() => ({ items: [] })),
+            fetchExtras({ tenant_id: tenantId }).catch(() => ({ items: [] }))
+          ]);
+          
+          setServices(servicesData.items || servicesData);
+          setEquipments((equipmentsData.items || equipmentsData).map((eq: any) => ({
+            id: eq.id,
+            name: eq.name || eq.identifier || 'Equipamento',
+            type: eq.type,
+            serviceId: eq.service_id,
+            count: 1,
+            isActive: true,
+          })));
+          setExtras(extrasData.items || extrasData);
+        } catch (error) {
+          console.error('Erro ao carregar dados:', error);
+        }
+      };
+      
+      loadData();
     }
-  }, [tenantId]);
+  }, [tenantId, currentStep]);
 
-  // Fechar todos os modais ao trocar de etapa
+  // CORRIGIDO: useEffect para fechar modais
+  // Problema: Não tinha dependências corretas
+  // Solução: Adicionada dependência currentStep
   useEffect(() => {
-    setActiveModal(null);
-    setEditingService(null);
-    setEditingExtra(null);
+    if (currentStep) {
+      setActiveModal(null);
+      setEditingService(null);
+      setEditingExtra(null);
+    }
   }, [currentStep]);
 
   // Funções para manipular serviços
@@ -1690,8 +1718,8 @@ const OperatorPage: React.FC = () => {
       );
     };
 
-    // NOVO: Função para organizar tickets por serviço
-    const organizeTicketsByService = (tickets: Ticket[], activeServices: Service[]) => {
+    // NOVO: Função para organizar tickets por serviço - movida para useCallback
+    const organizeTicketsByService = useCallback((tickets: Ticket[], activeServices: Service[]) => {
       // Filtrar apenas tickets que estão na fila (in_queue), excluindo pending_payment
       const queueTickets = tickets.filter(ticket => ticket.status === 'in_queue');
       
@@ -1703,10 +1731,10 @@ const OperatorPage: React.FC = () => {
           ticket.service?.id === service.id
         )
       }));
-    };
+    }, []);
 
     // NOVO: Função para calcular prioridade do ticket
-    const getTicketPriority = (ticket: Ticket, currentServiceId: string): TicketPriority => {
+    const getTicketPriority = useCallback((ticket: Ticket, currentServiceId: string): TicketPriority => {
       const services = ticket.services || [ticket.service];
       const currentServiceIndex = services.findIndex(s => s.id === currentServiceId);
       
@@ -1716,16 +1744,16 @@ const OperatorPage: React.FC = () => {
         serviceOrder: currentServiceIndex + 1,
         totalServices: services.length
       };
-    };
+    }, []);
 
     // NOVO: Função para obter tickets de um serviço específico
-    const getTicketsForService = (serviceId: string) => {
+    const getTicketsForService = useCallback((serviceId: string) => {
       const queue = serviceQueues.find(q => q.serviceId === serviceId);
       return queue?.tickets || [];
-    };
+    }, [serviceQueues]);
 
     // NOVO: Função de chamada inteligente
-    const handleCallTicket = async (ticket: Ticket, serviceId: string) => {
+    const handleCallTicket = useCallback(async (ticket: Ticket, serviceId: string) => {
       console.log('🔍 DEBUG - Chamando ticket:', ticket.id, 'com equipamento:', selectedEquipment);
       console.log('🔍 DEBUG - Status do ticket:', ticket.status);
       
@@ -1761,19 +1789,21 @@ const OperatorPage: React.FC = () => {
         console.error('❌ ERRO ao chamar ticket:', error);
         alert('Erro ao chamar ticket!');
       }
-    };
+    }, [selectedEquipment, callTicket]);
 
     // NOVO: Efeito para organizar filas quando tickets ou serviços mudam
     useEffect(() => {
-      const activeServices = services.filter(s => s.isActive);
-      const queues = organizeTicketsByService(tickets, activeServices);
-      setServiceQueues(queues);
-      
-      // Definir primeira fila como ativa se não houver uma ativa
-      if (queues.length > 0 && !activeServiceTab) {
-        setActiveServiceTab(queues[0].serviceId);
+      if (currentStep === 'operation') {
+        const activeServices = services.filter(s => s.isActive);
+        const queues = organizeTicketsByService(tickets, activeServices);
+        setServiceQueues(queues);
+        
+        // Definir primeira fila como ativa se não houver uma ativa
+        if (queues.length > 0 && !activeServiceTab) {
+          setActiveServiceTabWithPersistence(queues[0].serviceId);
+        }
       }
-    }, [tickets, services, activeServiceTab]);
+    }, [tickets, services, currentStep, activeServiceTab, setActiveServiceTabWithPersistence, organizeTicketsByService]);
 
     return (
       <div className="p-4 space-y-8 max-w-6xl mx-auto">
@@ -2310,73 +2340,49 @@ const OperatorPage: React.FC = () => {
   );
   };
 
-  // Novo: Definir etapa inicial baseada no status da operação
+  // NOVO: useEffect unificado para gerenciar a etapa inicial e mudanças de status da operação
   useEffect(() => {
-    console.log('🔍 DEBUG - Verificando etapa inicial:', {
+    console.log('🔍 DEBUG - useEffect unificado:', {
       currentStep,
-      operationConfig,
-      isOperating: operationConfig?.isOperating
-    });
-    
-    if (currentStep === null) {
-      // Verificar se a operação já está ativa
-      if (operationConfig && operationConfig.isOperating) {
-        console.log('🔍 Operação já ativa, indo direto para o painel de operação');
-        setCurrentStepWithPersistence('operation');
-      } else {
-        console.log('🔍 Operação não ativa, iniciando configuração');
-        setCurrentStepWithPersistence('name');
-      }
-    }
-  }, [operationConfig, currentStep]);
-
-  // Fallback para garantir que sempre tenha uma etapa definida
-  useEffect(() => {
-    if (currentStep === null) {
-      setCurrentStepWithPersistence('name');
-    }
-  }, [currentStep]);
-
-  // Verificação adicional: se a operação estiver ativa e o usuário estiver em uma etapa de configuração,
-  // redirecionar para a operação
-  useEffect(() => {
-    if (operationConfig && operationConfig.isOperating && 
-        (currentStep === 'name' || currentStep === 'config')) {
-      console.log('🔍 Operação ativa detectada durante configuração, redirecionando para operação');
-      setCurrentStepWithPersistence('operation');
-    }
-  }, [operationConfig, currentStep]);
-
-  // NOVO: Verificar se a operação foi encerrada e redirecionar para setup
-  useEffect(() => {
-    console.log('🔍 DEBUG - Status da operação mudou:', {
-      isOperating: operationConfig?.isOperating,
-      currentStep,
-      operatorName,
+      operationConfig: operationConfig?.isOperating,
       isSavingConfig
     });
     
-    // Não redirecionar se estiver salvando configuração
+    // Não fazer nada se estiver salvando configuração
     if (isSavingConfig) {
-      console.log('🔍 Salvando configuração, ignorando mudanças de status');
+      console.log('🔍 Salvando configuração, ignorando mudanças');
       return;
     }
     
-    // Não redirecionar se acabou de salvar (aguardar um pouco)
-    if (currentStep === 'operation' && operationConfig?.isOperating) {
-      console.log('🔍 Operação ativa detectada, não redirecionando');
+    // Se não há etapa definida, definir baseado no status da operação
+    if (currentStep === null) {
+      if (operationConfig?.isOperating) {
+        console.log('🔍 Operação ativa, indo para operação');
+        setCurrentStepWithPersistence('operation');
+      } else {
+        console.log('🔍 Operação não ativa, indo para configuração');
+        setCurrentStepWithPersistence('name');
+      }
       return;
     }
     
-    // Se a operação não está ativa mas o usuário está na etapa de operação,
-    // significa que a operação foi encerrada
-    if (operationConfig && !operationConfig.isOperating && currentStep === 'operation') {
-      console.log('🔍 Operação encerrada detectada, redirecionando para setup');
-      alert('A operação foi encerrada. Você será redirecionado para o setup.');
-      clearOperatorState(); // Limpar estado do operador
-      setCurrentStepWithPersistence('name'); // Voltar para o início
+    // Se a operação está ativa e o usuário está em etapa de configuração, redirecionar
+    if (operationConfig?.isOperating && (currentStep === 'name' || currentStep === 'config')) {
+      console.log('🔍 Operação ativa detectada, redirecionando para operação');
+      setCurrentStepWithPersistence('operation');
+      return;
     }
-  }, [operationConfig?.isOperating, currentStep, isSavingConfig]);
+    
+    // Se a operação não está ativa e o usuário está na etapa de operação, redirecionar
+    // Mas apenas se não for o primeiro carregamento
+    if (!operationConfig?.isOperating && currentStep === 'operation' && operatorName) {
+      console.log('🔍 Operação encerrada, redirecionando para configuração');
+      // Não mostrar alerta aqui para evitar spam
+      clearOperatorState();
+      setCurrentStepWithPersistence('name');
+      return;
+    }
+  }, [operationConfig?.isOperating, currentStep, isSavingConfig, operatorName, setCurrentStepWithPersistence, clearOperatorState]);
 
   // Renderizar componente baseado na etapa atual
   if (!currentStep) {

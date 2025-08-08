@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useAuth } from './useAuth';
 
 export interface ServiceProgress {
@@ -21,17 +21,21 @@ export const useServiceProgress = () => {
   const { user } = useAuth();
   const [serviceProgress, setServiceProgress] = useState<Record<string, ServiceProgress[]>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
+  
+  // Usar useRef para evitar re-criação das funções
+  const userRef = useRef(user);
+  userRef.current = user;
 
   const fetchServiceProgress = useCallback(async (ticketId: string) => {
-    if (!user?.token) return [];
+    if (!userRef.current?.token) return [];
 
     setLoading(prev => ({ ...prev, [ticketId]: true }));
     
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/ticket-service-progress/ticket/${ticketId}`, {
         headers: {
-          'Authorization': `Bearer ${user.token}`,
-          'X-Tenant-Id': user.tenant_id || ''
+          'Authorization': `Bearer ${userRef.current.token}`,
+          'X-Tenant-Id': userRef.current.tenant_id || ''
         }
       });
       
@@ -50,17 +54,17 @@ export const useServiceProgress = () => {
     }
     
     return [];
-  }, [user]);
+  }, []);
 
   const startServiceProgress = useCallback(async (progressId: string, equipmentId?: string) => {
-    if (!user?.token) return null;
+    if (!userRef.current?.token) return null;
 
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/ticket-service-progress/${progressId}/start`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${user.token}`,
-          'X-Tenant-Id': user.tenant_id || '',
+          'Authorization': `Bearer ${userRef.current.token}`,
+          'X-Tenant-Id': userRef.current.tenant_id || '',
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ equipment_id: equipmentId })
@@ -84,17 +88,17 @@ export const useServiceProgress = () => {
     }
     
     return null;
-  }, [user]);
+  }, []);
 
   const completeServiceProgress = useCallback(async (progressId: string, notes?: string) => {
-    if (!user?.token) return null;
+    if (!userRef.current?.token) return null;
 
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/ticket-service-progress/${progressId}/complete`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${user.token}`,
-          'X-Tenant-Id': user.tenant_id || '',
+          'Authorization': `Bearer ${userRef.current.token}`,
+          'X-Tenant-Id': userRef.current.tenant_id || '',
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ operator_notes: notes })
@@ -118,17 +122,17 @@ export const useServiceProgress = () => {
     }
     
     return null;
-  }, [user]);
+  }, []);
 
   const cancelServiceProgress = useCallback(async (progressId: string, reason: string) => {
-    if (!user?.token) return null;
+    if (!userRef.current?.token) return null;
 
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/ticket-service-progress/${progressId}/cancel`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${user.token}`,
-          'X-Tenant-Id': user.tenant_id || '',
+          'Authorization': `Bearer ${userRef.current.token}`,
+          'X-Tenant-Id': userRef.current.tenant_id || '',
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ reason })
@@ -152,7 +156,7 @@ export const useServiceProgress = () => {
     }
     
     return null;
-  }, [user]);
+  }, []);
 
   const getProgressStatusColor = useCallback((status: string) => {
     switch (status) {

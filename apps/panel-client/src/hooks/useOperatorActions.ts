@@ -40,12 +40,10 @@ export function useOperatorActions() {
 
   const confirmPaymentMutation = useMutation({
     mutationFn: ({ ticketId }: { ticketId: string }) => ticketService.confirmPayment(ticketId),
-    onSuccess: (data) => {
-      console.log('🔍 DEBUG - confirmPayment onSuccess:', data);
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
       queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
       queryClient.invalidateQueries({ queryKey: ['tickets', 'pending-payment'] });
-      console.log('🔍 DEBUG - Queries invalidated for confirmPayment');
     },
   });
 
