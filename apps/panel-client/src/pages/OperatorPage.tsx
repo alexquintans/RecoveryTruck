@@ -623,6 +623,8 @@ const OperatorPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const queryClient = useQueryClient();
+  
+  // Proteção adicional para evitar erros quando dados estão carregando
   const {
     operationConfig,
     myTickets,
@@ -634,8 +636,12 @@ const OperatorPage: React.FC = () => {
     ...ticketQueueRest
   } = useTicketQueue();
 
-  // Garantir que myTickets sempre seja um array
+  // Garantir que todos os arrays sejam sempre válidos
   const safeMyTickets = myTickets || [];
+  const safeTickets = tickets || [];
+  const safeEquipment = equipment || [];
+  const safePendingPaymentTickets = pendingPaymentTickets || [];
+  const safeOperationConfig = operationConfig || { isOperating: false, serviceDuration: 10 };
 
   // Obter tenantId do usuário
   const tenantId = user?.tenant_id || '';
@@ -1824,7 +1830,7 @@ const OperatorPage: React.FC = () => {
     // Problema: Dependências estavam causando loops infinitos
     // Solução: Memoizar as dependências e usar useCallback
     const activeServices = useMemo(() => (services || []).filter(s => s.isActive), [services]);
-    const organizedQueues = useMemo(() => organizeTicketsByService(tickets || [], activeServices), [tickets, activeServices]);
+    const organizedQueues = useMemo(() => organizeTicketsByService(safeTickets, activeServices), [safeTickets, activeServices]);
     
     useEffect(() => {
       if (currentStep === 'operation') {
@@ -2564,12 +2570,42 @@ const OperatorPage: React.FC = () => {
 
   // CORRIGIDO: useEffect para carregar dados quando operação estiver ativa
   useEffect(() => {
-    if (operationConfig?.isOperating && tenantId) {
+    if (safeOperationConfig?.isOperating && tenantId) {
       console.log('🔄 Operação ativa detectada, carregando dados...');
       refetch();
       refetchOperation();
     }
-  }, [operationConfig?.isOperating, tenantId, refetch, refetchOperation]);
+  }, [safeOperationConfig?.isOperating, tenantId, refetch, refetchOperation]);
+
+  // NOVO: Limpar cache quando operação muda de estado
+  useEffect(() => {
+    const clearCacheOnOperationChange = () => {
+      console.log('🧹 Limpando cache devido a mudança de operação');
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['equipment'] });
+      queryClient.invalidateQueries({ queryKey: ['operation'] });
+    };
+
+    // Limpar cache quando operação para de estar ativa
+    if (!safeOperationConfig?.isOperating) {
+      clearCacheOnOperationChange();
+    }
+  }, [safeOperationConfig?.isOperating, queryClient]);
+
+  // NOVO: Verificar se os dados estão carregando
+  const isLoading = !user || !tenantId || !safeOperationConfig;
+
+  // Se ainda está carregando, mostrar loading
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando painel do operador...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Renderizar componente baseado na etapa atual
   if (!currentStep) {
