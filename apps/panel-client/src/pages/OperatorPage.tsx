@@ -1745,17 +1745,42 @@ const OperatorPage: React.FC = () => {
 
     // CORRIGIDO: Função para organizar tickets por serviço - definida como função normal
     const organizeTicketsByService = (tickets: Ticket[], activeServices: Service[]) => {
-      // Filtrar apenas tickets que estão na fila (in_queue), excluindo pending_payment
-      const queueTickets = tickets.filter(ticket => ticket.status === 'in_queue');
+      // Proteção contra dados undefined/null
+      if (!tickets || !Array.isArray(tickets)) {
+        console.warn('organizeTicketsByService: tickets não é um array válido:', tickets);
+        return [];
+      }
       
-      return activeServices.map(service => ({
-        serviceId: service.id,
-        serviceName: service.name,
-        tickets: queueTickets.filter(ticket => 
-          ticket.services?.some(s => s.id === service.id) ||
-          ticket.service?.id === service.id
-        )
-      }));
+      if (!activeServices || !Array.isArray(activeServices)) {
+        console.warn('organizeTicketsByService: activeServices não é um array válido:', activeServices);
+        return [];
+      }
+      
+      // Filtrar apenas tickets que estão na fila (in_queue), excluindo pending_payment
+      const queueTickets = tickets.filter(ticket => {
+        if (!ticket || typeof ticket !== 'object') return false;
+        return ticket.status === 'in_queue';
+      });
+      
+      return activeServices.map(service => {
+        if (!service || !service.id) {
+          console.warn('organizeTicketsByService: serviço inválido:', service);
+          return { serviceId: '', serviceName: '', tickets: [] };
+        }
+        
+        return {
+          serviceId: service.id,
+          serviceName: service.name || '',
+          tickets: queueTickets.filter(ticket => {
+            if (!ticket) return false;
+            
+            // Verificar se o ticket tem serviços
+            const ticketServices = ticket.services || (ticket.service ? [ticket.service] : []);
+            
+            return ticketServices.some(s => s && s.id === service.id);
+          })
+        };
+      });
     };
 
     // CORRIGIDO: Função para calcular prioridade do ticket - definida como função normal
@@ -1829,24 +1854,53 @@ const OperatorPage: React.FC = () => {
     // CORRIGIDO: Efeito para organizar filas quando tickets ou serviços mudam
     // Problema: Dependências estavam causando loops infinitos
     // Solução: Memoizar as dependências e usar useCallback
-    const activeServices = useMemo(() => (services || []).filter(s => s.isActive), [services]);
-    const organizedQueues = useMemo(() => organizeTicketsByService(safeTickets, activeServices), [safeTickets, activeServices]);
+    const activeServices = useMemo(() => {
+      if (!services || !Array.isArray(services)) {
+        console.warn('activeServices useMemo: services não é um array válido:', services);
+        return [];
+      }
+      return services.filter(s => s && s.isActive);
+    }, [services]);
+    
+    const organizedQueues = useMemo(() => {
+      try {
+        return organizeTicketsByService(safeTickets, activeServices);
+      } catch (error) {
+        console.error('organizedQueues useMemo: erro ao organizar filas:', error);
+        return [];
+      }
+    }, [safeTickets, activeServices]);
     
     useEffect(() => {
       if (currentStep === 'operation') {
-        setServiceQueues(organizedQueues);
-        
-        // Definir primeira fila como ativa se não houver uma ativa
-        if (organizedQueues.length > 0 && !activeServiceTab) {
-          setActiveServiceTab(organizedQueues[0].serviceId);
-          // Usar try-catch para evitar erros
-          try {
-            if (typeof updatePreference === 'function') {
-              updatePreference('activeServiceTab', organizedQueues[0].serviceId);
-            }
-          } catch (error) {
-            console.error('Erro ao atualizar preferência:', error);
+        try {
+          // Verificar se organizedQueues é válido
+          if (!organizedQueues || !Array.isArray(organizedQueues)) {
+            console.warn('useEffect: organizedQueues não é válido:', organizedQueues);
+            setServiceQueues([]);
+            return;
           }
+          
+          setServiceQueues(organizedQueues);
+          
+          // Definir primeira fila como ativa se não houver uma ativa
+          if (organizedQueues.length > 0 && !activeServiceTab) {
+            const firstQueue = organizedQueues[0];
+            if (firstQueue && firstQueue.serviceId) {
+              setActiveServiceTab(firstQueue.serviceId);
+              // Usar try-catch para evitar erros
+              try {
+                if (typeof updatePreference === 'function') {
+                  updatePreference('activeServiceTab', firstQueue.serviceId);
+                }
+              } catch (error) {
+                console.error('Erro ao atualizar preferência:', error);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Erro no useEffect de organizar filas:', error);
+          setServiceQueues([]);
         }
       }
     }, [organizedQueues, currentStep, activeServiceTab, updatePreference]);
