@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTicketQueue } from '../hooks/useTicketQueue';
 import { useOperatorActions } from '../hooks/useOperatorActions';
@@ -649,65 +649,14 @@ const OperatorPage: React.FC = () => {
 
   const getTicketProgressSummary = useCallback((ticketId: string) => {
     const progress = serviceProgress[ticketId];
-    if (!progress || progress.length === 0) return { completed: 0, total: 0, inProgress: 0, pending: 0 };
+    if (!progress || progress.length === 0) return { completed: 0, total: 0 };
     
     const completed = progress.filter(p => p.status === 'completed').length;
-    const inProgress = progress.filter(p => p.status === 'in_progress').length;
-    const pending = progress.filter(p => p.status === 'pending').length;
     const total = progress.length;
     
-    return { completed, total, inProgress, pending };
+    return { completed, total };
   }, [serviceProgress]);
 
-  const canCompleteTicket = useCallback((ticketId: string) => {
-    const progress = serviceProgress[ticketId];
-    if (!progress || progress.length === 0) return false;
-    
-    return progress.every(p => p.status === 'completed');
-  }, [serviceProgress]);
-
-  // CORRIGIDO: ProgressSummary definido como componente normal, não useCallback
-  const ProgressSummary = ({ ticketId }: { ticketId: string }) => {
-    const { completed, total } = getTicketProgressSummary(ticketId);
-    const status = getTicketOverallStatus(ticketId);
-    
-    if (total === 0) {
-      return (
-        <div className="text-sm text-gray-500">
-          Carregando progresso dos serviços...
-        </div>
-      );
-    }
-    
-    // Função local para determinar a cor do status
-    const getStatusColor = (status: string) => {
-      switch (status) {
-        case 'pending': return 'bg-gray-100 text-gray-700 border-gray-300';
-        case 'in_progress': return 'bg-blue-100 text-blue-700 border-blue-300';
-        case 'completed': return 'bg-green-100 text-green-700 border-green-300';
-        case 'cancelled': return 'bg-red-100 text-red-700 border-red-300';
-        default: return 'bg-gray-100 text-gray-700 border-gray-300';
-      }
-    };
-    
-    return (
-      <div className="text-sm">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="font-medium">Progresso Geral:</span>
-          <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(status)}`}>
-            {completed} / {total} {status === 'completed' ? '✅' : status === 'in_progress' ? '🔄' : '⏳'}
-          </span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div 
-            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${total > 0 ? (completed / total) * 100 : 0}%` }}
-          />
-        </div>
-      </div>
-    );
-  };
-  
   // CORRIGIDO: useEffect para buscar configuração de pagamento
   // Problema: Não tinha dependências corretas
   // Solução: Adicionadas dependências tenantId e currentStep
@@ -738,8 +687,6 @@ const OperatorPage: React.FC = () => {
   const isPaymentNone = currentPaymentModes.includes('none');
   
   // CORRIGIDO: useEffect para buscar dados da API
-  // Problema: Não tinha dependências corretas
-  // Solução: Adicionadas dependências tenantId e currentStep
   useEffect(() => {
     if (tenantId && (currentStep === 'config' || currentStep === 'operation')) {
       const loadData = async () => {
@@ -770,8 +717,6 @@ const OperatorPage: React.FC = () => {
   }, [tenantId, currentStep]);
 
   // CORRIGIDO: useEffect para fechar modais
-  // Problema: Não tinha dependências corretas
-  // Solução: Adicionada dependência currentStep
   useEffect(() => {
     if (currentStep) {
       setActiveModal(null);
@@ -1827,24 +1772,29 @@ const OperatorPage: React.FC = () => {
     };
 
     // CORRIGIDO: Efeito para organizar filas quando tickets ou serviços mudam
+    // Problema: Dependências estavam causando loops infinitos
+    // Solução: Memoizar as dependências e usar useCallback
+    const activeServices = useMemo(() => services.filter(s => s.isActive), [services]);
+    const organizedQueues = useMemo(() => organizeTicketsByService(tickets, activeServices), [tickets, activeServices]);
+    
     useEffect(() => {
       if (currentStep === 'operation') {
-        const activeServices = services.filter(s => s.isActive);
-        const queues = organizeTicketsByService(tickets, activeServices);
-        setServiceQueues(queues);
+        setServiceQueues(organizedQueues);
         
         // Definir primeira fila como ativa se não houver uma ativa
-        if (queues.length > 0 && !activeServiceTab) {
-          setActiveServiceTab(queues[0].serviceId);
+        if (organizedQueues.length > 0 && !activeServiceTab) {
+          setActiveServiceTab(organizedQueues[0].serviceId);
           // Usar try-catch para evitar erros
           try {
-            updatePreference('activeServiceTab', queues[0].serviceId);
+            if (typeof updatePreference === 'function') {
+              updatePreference('activeServiceTab', organizedQueues[0].serviceId);
+            }
           } catch (error) {
             console.error('Erro ao atualizar preferência:', error);
           }
         }
       }
-    }, [tickets, services, currentStep, activeServiceTab, updatePreference]);
+    }, [organizedQueues, currentStep, activeServiceTab, updatePreference]);
 
     return (
       <div className="p-4 space-y-8 max-w-6xl mx-auto">
@@ -2422,10 +2372,14 @@ const OperatorPage: React.FC = () => {
   };
 
   // CORRIGIDO: useEffect unificado para gerenciar a etapa inicial e mudanças de status da operação
+  // Problema: Dependências estavam causando loops infinitos
+  // Solução: Memoizar as funções e usar useCallback para evitar recriações
+  const isOperating = operationConfig?.isOperating;
+  
   useEffect(() => {
     console.log('🔍 DEBUG - useEffect unificado:', {
       currentStep,
-      operationConfig: operationConfig?.isOperating,
+      operationConfig: isOperating,
       isSavingConfig
     });
     
@@ -2437,7 +2391,7 @@ const OperatorPage: React.FC = () => {
     
     // Se não há etapa definida, definir baseado no status da operação
     if (currentStep === null) {
-      if (operationConfig?.isOperating) {
+      if (isOperating) {
         console.log('🔍 Operação ativa, indo para operação');
         setCurrentStep('operation');
         localStorage.setItem('operator_current_step', 'operation');
@@ -2450,7 +2404,7 @@ const OperatorPage: React.FC = () => {
     }
     
     // Se a operação está ativa e o usuário está em etapa de configuração, redirecionar
-    if (operationConfig?.isOperating && (currentStep === 'name' || currentStep === 'config')) {
+    if (isOperating && (currentStep === 'name' || currentStep === 'config')) {
       console.log('🔍 Operação ativa detectada, redirecionando para operação');
       setCurrentStep('operation');
       localStorage.setItem('operator_current_step', 'operation');
@@ -2459,9 +2413,8 @@ const OperatorPage: React.FC = () => {
     
     // Se a operação não está ativa e o usuário está na etapa de operação, redirecionar
     // Mas apenas se não for o primeiro carregamento
-    if (!operationConfig?.isOperating && currentStep === 'operation' && operatorName) {
+    if (!isOperating && currentStep === 'operation') {
       console.log('🔍 Operação encerrada, redirecionando para configuração');
-      // Não mostrar alerta aqui para evitar spam
       // Limpar estado diretamente
       localStorage.removeItem('operator_current_step');
       localStorage.removeItem('operator_config');
@@ -2477,11 +2430,11 @@ const OperatorPage: React.FC = () => {
       setActiveTab('operation');
       setActiveServiceTab('');
       
-      // Usar try-catch para evitar erros
+      // Limpar configuração e preferências de forma segura
       try {
-        if (clearConfig) clearConfig();
-        if (clearPreferences) clearPreferences();
-        if (queryClient) queryClient.clear();
+        if (typeof clearConfig === 'function') clearConfig();
+        if (typeof clearPreferences === 'function') clearPreferences();
+        if (queryClient && typeof queryClient.clear === 'function') queryClient.clear();
       } catch (error) {
         console.error('Erro ao limpar estado:', error);
       }
@@ -2489,7 +2442,7 @@ const OperatorPage: React.FC = () => {
       localStorage.setItem('operator_current_step', 'name');
       return;
     }
-  }, [operationConfig?.isOperating, currentStep, isSavingConfig, operatorName, clearConfig, clearPreferences, queryClient]);
+  }, [isOperating, currentStep, isSavingConfig, clearConfig, clearPreferences, queryClient]);
 
   // Renderizar componente baseado na etapa atual
   if (!currentStep) {

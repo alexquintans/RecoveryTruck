@@ -5,6 +5,7 @@ import { useAuth } from './useAuth';
 import { useWebSocket } from '@totem/hooks';
 import { getAuthToken } from '@totem/utils';
 import { equipmentService } from '../services/equipmentService';
+import { useMemo, useCallback } from 'react';
 
 export function useTicketQueue() {
   const { isAuthenticated, user } = useAuth();
@@ -89,24 +90,26 @@ export function useTicketQueue() {
     refetchInterval: 30_000, // Refetch a cada 30 segundos
   });
 
-  // Construir URL de WebSocket
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  let baseWs = (import.meta as any).env?.VITE_WS_URL || 'wss://recoverytruck-production.up.railway.app/ws';
-  
-  // Forçar uso de wss:// em produção (corrigir se a variável estiver com ws://)
-  if (baseWs.startsWith('ws://') && window.location.protocol === 'https:') {
-    baseWs = baseWs.replace('ws://', 'wss://');
-  }
-  const tenantId = user?.tenant_id || (import.meta as any).env?.VITE_TENANT_ID || '7f02a566-2406-436d-b10d-90ecddd3fe2d';
-  const token = getAuthToken();
-  
-  // Corrigir URL do WebSocket para usar query parameters
-  const wsUrl = `${baseWs}?tenant_id=${tenantId}&client_type=operator${token ? `&token=${token}` : ''}`;
-  
-  // Reativando WebSocket
-  useWebSocket({
-    url: wsUrl,
+  // Memoizar a URL do WebSocket para evitar recriações
+  const wsUrl = useMemo(() => {
+    // Construir URL de WebSocket
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    let baseWs = (import.meta as any).env?.VITE_WS_URL || 'wss://recoverytruck-production.up.railway.app/ws';
+    
+    // Forçar uso de wss:// em produção (corrigir se a variável estiver com ws://)
+    if (baseWs.startsWith('ws://') && window.location.protocol === 'https:') {
+      baseWs = baseWs.replace('ws://', 'wss://');
+    }
+    const tenantId = user?.tenant_id || (import.meta as any).env?.VITE_TENANT_ID || '7f02a566-2406-436d-b10d-90ecddd3fe2d';
+    const token = getAuthToken();
+    
+    // Corrigir URL do WebSocket para usar query parameters
+    return `${baseWs}?tenant_id=${tenantId}&client_type=operator${token ? `&token=${token}` : ''}`;
+  }, [user?.tenant_id]);
+
+  // Memoizar as callbacks do WebSocket para evitar recriações
+  const wsCallbacks = useMemo(() => ({
     onOpen: () => {
       console.log('🔌 WebSocket conectado com sucesso!');
     },
@@ -118,7 +121,6 @@ export function useTicketQueue() {
       console.log('🔌 WebSocket fechado');
       // Não deixar o fechamento do WebSocket quebrar a aplicação
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onMessage: (msg: any) => {
       if (!msg || typeof msg !== 'object') return;
       const { type, data } = msg as any;
@@ -152,6 +154,12 @@ export function useTicketQueue() {
         queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
       }
     },
+  }), [queryClient]);
+
+  // Reativando WebSocket com callbacks memoizados
+  useWebSocket({
+    url: wsUrl,
+    ...wsCallbacks,
   });
 
   const normalizeTicket = (t: any) => {

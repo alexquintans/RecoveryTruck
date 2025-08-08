@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 
 interface UseWebSocketOptions {
   url: string;
@@ -25,6 +25,12 @@ export function useWebSocket({
   const reconnectTimeoutRef = useRef<number | null>(null);
   const attemptRef = useRef(0);
 
+  // Memoizar as callbacks para evitar recriações desnecessárias
+  const memoizedOnMessage = useCallback(onMessage || (() => {}), [onMessage]);
+  const memoizedOnOpen = useCallback(onOpen || (() => {}), [onOpen]);
+  const memoizedOnClose = useCallback(onClose || (() => {}), [onClose]);
+  const memoizedOnError = useCallback(onError || (() => {}), [onError]);
+
   const connect = useCallback(() => {
     try {
       console.log('🔍 Panel WebSocket - Conectando:', url);
@@ -34,24 +40,24 @@ export function useWebSocket({
         console.log('🔍 Panel WebSocket - Conectado com sucesso');
         setIsConnected(true);
         attemptRef.current = 0;
-        if (onOpen) onOpen();
+        memoizedOnOpen();
       };
 
       socket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
           setLastMessage(data);
-          if (onMessage) onMessage(data);
+          memoizedOnMessage(data);
         } catch (error) {
           setLastMessage(event.data);
-          if (onMessage) onMessage(event.data);
+          memoizedOnMessage(event.data);
         }
       };
 
       socket.onclose = () => {
         console.log('🔍 Panel WebSocket - Conexão fechada');
         setIsConnected(false);
-        if (onClose) onClose();
+        memoizedOnClose();
         
         // Reconexão exponencial
         if (attemptRef.current < reconnectAttempts) {
@@ -71,14 +77,14 @@ export function useWebSocket({
 
       socket.onerror = (error) => {
         console.error('🔍 Panel WebSocket - Erro na conexão:', error);
-        if (onError) onError(error);
+        memoizedOnError(error);
       };
 
       socketRef.current = socket;
     } catch (error) {
       console.error('Erro ao conectar WebSocket:', error);
     }
-  }, [url, reconnectInterval, reconnectAttempts]);
+  }, [url, reconnectInterval, reconnectAttempts, memoizedOnOpen, memoizedOnClose, memoizedOnError, memoizedOnMessage]);
 
   const disconnect = useCallback(() => {
     if (socketRef.current) {
@@ -100,6 +106,9 @@ export function useWebSocket({
     return false;
   }, [isConnected]);
 
+  // Memoizar a URL para evitar reconexões desnecessárias
+  const memoizedUrl = useMemo(() => url, [url]);
+
   useEffect(() => {
     console.log('🔍 Panel WebSocket - useEffect - Iniciando conexão');
     connect();
@@ -108,7 +117,7 @@ export function useWebSocket({
       console.log('🔍 Panel WebSocket - useEffect - Limpando conexão');
       disconnect();
     };
-  }, [url]); // Apenas reconectar se a URL mudar
+  }, [memoizedUrl, connect, disconnect]);
 
   return {
     isConnected,
