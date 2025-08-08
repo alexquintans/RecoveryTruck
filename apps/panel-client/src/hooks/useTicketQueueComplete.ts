@@ -22,6 +22,10 @@ export function useTicketQueueComplete() {
       // Construir URL base do WebSocket
       let baseWs = (import.meta as any).env?.VITE_WS_URL || 'wss://recoverytruck-production.up.railway.app/ws';
       
+      // Debug: mostrar a URL base
+      console.log('🔍 DEBUG - VITE_WS_URL:', (import.meta as any).env?.VITE_WS_URL);
+      console.log('🔍 DEBUG - baseWs inicial:', baseWs);
+      
       // Garantir que a URL base termina com /ws
       if (!baseWs.endsWith('/ws')) {
         if (baseWs.endsWith('/')) {
@@ -31,15 +35,18 @@ export function useTicketQueueComplete() {
         }
       }
       
+      console.log('🔍 DEBUG - baseWs após correção:', baseWs);
+      
       // Forçar uso de wss:// em produção
       if (baseWs.startsWith('ws://') && window.location.protocol === 'https:') {
         baseWs = baseWs.replace('ws://', 'wss://');
+        console.log('🔍 DEBUG - baseWs após forçar wss:', baseWs);
       }
       
       const token = localStorage.getItem('auth_token');
       const url = `${baseWs}?tenant_id=${tenantId}&client_type=operator${token ? `&token=${token}` : ''}`;
       
-      console.log('WebSocket URL construída:', url);
+      console.log('🔍 DEBUG - WebSocket URL final construída:', url);
       return url;
     } catch (error) {
       console.error('Erro ao construir URL do WebSocket:', error);
