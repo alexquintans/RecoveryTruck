@@ -698,14 +698,21 @@ const OperatorPage: React.FC = () => {
   
   // CORRIGIDO: useEffect para buscar dados da API
   useEffect(() => {
-    if (tenantId && (currentStep === 'config' || currentStep === 'operation')) {
+    if (tenantId) {
       const loadData = async () => {
         try {
+          console.log('🔄 Carregando dados para tenant:', tenantId);
           const [servicesData, equipmentsData, extrasData] = await Promise.all([
             fetchServices({ tenant_id: tenantId }).catch(() => ({ items: [] })),
             fetchEquipments({ tenant_id: tenantId }).catch(() => ({ items: [] })),
             fetchExtras({ tenant_id: tenantId }).catch(() => ({ items: [] }))
           ]);
+          
+          console.log('✅ Dados carregados:', { 
+            services: servicesData.items || servicesData,
+            equipments: equipmentsData.items || equipmentsData,
+            extras: extrasData.items || extrasData
+          });
           
           setServices(servicesData.items || servicesData);
           setEquipments((equipmentsData.items || equipmentsData).map((eq: any) => ({
@@ -718,13 +725,13 @@ const OperatorPage: React.FC = () => {
           })));
           setExtras(extrasData.items || extrasData);
         } catch (error) {
-          console.error('Erro ao carregar dados:', error);
+          console.error('❌ Erro ao carregar dados:', error);
         }
       };
       
       loadData();
     }
-  }, [tenantId, currentStep]);
+  }, [tenantId]);
 
   // CORRIGIDO: useEffect para fechar modais
   useEffect(() => {
@@ -1080,9 +1087,9 @@ const OperatorPage: React.FC = () => {
 
           {/* Resumo visual no topo */}
           <ResumoVisual
-            servicos={services.filter(s => s.isActive).length}
-            equipamentos={equipments.filter(e => e.isActive).length}
-            extras={extras.filter(e => e.isActive).length}
+            servicos={(services || []).filter(s => s.isActive).length}
+            equipamentos={(equipments || []).filter(e => e.isActive).length}
+            extras={(extras || []).filter(e => e.isActive).length}
             tickets={safeMyTickets.length}
           />
 
@@ -1506,13 +1513,13 @@ const OperatorPage: React.FC = () => {
     // );
 
     // Gerar equipamentos baseado na configuração
-    const availableEquipments = equipments
+    const availableEquipments = (equipments || [])
       .filter(eq => eq.isActive && eq.count > 0)
       .map(eq => ({
         id: eq.id,
         name: eq.name,
-          type: eq.type,
-          status: 'available',
+        type: eq.type,
+        status: 'available',
       }));
 
     // Ícones de equipamentos
@@ -1782,8 +1789,8 @@ const OperatorPage: React.FC = () => {
     // CORRIGIDO: Efeito para organizar filas quando tickets ou serviços mudam
     // Problema: Dependências estavam causando loops infinitos
     // Solução: Memoizar as dependências e usar useCallback
-    const activeServices = useMemo(() => services.filter(s => s.isActive), [services]);
-    const organizedQueues = useMemo(() => organizeTicketsByService(tickets, activeServices), [tickets, activeServices]);
+    const activeServices = useMemo(() => (services || []).filter(s => s.isActive), [services]);
+    const organizedQueues = useMemo(() => organizeTicketsByService(tickets || [], activeServices), [tickets, activeServices]);
     
     useEffect(() => {
       if (currentStep === 'operation') {
@@ -1847,9 +1854,9 @@ const OperatorPage: React.FC = () => {
             </button>
           </div>
         <ResumoVisual
-          servicos={services.filter(s => s.isActive).length}
-          equipamentos={equipments.filter(e => e.isActive).length}
-          extras={extras.filter(e => e.isActive).length}
+          servicos={(services || []).filter(s => s.isActive).length}
+          equipamentos={(equipments || []).filter(e => e.isActive).length}
+          extras={(extras || []).filter(e => e.isActive).length}
           tickets={safeMyTickets.length}
         />
         </div>
@@ -2511,6 +2518,15 @@ const OperatorPage: React.FC = () => {
       return;
     }
   }, [isOperating, currentStep, isSavingConfig, clearConfig, clearPreferences, queryClient]);
+
+  // CORRIGIDO: useEffect para carregar dados quando operação estiver ativa
+  useEffect(() => {
+    if (operationConfig?.isOperating && tenantId) {
+      console.log('🔄 Operação ativa detectada, carregando dados...');
+      refetch();
+      refetchOperation();
+    }
+  }, [operationConfig?.isOperating, tenantId, refetch, refetchOperation]);
 
   // Renderizar componente baseado na etapa atual
   if (!currentStep) {
