@@ -2631,10 +2631,21 @@ const OperatorPage: React.FC = () => {
 
   // CORRIGIDO: useEffect para carregar dados quando operação estiver ativa
   useEffect(() => {
-    if (safeOperationConfig?.isOperating && tenantId) {
-      console.log('🔄 Operação ativa detectada, carregando dados...');
-      refetch();
-      refetchOperation();
+    try {
+      if (safeOperationConfig?.isOperating && tenantId) {
+        console.log('🔄 Operação ativa detectada, carregando dados...');
+        // Adicionar delay para evitar problemas de timing
+        setTimeout(() => {
+          try {
+            refetch();
+            refetchOperation();
+          } catch (error) {
+            console.error('Erro ao refetch dados:', error);
+          }
+        }, 100);
+      }
+    } catch (error) {
+      console.error('Erro no useEffect de carregar dados:', error);
     }
   }, [safeOperationConfig?.isOperating, tenantId, refetch, refetchOperation]);
 
@@ -2655,7 +2666,8 @@ const OperatorPage: React.FC = () => {
 
   // NOVO: Verificar se os dados estão carregando - MELHORADO
   const isLoading = !user || !tenantId || !safeOperationConfig || !services || !equipments || !extras || 
-                   !Array.isArray(services) || !Array.isArray(equipments) || !Array.isArray(extras);
+                   !Array.isArray(services) || !Array.isArray(equipments) || !Array.isArray(extras) ||
+                   !safeMyTickets || !safeTickets || !safeEquipment;
 
   // Se ainda está carregando, mostrar loading
   if (isLoading) {
@@ -2671,6 +2683,9 @@ const OperatorPage: React.FC = () => {
             {!services && 'Carregando serviços...'}
             {!equipments && 'Carregando equipamentos...'}
             {!extras && 'Carregando extras...'}
+            {!safeMyTickets && 'Carregando tickets...'}
+            {!safeTickets && 'Carregando fila...'}
+            {!safeEquipment && 'Carregando equipamentos...'}
           </p>
         </div>
       </div>

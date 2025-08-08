@@ -73,7 +73,7 @@ app.include_router(customers.router, prefix="/customers", tags=["customers"])
 app.include_router(metrics.router, prefix="/metrics", tags=["metrics"])
 app.include_router(operator_config.router, prefix="/operator", tags=["operator"])
 app.include_router(payment_sessions.router, prefix="/payment-sessions", tags=["payments"])
-app.include_router(websocket.router, prefix="/ws", tags=["websocket"])
+app.include_router(websocket.router, prefix="", tags=["websocket"])  # Sem prefixo para evitar /ws/ws
 app.include_router(ticket_service_progress.router, prefix="/api", tags=["ticket-service-progress"])
 
 # Endpoint WebSocket de teste
