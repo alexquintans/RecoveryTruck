@@ -129,41 +129,61 @@ export function useTicketQueue() {
       
       if (type === 'queue_update') {
         console.log('🔄 Atualizando fila via WebSocket');
-        queryClient.setQueryData(['tickets', 'queue'], data);
+        try {
+          queryClient.setQueryData(['tickets', 'queue'], data);
+        } catch (error) {
+          console.error('Erro ao atualizar fila via WebSocket:', error);
+        }
       }
       if (type === 'equipment_update') {
         console.log('🔄 Atualizando equipamentos via WebSocket');
-        queryClient.invalidateQueries({ queryKey: ['equipment'] });
+        try {
+          queryClient.invalidateQueries({ queryKey: ['equipment'] });
+        } catch (error) {
+          console.error('Erro ao invalidar equipamentos via WebSocket:', error);
+        }
       }
       if (type === 'ticket_update') {
         console.log('🔄 Atualizando ticket específico via WebSocket');
-        // Atualizar ticket-specifico dentro do cache
-        queryClient.setQueryData<any>(['tickets', 'queue'], (old: any) => {
-          if (!old || !old.items) return old;
-          const items = old.items.map((t: any) => (t.id === data.id ? { ...t, ...data } : t));
-          return { ...old, items };
-        });
-        
-        // Também invalidar a query de meus tickets
-        queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+        try {
+          // Atualizar ticket-specifico dentro do cache
+          queryClient.setQueryData<any>(['tickets', 'queue'], (old: any) => {
+            if (!old || !old.items) return old;
+            const items = old.items.map((t: any) => (t.id === data.id ? { ...t, ...data } : t));
+            return { ...old, items };
+          });
+          
+          // Também invalidar a query de meus tickets
+          queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+        } catch (error) {
+          console.error('Erro ao atualizar ticket via WebSocket:', error);
+        }
       }
       if (type === 'ticket_called') {
         console.log('🔄 Ticket chamado via WebSocket');
-        // Invalidar ambas as queries quando um ticket é chamado
-        queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
-        queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+        try {
+          // Invalidar ambas as queries quando um ticket é chamado
+          queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
+          queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+        } catch (error) {
+          console.error('Erro ao invalidar tickets via WebSocket:', error);
+        }
       }
       if (type === 'payment_update') {
         console.log('🔄 Atualização de pagamento via WebSocket:', data);
-        // Invalidar queries relacionadas a pagamento quando um pagamento for confirmado
-        queryClient.invalidateQueries({ queryKey: ['tickets', 'pending-payment'] });
-        queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
-        queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+        try {
+          // Invalidar queries relacionadas a pagamento quando um pagamento for confirmado
+          queryClient.invalidateQueries({ queryKey: ['tickets', 'pending-payment'] });
+          queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
+          queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+        } catch (error) {
+          console.error('Erro ao invalidar pagamentos via WebSocket:', error);
+        }
       }
     },
   }), [queryClient]);
 
-  // Reativando WebSocket com callbacks memoizados
+  // Reativando WebSocket com callbacks memoizados - apenas quando autenticado
   useWebSocket({
     url: wsUrl,
     ...wsCallbacks,

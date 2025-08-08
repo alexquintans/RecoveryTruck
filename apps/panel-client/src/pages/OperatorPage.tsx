@@ -2593,7 +2593,7 @@ const OperatorPage: React.FC = () => {
   }, [safeOperationConfig?.isOperating, queryClient]);
 
   // NOVO: Verificar se os dados estão carregando
-  const isLoading = !user || !tenantId || !safeOperationConfig;
+  const isLoading = !user || !tenantId || !safeOperationConfig || !services || !equipments || !extras;
 
   // Se ainda está carregando, mostrar loading
   if (isLoading) {
