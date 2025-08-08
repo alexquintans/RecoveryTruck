@@ -47,6 +47,7 @@ from services.logging import setup_logging
 from models import Extra
 from models import Tenant
 from models import OperationConfig
+from models import TicketServiceProgress
 
 # Import do MercadoPagoAdapter será feito localmente quando necessário
 
@@ -58,6 +59,10 @@ router = APIRouter(
 
 class CallTicketRequest(BaseModel):
     equipment_id: str
+
+class CallServiceRequest(BaseModel):
+    equipment_id: str
+    service_id: str
 
 @router.get("/my-tickets", response_model=List[TicketForPanel], tags=["operator"])
 async def get_my_tickets(
@@ -907,6 +912,123 @@ async def call_ticket(
     logger.info(f"🔍 DEBUG - Call ticket concluído com sucesso")
     
     return result
+
+@router.post("/{ticket_id}/call-service")
+async def call_ticket_service(
+    ticket_id: str,
+    request: CallServiceRequest,
+    db: Session = Depends(get_db),
+    current_operator = Depends(get_current_operator)
+):
+    """Chama um serviço específico de um ticket"""
+    logger.info(f"🔍 DEBUG - Chamando serviço {request.service_id} do ticket {ticket_id} com equipamento {request.equipment_id}")
+    
+    # Buscar ticket, serviço e equipamento
+    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    ticket_service = db.query(TicketService).filter(
+        TicketService.ticket_id == ticket_id,
+        TicketService.service_id == request.service_id
+    ).first()
+    equipment = db.query(Equipment).filter(Equipment.id == request.equipment_id).first()
+    
+    if not ticket or not ticket_service or not equipment:
+        raise HTTPException(status_code=404, detail="Ticket, serviço ou equipamento não encontrado")
+    
+    # Verificar se o ticket está na fila ou já foi chamado
+    if ticket.status not in [TicketStatus.IN_QUEUE.value, TicketStatus.CALLED.value]:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Ticket #{ticket.ticket_number} não está disponível para chamada. Status atual: {ticket.status}"
+        )
+    
+    # Verificar se o equipamento é compatível com o serviço
+    if equipment.service_id and str(equipment.service_id) != request.service_id:
+        raise HTTPException(status_code=400, detail="Equipamento selecionado não é compatível com o serviço.")
+    
+    # Verificar se o equipamento está disponível
+    if equipment.status != EquipmentStatus.online:
+        raise HTTPException(status_code=400, detail="Equipamento não está disponível para uso.")
+    
+    # Buscar ou criar progresso do serviço
+    progress = db.query(TicketServiceProgress).filter(
+        TicketServiceProgress.ticket_service_id == ticket_service.id
+    ).first()
+    
+    if not progress:
+        # Criar progresso automaticamente
+        service = db.query(Service).filter(Service.id == request.service_id).first()
+        progress = TicketServiceProgress(
+            ticket_service_id=ticket_service.id,
+            status="pending",
+            duration_minutes=service.duration_minutes if service else 10
+        )
+        db.add(progress)
+        db.commit()
+        db.refresh(progress)
+    
+    # Verificar se o serviço já foi iniciado
+    if progress.status == "in_progress":
+        raise HTTPException(status_code=400, detail="Este serviço já está em andamento.")
+    
+    if progress.status == "completed":
+        raise HTTPException(status_code=400, detail="Este serviço já foi concluído.")
+    
+    # Se o ticket não foi chamado ainda, chamá-lo primeiro
+    if ticket.status == TicketStatus.IN_QUEUE.value:
+        logger.info(f"🔍 DEBUG - Chamando ticket completo primeiro")
+        status_update = TicketStatusUpdate(
+            status=TicketStatus.CALLED,
+            operator_notes=f"Chamado pelo operador {current_operator.name} para serviço específico"
+        )
+        await update_ticket_status(ticket_id, status_update, db, current_operator)
+        
+        # Atualizar o equipment_id e operator_id do ticket
+        ticket.equipment_id = request.equipment_id
+        ticket.assigned_operator_id = current_operator.id
+    
+    # Iniciar o serviço específico
+    logger.info(f"🔍 DEBUG - Iniciando serviço específico")
+    progress.status = "in_progress"
+    progress.started_at = datetime.now(timezone.utc)
+    progress.equipment_id = request.equipment_id
+    progress.operator_notes = f"Iniciado pelo operador {current_operator.name}"
+    
+    # Marcar equipamento como indisponível
+    equipment.status = EquipmentStatus.offline
+    
+    db.commit()
+    db.refresh(progress)
+    db.refresh(equipment)
+    
+    # Buscar informações do serviço
+    service = db.query(Service).filter(Service.id == request.service_id).first()
+    service_name = service.name if service else "Serviço"
+    
+    # Broadcast de atualização do equipamento
+    equipment_update_data = {
+        "id": str(equipment.id),
+        "identifier": equipment.identifier,
+        "status": equipment.status.value,
+        "assigned_operator_id": str(current_operator.id),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    await websocket_manager.broadcast_equipment_update(str(current_operator.tenant_id), equipment_update_data)
+    
+    # Broadcast de atualização da fila
+    queue_manager = get_queue_manager(db)
+    queue_data = queue_manager.get_queue_tickets(str(current_operator.tenant_id))
+    await websocket_manager.broadcast_queue_update(str(current_operator.tenant_id), queue_data)
+    
+    logger.info(f"🔍 DEBUG - Serviço {service_name} iniciado com sucesso")
+    
+    return {
+        "message": f"Serviço {service_name} iniciado para ticket #{ticket.ticket_number}",
+        "ticket_id": ticket_id,
+        "service_id": request.service_id,
+        "service_name": service_name,
+        "equipment_id": request.equipment_id,
+        "progress_id": str(progress.id)
+    }
 
 @router.post("/{ticket_id}/start")
 async def start_ticket(

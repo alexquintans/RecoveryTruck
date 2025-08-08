@@ -532,7 +532,8 @@ const OperatorPage: React.FC = () => {
     confirmPayment,
     confirmLoading,
     moveToQueue,
-    moveToQueueLoading
+    moveToQueueLoading,
+    callService
   } = useOperatorActions();
 
   // CORRIGIDO: Funções para persistir mudanças de estado - agora usando useCallback
@@ -1760,9 +1761,7 @@ const OperatorPage: React.FC = () => {
         } else {
           // Chamar apenas o serviço específico (não é o primeiro)
           console.log('🔍 DEBUG - Chamando serviço específico:', serviceId);
-          // TODO: Implementar chamada específica por serviço quando backend suportar
-          // Por enquanto, chama o ticket completo
-          await callTicket(ticket.id, selectedEquipment);
+          await callService(ticket.id, serviceId, selectedEquipment);
         }
         
         // Mostrar feedback visual
@@ -2256,8 +2255,24 @@ const OperatorPage: React.FC = () => {
                         aria-label={`Confirmar pagamento do ticket ${ticket.number}`}
                         disabled={confirmLoading}
                         onClick={async () => {
-                          await confirmPayment({ ticketId: ticket.id });
-                          await refetch();
+                          try {
+                            console.log('🔄 Confirmando pagamento do ticket:', ticket.id);
+                            await confirmPayment({ ticketId: ticket.id });
+                            
+                            // Forçar refetch de todas as queries relacionadas
+                            console.log('🔄 Atualizando queries após confirmação...');
+                            await refetch();
+                            
+                            // Invalidar queries específicas
+                            queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
+                            queryClient.invalidateQueries({ queryKey: ['tickets', 'pending-payment'] });
+                            queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+                            
+                            console.log('✅ Pagamento confirmado e queries atualizadas');
+                          } catch (error) {
+                            console.error('❌ Erro ao confirmar pagamento:', error);
+                            alert('Erro ao confirmar pagamento. Tente novamente.');
+                          }
                         }}
                       >
                         {confirmLoading ? 'Confirmando...' : 'Confirmar Pagamento'}
@@ -2360,8 +2375,24 @@ const OperatorPage: React.FC = () => {
                               aria-label={`Confirmar pagamento do ticket ${ticket.number}`}
                               disabled={confirmLoading}
                               onClick={async () => {
-                                await confirmPayment({ ticketId: ticket.id });
-                                await refetch();
+                                try {
+                                  console.log('🔄 Confirmando pagamento do ticket:', ticket.id);
+                                  await confirmPayment({ ticketId: ticket.id });
+                                  
+                                  // Forçar refetch de todas as queries relacionadas
+                                  console.log('🔄 Atualizando queries após confirmação...');
+                                  await refetch();
+                                  
+                                  // Invalidar queries específicas
+                                  queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
+                                  queryClient.invalidateQueries({ queryKey: ['tickets', 'pending-payment'] });
+                                  queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+                                  
+                                  console.log('✅ Pagamento confirmado e queries atualizadas');
+                                } catch (error) {
+                                  console.error('❌ Erro ao confirmar pagamento:', error);
+                                  alert('Erro ao confirmar pagamento. Tente novamente.');
+                                }
                               }}
                             >
                               {confirmLoading ? 'Confirmando...' : 'Confirmar Pagamento'}

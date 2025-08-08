@@ -125,13 +125,18 @@ export function useTicketQueue() {
       if (!msg || typeof msg !== 'object') return;
       const { type, data } = msg as any;
       
+      console.log('🔌 WebSocket message received:', { type, data });
+      
       if (type === 'queue_update') {
+        console.log('🔄 Atualizando fila via WebSocket');
         queryClient.setQueryData(['tickets', 'queue'], data);
       }
       if (type === 'equipment_update') {
+        console.log('🔄 Atualizando equipamentos via WebSocket');
         queryClient.invalidateQueries({ queryKey: ['equipment'] });
       }
       if (type === 'ticket_update') {
+        console.log('🔄 Atualizando ticket específico via WebSocket');
         // Atualizar ticket-specifico dentro do cache
         queryClient.setQueryData<any>(['tickets', 'queue'], (old: any) => {
           if (!old || !old.items) return old;
@@ -143,11 +148,13 @@ export function useTicketQueue() {
         queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
       }
       if (type === 'ticket_called') {
+        console.log('🔄 Ticket chamado via WebSocket');
         // Invalidar ambas as queries quando um ticket é chamado
         queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
         queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
       }
       if (type === 'payment_update') {
+        console.log('🔄 Atualização de pagamento via WebSocket:', data);
         // Invalidar queries relacionadas a pagamento quando um pagamento for confirmado
         queryClient.invalidateQueries({ queryKey: ['tickets', 'pending-payment'] });
         queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });

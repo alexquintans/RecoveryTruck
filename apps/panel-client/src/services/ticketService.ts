@@ -32,6 +32,14 @@ export const ticketService = {
     return response.data;
   },
 
+  async callService(ticketId: string, serviceId: string, equipmentId: string) {
+    const response = await api.post(`/tickets/${ticketId}/call-service`, { 
+      service_id: serviceId, 
+      equipment_id: equipmentId 
+    }, { params: withTenant() });
+    return response.data;
+  },
+
   async start(ticketId: string) {
     const response = await api.post(`/tickets/${ticketId}/start`, undefined, { params: withTenant() });
     return response.data;
