@@ -92,20 +92,27 @@ export function useTicketQueue() {
 
   // Memoizar a URL do WebSocket para evitar recriações
   const wsUrl = useMemo(() => {
-    // Construir URL de WebSocket
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    let baseWs = (import.meta as any).env?.VITE_WS_URL || 'wss://recoverytruck-production.up.railway.app/ws';
-    
-    // Forçar uso de wss:// em produção (corrigir se a variável estiver com ws://)
-    if (baseWs.startsWith('ws://') && window.location.protocol === 'https:') {
-      baseWs = baseWs.replace('ws://', 'wss://');
+    try {
+      // Construir URL de WebSocket
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      let baseWs = (import.meta as any).env?.VITE_WS_URL || 'wss://recoverytruck-production.up.railway.app/ws';
+      
+      // Forçar uso de wss:// em produção (corrigir se a variável estiver com ws://)
+      if (baseWs.startsWith('ws://') && window.location.protocol === 'https:') {
+        baseWs = baseWs.replace('ws://', 'wss://');
+      }
+      
+      const tenantId = user?.tenant_id || (import.meta as any).env?.VITE_TENANT_ID || '7f02a566-2406-436d-b10d-90ecddd3fe2d';
+      const token = getAuthToken();
+      
+      // Corrigir URL do WebSocket para usar query parameters
+      return `${baseWs}?tenant_id=${tenantId}&client_type=operator${token ? `&token=${token}` : ''}`;
+    } catch (error) {
+      console.error('Erro ao construir URL do WebSocket:', error);
+      // Fallback para URL padrão
+      return 'wss://recoverytruck-production.up.railway.app/ws?tenant_id=7f02a566-2406-436d-b10d-90ecddd3fe2d&client_type=operator';
     }
-    const tenantId = user?.tenant_id || (import.meta as any).env?.VITE_TENANT_ID || '7f02a566-2406-436d-b10d-90ecddd3fe2d';
-    const token = getAuthToken();
-    
-    // Corrigir URL do WebSocket para usar query parameters
-    return `${baseWs}?tenant_id=${tenantId}&client_type=operator${token ? `&token=${token}` : ''}`;
   }, [user?.tenant_id]);
 
   // Memoizar as callbacks do WebSocket para evitar recriações
@@ -183,7 +190,9 @@ export function useTicketQueue() {
     },
   }), [queryClient]);
 
-  // Reativando WebSocket com callbacks memoizados - apenas quando autenticado
+  // Reativando WebSocket com callbacks memoizados - apenas quando autenticado e URL válida
+  const shouldConnectWebSocket = isAuthenticated && wsUrl && wsUrl.startsWith('ws');
+  
   useWebSocket({
     url: wsUrl,
     ...wsCallbacks,

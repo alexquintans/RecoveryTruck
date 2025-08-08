@@ -2555,70 +2555,77 @@ const OperatorPage: React.FC = () => {
   const isOperating = operationConfig?.isOperating;
   
   useEffect(() => {
-    console.log('🔍 DEBUG - useEffect unificado:', {
-      currentStep,
-      operationConfig: isOperating,
-      isSavingConfig
-    });
-    
-    // Não fazer nada se estiver salvando configuração
-    if (isSavingConfig) {
-      console.log('🔍 Salvando configuração, ignorando mudanças');
-      return;
-    }
-    
-    // Se não há etapa definida, definir baseado no status da operação
-    if (currentStep === null) {
-      if (isOperating) {
-        console.log('🔍 Operação ativa, indo para operação');
+    try {
+      console.log('🔍 DEBUG - useEffect unificado:', {
+        currentStep,
+        operationConfig: isOperating,
+        isSavingConfig
+      });
+      
+      // Não fazer nada se estiver salvando configuração
+      if (isSavingConfig) {
+        console.log('🔍 Salvando configuração, ignorando mudanças');
+        return;
+      }
+      
+      // Se não há etapa definida, definir baseado no status da operação
+      if (currentStep === null) {
+        if (isOperating) {
+          console.log('🔍 Operação ativa, indo para operação');
+          setCurrentStep('operation');
+          localStorage.setItem('operator_current_step', 'operation');
+        } else {
+          console.log('🔍 Operação não ativa, indo para configuração');
+          setCurrentStep('name');
+          localStorage.setItem('operator_current_step', 'name');
+        }
+        return;
+      }
+      
+      // Se a operação está ativa e o usuário está em etapa de configuração, redirecionar
+      if (isOperating && (currentStep === 'name' || currentStep === 'config')) {
+        console.log('🔍 Operação ativa detectada, redirecionando para operação');
         setCurrentStep('operation');
         localStorage.setItem('operator_current_step', 'operation');
-      } else {
-        console.log('🔍 Operação não ativa, indo para configuração');
+        return;
+      }
+      
+      // Se a operação não está ativa e o usuário está na etapa de operação, redirecionar
+      // Mas apenas se não for o primeiro carregamento
+      if (!isOperating && currentStep === 'operation') {
+        console.log('🔍 Operação encerrada, redirecionando para configuração');
+        // Limpar estado diretamente
+        localStorage.removeItem('operator_current_step');
+        localStorage.removeItem('operator_config');
+        localStorage.removeItem('operator_name');
+        localStorage.removeItem('operator_selected_equipment');
+        localStorage.removeItem('operator_active_tab');
+        localStorage.removeItem('operator_active_service_tab');
+        localStorage.removeItem('operator_preferences');
+        
         setCurrentStep('name');
+        setOperatorName('');
+        setSelectedEquipment('');
+        setActiveTab('operation');
+        setActiveServiceTab('');
+        
+        // Limpar configuração e preferências de forma segura
+        try {
+          if (typeof clearConfig === 'function') clearConfig();
+          if (typeof clearPreferences === 'function') clearPreferences();
+          if (queryClient && typeof queryClient.clear === 'function') queryClient.clear();
+        } catch (error) {
+          console.error('Erro ao limpar estado:', error);
+        }
+        
         localStorage.setItem('operator_current_step', 'name');
+        return;
       }
-      return;
-    }
-    
-    // Se a operação está ativa e o usuário está em etapa de configuração, redirecionar
-    if (isOperating && (currentStep === 'name' || currentStep === 'config')) {
-      console.log('🔍 Operação ativa detectada, redirecionando para operação');
-      setCurrentStep('operation');
-      localStorage.setItem('operator_current_step', 'operation');
-      return;
-    }
-    
-    // Se a operação não está ativa e o usuário está na etapa de operação, redirecionar
-    // Mas apenas se não for o primeiro carregamento
-    if (!isOperating && currentStep === 'operation') {
-      console.log('🔍 Operação encerrada, redirecionando para configuração');
-      // Limpar estado diretamente
-      localStorage.removeItem('operator_current_step');
-      localStorage.removeItem('operator_config');
-      localStorage.removeItem('operator_name');
-      localStorage.removeItem('operator_selected_equipment');
-      localStorage.removeItem('operator_active_tab');
-      localStorage.removeItem('operator_active_service_tab');
-      localStorage.removeItem('operator_preferences');
-      
+    } catch (error) {
+      console.error('Erro no useEffect unificado:', error);
+      // Fallback: ir para configuração em caso de erro
       setCurrentStep('name');
-      setOperatorName('');
-      setSelectedEquipment('');
-      setActiveTab('operation');
-      setActiveServiceTab('');
-      
-      // Limpar configuração e preferências de forma segura
-      try {
-        if (typeof clearConfig === 'function') clearConfig();
-        if (typeof clearPreferences === 'function') clearPreferences();
-        if (queryClient && typeof queryClient.clear === 'function') queryClient.clear();
-      } catch (error) {
-        console.error('Erro ao limpar estado:', error);
-      }
-      
       localStorage.setItem('operator_current_step', 'name');
-      return;
     }
   }, [isOperating, currentStep, isSavingConfig, clearConfig, clearPreferences, queryClient]);
 
@@ -2646,8 +2653,9 @@ const OperatorPage: React.FC = () => {
     }
   }, [safeOperationConfig?.isOperating, queryClient]);
 
-  // NOVO: Verificar se os dados estão carregando
-  const isLoading = !user || !tenantId || !safeOperationConfig || !services || !equipments || !extras;
+  // NOVO: Verificar se os dados estão carregando - MELHORADO
+  const isLoading = !user || !tenantId || !safeOperationConfig || !services || !equipments || !extras || 
+                   !Array.isArray(services) || !Array.isArray(equipments) || !Array.isArray(extras);
 
   // Se ainda está carregando, mostrar loading
   if (isLoading) {
@@ -2656,6 +2664,14 @@ const OperatorPage: React.FC = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Carregando painel do operador...</p>
+          <p className="text-sm text-gray-500 mt-2">
+            {!user && 'Aguardando autenticação...'}
+            {!tenantId && 'Carregando tenant...'}
+            {!safeOperationConfig && 'Carregando configuração...'}
+            {!services && 'Carregando serviços...'}
+            {!equipments && 'Carregando equipamentos...'}
+            {!extras && 'Carregando extras...'}
+          </p>
         </div>
       </div>
     );
