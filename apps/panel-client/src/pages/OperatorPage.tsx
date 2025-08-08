@@ -420,6 +420,205 @@ const TicketCard = ({
   );
 };
 
+// Componente para exibir progresso individual dos serviços - MOVIDO PARA FORA
+const ServiceProgressCard = ({ 
+  progress, 
+  ticketId, 
+  selectedEquipment,
+  setSelectedEquipment,
+  equipments,
+  startServiceProgress,
+  completeServiceProgress,
+  cancelServiceProgress,
+  fetchServiceProgress,
+  getProgressStatusColor,
+  getProgressStatusText
+}: { 
+  progress: ServiceProgress; 
+  ticketId: string;
+  selectedEquipment: string;
+  setSelectedEquipment: (equipment: string) => void;
+  equipments: Equipment[];
+  startServiceProgress: (progressId: string, equipmentId?: string) => Promise<void>;
+  completeServiceProgress: (progressId: string, notes?: string) => Promise<void>;
+  cancelServiceProgress: (progressId: string, reason: string) => Promise<void>;
+  fetchServiceProgress: (ticketId: string) => Promise<void>;
+  getProgressStatusColor: (status: string) => string;
+  getProgressStatusText: (status: string) => string;
+}) => {
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [showNotesModal, setShowNotesModal] = React.useState(false);
+  const [notes, setNotes] = React.useState(progress.operator_notes || '');
+
+  const handleStartService = async () => {
+    setIsLoading(true);
+    try {
+      await startServiceProgress(progress.id, selectedEquipment || undefined);
+      // Recarregar progresso do ticket
+      await fetchServiceProgress(ticketId);
+    } catch (error) {
+      console.error('Erro ao iniciar serviço:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCompleteService = async () => {
+    setIsLoading(true);
+    try {
+      await completeServiceProgress(progress.id, notes);
+      // Recarregar progresso do ticket
+      await fetchServiceProgress(ticketId);
+      setShowNotesModal(false);
+    } catch (error) {
+      console.error('Erro ao completar serviço:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancelService = async () => {
+    const reason = prompt('Motivo do cancelamento:');
+    if (reason) {
+      setIsLoading(true);
+      try {
+        await cancelServiceProgress(progress.id, reason);
+        // Recarregar progresso do ticket
+        await fetchServiceProgress(ticketId);
+      } catch (error) {
+        console.error('Erro ao cancelar serviço:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  return (
+    <div className={`p-3 rounded-lg border ${getProgressStatusColor(progress.status)}`}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-current"></div>
+          <span className="font-medium text-sm">{progress.service_name}</span>
+        </div>
+        <span className="text-xs font-semibold">
+          {getProgressStatusText(progress.status)}
+        </span>
+      </div>
+      
+      <div className="text-xs text-gray-600 mb-2">
+        <div>Duração: {progress.duration_minutes} min</div>
+        <div>Preço: R$ {progress.service_price.toFixed(2).replace('.', ',')}</div>
+        {progress.equipment_name && (
+          <div>Equipamento: {progress.equipment_name}</div>
+        )}
+      </div>
+
+      {progress.operator_notes && (
+        <div className="text-xs text-gray-500 mb-2">
+          <strong>Observações:</strong> {progress.operator_notes}
+        </div>
+      )}
+
+      <div className="flex gap-2 mt-3">
+        {progress.status === 'pending' && (
+          <>
+            <select
+              value={selectedEquipment}
+              onChange={(e) => setSelectedEquipment(e.target.value)}
+              className="px-2 py-1 text-xs border rounded"
+            >
+              <option value="">Selecionar equipamento</option>
+              {equipments.filter(e => e.isActive).map(equipment => (
+                <option key={equipment.id} value={equipment.id}>
+                  {equipment.name}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={handleStartService}
+              disabled={isLoading}
+              className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 disabled:opacity-50"
+            >
+              {isLoading ? 'Iniciando...' : 'Iniciar'}
+            </button>
+          </>
+        )}
+
+        {progress.status === 'in_progress' && (
+          <>
+            <button
+              onClick={() => setShowNotesModal(true)}
+              className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
+            >
+              Completar
+            </button>
+            <button
+              onClick={handleCancelService}
+              className="px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600"
+            >
+              Cancelar
+            </button>
+          </>
+        )}
+
+        {progress.status === 'completed' && (
+          <span className="text-xs text-green-600 font-medium">
+            ✅ Concluído
+          </span>
+        )}
+
+        {progress.status === 'cancelled' && (
+          <span className="text-xs text-red-600 font-medium">
+            ❌ Cancelado
+          </span>
+        )}
+      </div>
+
+      {/* Modal para notas */}
+      {showNotesModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-4 rounded-lg max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-2">Observações do Serviço</h3>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="w-full p-2 border rounded mb-4"
+              rows={3}
+              placeholder="Digite observações sobre o serviço..."
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={handleCompleteService}
+                disabled={isLoading}
+                className="flex-1 px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
+              >
+                {isLoading ? 'Completando...' : 'Completar'}
+              </button>
+              <button
+                onClick={() => setShowNotesModal(false)}
+                className="flex-1 px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Componente para badge de status - MOVIDO PARA FORA
+const StatusBadge = ({ status }: { status: string }) => {
+  const color = status === 'in_queue' ? 'bg-blue-100 text-blue-700' :
+    status === 'called' ? 'bg-yellow-100 text-yellow-700' :
+    status === 'in_progress' ? 'bg-green-100 text-green-700' :
+    status === 'completed' ? 'bg-gray-100 text-gray-700' :
+    status === 'cancelled' ? 'bg-red-100 text-red-700' :
+    'bg-gray-100 text-gray-700';
+  return <span className={`px-2 py-0.5 rounded text-xs font-medium ${color}`}>{status.replace('_', ' ')}</span>;
+};
+
 const OperatorPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -1538,171 +1737,6 @@ const OperatorPage: React.FC = () => {
       ),
     };
 
-    // Badge de status
-    const StatusBadge = ({ status }: { status: string }) => {
-      const color = status === 'in_queue' ? 'bg-blue-100 text-blue-700' :
-        status === 'called' ? 'bg-yellow-100 text-yellow-700' :
-        status === 'in_progress' ? 'bg-green-100 text-green-700' :
-        status === 'completed' ? 'bg-gray-100 text-gray-700' :
-        status === 'cancelled' ? 'bg-red-100 text-red-700' :
-        'bg-gray-100 text-gray-700';
-      return <span className={`px-2 py-0.5 rounded text-xs font-medium ${color}`}>{status.replace('_', ' ')}</span>;
-    };
-
-    // NOVO: Componente para exibir progresso individual dos serviços
-    const ServiceProgressCard = ({ progress, ticketId }: { progress: ServiceProgress; ticketId: string }) => {
-      const [isLoading, setIsLoading] = useState(false);
-      const [showNotesModal, setShowNotesModal] = useState(false);
-      const [notes, setNotes] = useState(progress.operator_notes || '');
-
-      const handleStartService = async () => {
-        setIsLoading(true);
-        try {
-          await startServiceProgress(progress.id, selectedEquipment || undefined);
-          // Recarregar progresso do ticket
-          await fetchServiceProgress(ticketId);
-        } catch (error) {
-          console.error('Erro ao iniciar serviço:', error);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      const handleCompleteService = async () => {
-        setIsLoading(true);
-        try {
-          await completeServiceProgress(progress.id, notes);
-          // Recarregar progresso do ticket
-          await fetchServiceProgress(ticketId);
-          setShowNotesModal(false);
-        } catch (error) {
-          console.error('Erro ao completar serviço:', error);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      const handleCancelService = async () => {
-        const reason = prompt('Motivo do cancelamento:');
-        if (reason) {
-          setIsLoading(true);
-          try {
-            await cancelServiceProgress(progress.id, reason);
-            // Recarregar progresso do ticket
-            await fetchServiceProgress(ticketId);
-          } catch (error) {
-            console.error('Erro ao cancelar serviço:', error);
-          } finally {
-            setIsLoading(false);
-          }
-        }
-      };
-
-      return (
-        <div className={`p-3 rounded-lg border ${getProgressStatusColor(progress.status)}`}>
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-current"></div>
-              <span className="font-medium text-sm">{progress.service_name}</span>
-            </div>
-            <span className="text-xs font-semibold">
-              {getProgressStatusText(progress.status)}
-            </span>
-          </div>
-          
-          <div className="text-xs text-gray-600 mb-2">
-            <div>Duração: {progress.duration_minutes} min</div>
-            <div>Preço: R$ {progress.service_price.toFixed(2).replace('.', ',')}</div>
-            {progress.equipment_name && (
-              <div>Equipamento: {progress.equipment_name}</div>
-            )}
-          </div>
-
-          {progress.operator_notes && (
-            <div className="text-xs text-gray-500 mb-2">
-              <strong>Observações:</strong> {progress.operator_notes}
-            </div>
-          )}
-
-          <div className="flex gap-2 mt-3">
-            {progress.status === 'pending' && (
-              <>
-                <select
-                  value={selectedEquipment}
-                  onChange={(e) => setSelectedEquipment(e.target.value)}
-                  className="px-2 py-1 text-xs border rounded"
-                >
-                  <option value="">Selecionar equipamento</option>
-                  {equipments.filter(e => e.isActive).map(equipment => (
-                    <option key={equipment.id} value={equipment.id}>
-                      {equipment.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={handleStartService}
-                  disabled={isLoading}
-                  className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 disabled:opacity-50"
-                >
-                  {isLoading ? 'Iniciando...' : 'Iniciar'}
-                </button>
-              </>
-            )}
-            
-            {progress.status === 'in_progress' && (
-              <>
-                <button
-                  onClick={() => setShowNotesModal(true)}
-                  disabled={isLoading}
-                  className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 disabled:opacity-50"
-                >
-                  {isLoading ? 'Completando...' : 'Completar'}
-                </button>
-                <button
-                  onClick={handleCancelService}
-                  disabled={isLoading}
-                  className="px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 disabled:opacity-50"
-                >
-                  Cancelar
-                </button>
-              </>
-            )}
-          </div>
-
-          {/* Modal para observações */}
-          {showNotesModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white p-4 rounded-lg w-96">
-                <h3 className="text-lg font-semibold mb-3">Observações do Serviço</h3>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full p-2 border rounded mb-3"
-                  rows={3}
-                  placeholder="Digite suas observações..."
-                />
-                <div className="flex gap-2 justify-end">
-                  <button
-                    onClick={() => setShowNotesModal(false)}
-                    className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleCompleteService}
-                    disabled={isLoading}
-                    className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
-                  >
-                    {isLoading ? 'Completando...' : 'Completar'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    };
-
     // CORRIGIDO: Função para organizar tickets por serviço - definida como função normal
     const organizeTicketsByService = (tickets: Ticket[], activeServices: Service[]) => {
       // Filtrar apenas tickets que estão na fila (in_queue), excluindo pending_payment
@@ -2181,6 +2215,15 @@ const OperatorPage: React.FC = () => {
                                   key={serviceProgress.id}
                                   progress={serviceProgress}
                                   ticketId={ticket.id}
+                                  selectedEquipment={selectedEquipment}
+                                  setSelectedEquipment={setSelectedEquipment}
+                                  equipments={equipments}
+                                  startServiceProgress={startServiceProgress}
+                                  completeServiceProgress={completeServiceProgress}
+                                  cancelServiceProgress={cancelServiceProgress}
+                                  fetchServiceProgress={fetchServiceProgress}
+                                  getProgressStatusColor={getProgressStatusColor}
+                                  getProgressStatusText={getProgressStatusText}
                                 />
                               ))}
                             </div>
