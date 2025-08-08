@@ -523,59 +523,58 @@ const OperatorPage: React.FC = () => {
     moveToQueueLoading
   } = useOperatorActions();
 
-  // Função para persistir o currentStep
-  const setCurrentStepWithPersistence = (step: string | null) => {
+  // CORRIGIDO: Funções para persistir mudanças de estado - agora usando useCallback
+  const setCurrentStepWithPersistence = useCallback((step: string | null) => {
     setCurrentStep(step);
     if (step) {
       localStorage.setItem('operator_current_step', step);
     } else {
       localStorage.removeItem('operator_current_step');
     }
-  };
+  }, []);
 
-  // NOVO: Funções para persistir mudanças de estado
-  const setOperatorNameWithPersistence = (name: string) => {
+  const setOperatorNameWithPersistence = useCallback((name: string) => {
     setOperatorName(name);
     updateConfigField('operatorName', name);
-  };
+  }, [updateConfigField]);
 
-  const setActiveTabWithPersistence = (tab: string) => {
+  const setActiveTabWithPersistence = useCallback((tab: string) => {
     setActiveTab(tab);
     updatePreference('activeTab', tab);
-  };
+  }, [updatePreference]);
 
-  const setSelectedEquipmentWithPersistence = (equipmentId: string) => {
+  const setSelectedEquipmentWithPersistence = useCallback((equipmentId: string) => {
     setSelectedEquipment(equipmentId);
     updatePreference('selectedEquipment', equipmentId);
-  };
+  }, [updatePreference]);
 
-  const setActiveServiceTabWithPersistence = (serviceTab: string) => {
+  const setActiveServiceTabWithPersistence = useCallback((serviceTab: string) => {
     setActiveServiceTab(serviceTab);
     updatePreference('activeServiceTab', serviceTab);
-  };
+  }, [updatePreference]);
 
-  const setServicesWithPersistence = (newServices: Service[]) => {
+  const setServicesWithPersistence = useCallback((newServices: Service[]) => {
     setServices(newServices);
     updateConfigField('services', newServices);
-  };
+  }, [updateConfigField]);
 
-  const setExtrasWithPersistence = (newExtras: Extra[]) => {
+  const setExtrasWithPersistence = useCallback((newExtras: Extra[]) => {
     setExtras(newExtras);
     updateConfigField('extras', newExtras);
-  };
+  }, [updateConfigField]);
 
-  const setEquipmentsWithPersistence = (newEquipments: Equipment[]) => {
+  const setEquipmentsWithPersistence = useCallback((newEquipments: Equipment[]) => {
     setEquipments(newEquipments);
     updateConfigField('equipments', newEquipments);
-  };
+  }, [updateConfigField]);
 
-  const setPaymentModesWithPersistence = (newPaymentModes: string[]) => {
+  const setPaymentModesWithPersistence = useCallback((newPaymentModes: string[]) => {
     setPaymentModes(newPaymentModes);
     updateConfigField('paymentModes', newPaymentModes);
-  };
+  }, [updateConfigField]);
 
-  // Função para limpar o estado quando a operação for encerrada
-  const clearOperatorState = () => {
+  // CORRIGIDO: Função para limpar o estado quando a operação for encerrada - agora usando useCallback
+  const clearOperatorState = useCallback(() => {
     console.log('🔍 DEBUG - Limpando estado do operador');
     
     // Limpar localStorage
@@ -587,22 +586,22 @@ const OperatorPage: React.FC = () => {
     localStorage.removeItem('operator_active_service_tab');
     localStorage.removeItem('operator_preferences');
     
-    // Limpar estado React
-    setCurrentStepWithPersistence(null);
+    // Limpar estado React diretamente para evitar dependências circulares
+    setCurrentStep(null);
     setOperatorName('');
     setSelectedEquipment('');
-    setActiveTabWithPersistence('operation');
+    setActiveTab('operation');
     setActiveServiceTab('');
     
     // Limpar configuração e preferências
-    clearConfig();
-    clearPreferences();
+    if (clearConfig) clearConfig();
+    if (clearPreferences) clearPreferences();
     
     // Limpar cache do React Query
-    queryClient.clear();
+    if (queryClient) queryClient.clear();
     
     console.log('🔍 DEBUG - Estado do operador limpo completamente');
-  };
+  }, [clearConfig, clearPreferences, queryClient]);
 
   // CORRIGIDO: useEffect para carregar progresso dos serviços automaticamente
   // Problema: fetchServiceProgress estava sendo recriada a cada render
@@ -655,7 +654,8 @@ const OperatorPage: React.FC = () => {
     return progress.every(p => p.status === 'completed');
   }, [serviceProgress]);
 
-  const ProgressSummary = useCallback(({ ticketId }: { ticketId: string }) => {
+  // CORRIGIDO: ProgressSummary definido como componente normal, não useCallback
+  const ProgressSummary = ({ ticketId }: { ticketId: string }) => {
     const { completed, total } = getTicketProgressSummary(ticketId);
     const status = getTicketOverallStatus(ticketId);
     
@@ -667,11 +667,22 @@ const OperatorPage: React.FC = () => {
       );
     }
     
+    // Função local para determinar a cor do status
+    const getStatusColor = (status: string) => {
+      switch (status) {
+        case 'pending': return 'bg-gray-100 text-gray-700 border-gray-300';
+        case 'in_progress': return 'bg-blue-100 text-blue-700 border-blue-300';
+        case 'completed': return 'bg-green-100 text-green-700 border-green-300';
+        case 'cancelled': return 'bg-red-100 text-red-700 border-red-300';
+        default: return 'bg-gray-100 text-gray-700 border-gray-300';
+      }
+    };
+    
     return (
       <div className="text-sm">
         <div className="flex items-center gap-2 mb-1">
           <span className="font-medium">Progresso Geral:</span>
-          <span className={`px-2 py-1 rounded text-xs font-medium ${getProgressStatusColor(status)}`}>
+          <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(status)}`}>
             {completed} / {total} {status === 'completed' ? '✅' : status === 'in_progress' ? '🔄' : '⏳'}
           </span>
         </div>
@@ -683,7 +694,7 @@ const OperatorPage: React.FC = () => {
         </div>
       </div>
     );
-  }, [getTicketProgressSummary, getTicketOverallStatus, getProgressStatusColor]);
+  };
   
   // CORRIGIDO: useEffect para buscar configuração de pagamento
   // Problema: Não tinha dependências corretas
@@ -1718,8 +1729,8 @@ const OperatorPage: React.FC = () => {
       );
     };
 
-    // NOVO: Função para organizar tickets por serviço - movida para useCallback
-    const organizeTicketsByService = useCallback((tickets: Ticket[], activeServices: Service[]) => {
+    // CORRIGIDO: Função para organizar tickets por serviço - definida como função normal
+    const organizeTicketsByService = (tickets: Ticket[], activeServices: Service[]) => {
       // Filtrar apenas tickets que estão na fila (in_queue), excluindo pending_payment
       const queueTickets = tickets.filter(ticket => ticket.status === 'in_queue');
       
@@ -1731,10 +1742,10 @@ const OperatorPage: React.FC = () => {
           ticket.service?.id === service.id
         )
       }));
-    }, []);
+    };
 
-    // NOVO: Função para calcular prioridade do ticket
-    const getTicketPriority = useCallback((ticket: Ticket, currentServiceId: string): TicketPriority => {
+    // CORRIGIDO: Função para calcular prioridade do ticket - definida como função normal
+    const getTicketPriority = (ticket: Ticket, currentServiceId: string): TicketPriority => {
       const services = ticket.services || [ticket.service];
       const currentServiceIndex = services.findIndex(s => s.id === currentServiceId);
       
@@ -1744,16 +1755,16 @@ const OperatorPage: React.FC = () => {
         serviceOrder: currentServiceIndex + 1,
         totalServices: services.length
       };
-    }, []);
+    };
 
-    // NOVO: Função para obter tickets de um serviço específico
-    const getTicketsForService = useCallback((serviceId: string) => {
+    // CORRIGIDO: Função para obter tickets de um serviço específico - definida como função normal
+    const getTicketsForService = (serviceId: string) => {
       const queue = serviceQueues.find(q => q.serviceId === serviceId);
       return queue?.tickets || [];
-    }, [serviceQueues]);
+    };
 
-    // NOVO: Função de chamada inteligente
-    const handleCallTicket = useCallback(async (ticket: Ticket, serviceId: string) => {
+    // CORRIGIDO: Função de chamada inteligente - definida como função normal
+    const handleCallTicket = async (ticket: Ticket, serviceId: string) => {
       console.log('🔍 DEBUG - Chamando ticket:', ticket.id, 'com equipamento:', selectedEquipment);
       console.log('🔍 DEBUG - Status do ticket:', ticket.status);
       
@@ -1789,9 +1800,9 @@ const OperatorPage: React.FC = () => {
         console.error('❌ ERRO ao chamar ticket:', error);
         alert('Erro ao chamar ticket!');
       }
-    }, [selectedEquipment, callTicket]);
+    };
 
-    // NOVO: Efeito para organizar filas quando tickets ou serviços mudam
+    // CORRIGIDO: Efeito para organizar filas quando tickets ou serviços mudam
     useEffect(() => {
       if (currentStep === 'operation') {
         const activeServices = services.filter(s => s.isActive);
@@ -1800,10 +1811,16 @@ const OperatorPage: React.FC = () => {
         
         // Definir primeira fila como ativa se não houver uma ativa
         if (queues.length > 0 && !activeServiceTab) {
-          setActiveServiceTabWithPersistence(queues[0].serviceId);
+          setActiveServiceTab(queues[0].serviceId);
+          // Usar try-catch para evitar erros
+          try {
+            updatePreference('activeServiceTab', queues[0].serviceId);
+          } catch (error) {
+            console.error('Erro ao atualizar preferência:', error);
+          }
         }
       }
-    }, [tickets, services, currentStep, activeServiceTab, setActiveServiceTabWithPersistence, organizeTicketsByService]);
+    }, [tickets, services, currentStep, activeServiceTab, updatePreference]);
 
     return (
       <div className="p-4 space-y-8 max-w-6xl mx-auto">
@@ -2340,7 +2357,7 @@ const OperatorPage: React.FC = () => {
   );
   };
 
-  // NOVO: useEffect unificado para gerenciar a etapa inicial e mudanças de status da operação
+  // CORRIGIDO: useEffect unificado para gerenciar a etapa inicial e mudanças de status da operação
   useEffect(() => {
     console.log('🔍 DEBUG - useEffect unificado:', {
       currentStep,
@@ -2358,10 +2375,12 @@ const OperatorPage: React.FC = () => {
     if (currentStep === null) {
       if (operationConfig?.isOperating) {
         console.log('🔍 Operação ativa, indo para operação');
-        setCurrentStepWithPersistence('operation');
+        setCurrentStep('operation');
+        localStorage.setItem('operator_current_step', 'operation');
       } else {
         console.log('🔍 Operação não ativa, indo para configuração');
-        setCurrentStepWithPersistence('name');
+        setCurrentStep('name');
+        localStorage.setItem('operator_current_step', 'name');
       }
       return;
     }
@@ -2369,7 +2388,8 @@ const OperatorPage: React.FC = () => {
     // Se a operação está ativa e o usuário está em etapa de configuração, redirecionar
     if (operationConfig?.isOperating && (currentStep === 'name' || currentStep === 'config')) {
       console.log('🔍 Operação ativa detectada, redirecionando para operação');
-      setCurrentStepWithPersistence('operation');
+      setCurrentStep('operation');
+      localStorage.setItem('operator_current_step', 'operation');
       return;
     }
     
@@ -2378,11 +2398,34 @@ const OperatorPage: React.FC = () => {
     if (!operationConfig?.isOperating && currentStep === 'operation' && operatorName) {
       console.log('🔍 Operação encerrada, redirecionando para configuração');
       // Não mostrar alerta aqui para evitar spam
-      clearOperatorState();
-      setCurrentStepWithPersistence('name');
+      // Limpar estado diretamente
+      localStorage.removeItem('operator_current_step');
+      localStorage.removeItem('operator_config');
+      localStorage.removeItem('operator_name');
+      localStorage.removeItem('operator_selected_equipment');
+      localStorage.removeItem('operator_active_tab');
+      localStorage.removeItem('operator_active_service_tab');
+      localStorage.removeItem('operator_preferences');
+      
+      setCurrentStep('name');
+      setOperatorName('');
+      setSelectedEquipment('');
+      setActiveTab('operation');
+      setActiveServiceTab('');
+      
+      // Usar try-catch para evitar erros
+      try {
+        if (clearConfig) clearConfig();
+        if (clearPreferences) clearPreferences();
+        if (queryClient) queryClient.clear();
+      } catch (error) {
+        console.error('Erro ao limpar estado:', error);
+      }
+      
+      localStorage.setItem('operator_current_step', 'name');
       return;
     }
-  }, [operationConfig?.isOperating, currentStep, isSavingConfig, operatorName, setCurrentStepWithPersistence, clearOperatorState]);
+  }, [operationConfig?.isOperating, currentStep, isSavingConfig, operatorName, clearConfig, clearPreferences, queryClient]);
 
   // Renderizar componente baseado na etapa atual
   if (!currentStep) {
