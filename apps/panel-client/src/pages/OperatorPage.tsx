@@ -1931,17 +1931,28 @@ const OperatorPage: React.FC = () => {
           </div>
           <div className="flex items-center gap-4">
             <button
-              onClick={() => {
-                                  if (confirm('Tem certeza que deseja encerrar a operação?')) {
+              onClick={async () => {
+                if (confirm('Tem certeza que deseja encerrar a operação?')) {
                   try {
-                    equipmentService.stopOperation();
+                    await equipmentService.stopOperation();
+                    alert('Operação encerrada com sucesso!');
+                    
+                    // ✅ CORREÇÃO: Usar timeout para evitar conflitos de renderização
+                    setTimeout(() => {
+                      try {
+                        clearOperatorState();
+                        navigate('/');
+                      } catch (error) {
+                        console.error('Erro ao limpar estado:', error);
+                        // Fallback: apenas navegar
+                        navigate('/');
+                      }
+                    }, 100);
                   } catch (e) {
+                    console.error('Erro ao encerrar operação:', e);
                     alert('Falha ao encerrar operação no backend!');
                   }
-                    alert('Operação encerrada com sucesso!');
-                    clearOperatorState();
-                  navigate('/');
-                  }
+                }
               }}
               className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg shadow hover:bg-red-700 transition-all"
             >
@@ -2605,35 +2616,65 @@ const OperatorPage: React.FC = () => {
         return;
       }
       
-      // Se a operação não está ativa e o usuário está na etapa de operação, redirecionar
-      // Mas apenas se não for o primeiro carregamento
+      // ✅ CORREÇÃO: Se a operação não está ativa e o usuário está na etapa de operação, redirecionar
+      // Mas apenas se não for o primeiro carregamento e de forma mais segura
       if (!isOperating && currentStep === 'operation') {
         console.log('🔍 Operação encerrada, redirecionando para configuração');
-        // Limpar estado diretamente
-        localStorage.removeItem('operator_current_step');
-        localStorage.removeItem('operator_config');
-        localStorage.removeItem('operator_name');
-        localStorage.removeItem('operator_selected_equipment');
-        localStorage.removeItem('operator_active_tab');
-        localStorage.removeItem('operator_active_service_tab');
-        localStorage.removeItem('operator_preferences');
         
-        setCurrentStep('name');
-        setOperatorName('');
-        setSelectedEquipment('');
-        setActiveTab('operation');
-        setActiveServiceTab('');
+        // Usar timeout para evitar conflitos de renderização
+        setTimeout(() => {
+          try {
+            // Limpar localStorage de forma segura
+            localStorage.removeItem('operator_current_step');
+            localStorage.removeItem('operator_config');
+            localStorage.removeItem('operator_name');
+            localStorage.removeItem('operator_selected_equipment');
+            localStorage.removeItem('operator_active_tab');
+            localStorage.removeItem('operator_active_service_tab');
+            localStorage.removeItem('operator_preferences');
+            
+            // Atualizar estado React de forma segura
+            setCurrentStep('name');
+            setOperatorName('');
+            setSelectedEquipment('');
+            setActiveTab('operation');
+            setActiveServiceTab('');
+            
+            // Limpar configuração e preferências de forma segura
+            if (typeof clearConfig === 'function') {
+              try {
+                clearConfig();
+              } catch (error) {
+                console.warn('Erro ao limpar config:', error);
+              }
+            }
+            
+            if (typeof clearPreferences === 'function') {
+              try {
+                clearPreferences();
+              } catch (error) {
+                console.warn('Erro ao limpar preferences:', error);
+              }
+            }
+            
+            // Limpar cache do React Query de forma segura
+            if (queryClient && typeof queryClient.clear === 'function') {
+              try {
+                queryClient.clear();
+              } catch (error) {
+                console.warn('Erro ao limpar cache:', error);
+              }
+            }
+            
+            localStorage.setItem('operator_current_step', 'name');
+          } catch (error) {
+            console.error('Erro ao limpar estado da operação:', error);
+            // Fallback: apenas definir a etapa
+            setCurrentStep('name');
+            localStorage.setItem('operator_current_step', 'name');
+          }
+        }, 50); // Pequeno delay para evitar conflitos
         
-        // Limpar configuração e preferências de forma segura
-        try {
-          if (typeof clearConfig === 'function') clearConfig();
-          if (typeof clearPreferences === 'function') clearPreferences();
-          if (queryClient && typeof queryClient.clear === 'function') queryClient.clear();
-        } catch (error) {
-          console.error('Erro ao limpar estado:', error);
-        }
-        
-        localStorage.setItem('operator_current_step', 'name');
         return;
       }
     } catch (error) {
