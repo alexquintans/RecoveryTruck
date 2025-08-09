@@ -196,3 +196,4 @@ const isLoading = !user || !tenantId || !safeOperationConfig || !services || !eq
 - [ ] Todas as funcionalidades principais funcionam
 - [ ] Dados carregam corretamente
 - [ ] Interface não quebra durante transições
+

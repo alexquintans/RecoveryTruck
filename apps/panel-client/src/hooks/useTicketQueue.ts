@@ -98,16 +98,34 @@ export function useTicketQueue() {
       // @ts-ignore
       let baseWs = (import.meta as any).env?.VITE_WS_URL || 'wss://recoverytruck-production.up.railway.app/ws';
       
+      // Debug: mostrar a URL base
+      console.log('🔍 DEBUG - VITE_WS_URL:', (import.meta as any).env?.VITE_WS_URL);
+      console.log('🔍 DEBUG - baseWs inicial:', baseWs);
+      
+      // Garantir que termina com /ws
+      if (!baseWs.endsWith('/ws')) {
+        if (baseWs.endsWith('/')) {
+          baseWs = baseWs + 'ws';
+        } else {
+          baseWs = baseWs + '/ws';
+        }
+      }
+      
+      console.log('🔍 DEBUG - baseWs após correção:', baseWs);
+      
       // Forçar uso de wss:// em produção (corrigir se a variável estiver com ws://)
       if (baseWs.startsWith('ws://') && window.location.protocol === 'https:') {
         baseWs = baseWs.replace('ws://', 'wss://');
+        console.log('🔍 DEBUG - baseWs após forçar wss:', baseWs);
       }
       
       const tenantId = user?.tenant_id || (import.meta as any).env?.VITE_TENANT_ID || '7f02a566-2406-436d-b10d-90ecddd3fe2d';
       const token = getAuthToken();
       
       // Corrigir URL do WebSocket para usar query parameters
-      return `${baseWs}?tenant_id=${tenantId}&client_type=operator${token ? `&token=${token}` : ''}`;
+      const finalUrl = `${baseWs}?tenant_id=${tenantId}&client_type=operator${token ? `&token=${token}` : ''}`;
+      console.log('🔍 DEBUG - WebSocket URL final construída:', finalUrl);
+      return finalUrl;
     } catch (error) {
       console.error('Erro ao construir URL do WebSocket:', error);
       // Fallback para URL padrão
