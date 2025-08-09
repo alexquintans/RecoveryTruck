@@ -90,9 +90,15 @@ export function useTicketQueue() {
     refetchInterval: 30_000, // Refetch a cada 30 segundos
   });
 
-  // Memoizar a URL do WebSocket para evitar recriações
+  // ✅ SOLUÇÃO: Memoizar a URL do WebSocket com proteções
   const wsUrl = useMemo(() => {
     try {
+      // ✅ PROTEÇÃO: Verificar se user existe
+      if (!user?.tenant_id) {
+        console.warn('🔍 DEBUG - user ou tenant_id não disponível ainda');
+        return null;
+      }
+      
       // Construir URL de WebSocket
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
@@ -119,7 +125,7 @@ export function useTicketQueue() {
         console.log('🔍 DEBUG - baseWs após forçar wss:', baseWs);
       }
       
-      const tenantId = user?.tenant_id || (import.meta as any).env?.VITE_TENANT_ID || '7f02a566-2406-436d-b10d-90ecddd3fe2d';
+      const tenantId = user.tenant_id; // ✅ Agora sabemos que existe
       const token = getAuthToken();
       
       // Corrigir URL do WebSocket para usar query parameters
@@ -128,10 +134,10 @@ export function useTicketQueue() {
       return finalUrl;
     } catch (error) {
       console.error('Erro ao construir URL do WebSocket:', error);
-      // Fallback para URL padrão
-      return 'wss://recoverytruck-production.up.railway.app/ws?tenant_id=7f02a566-2406-436d-b10d-90ecddd3fe2d&client_type=operator';
+      // ✅ PROTEÇÃO: Retornar null em caso de erro
+      return null;
     }
-  }, [user?.tenant_id]);
+  }, [user?.tenant_id]); // ✅ Dependência correta
 
   // Memoizar as callbacks do WebSocket para evitar recriações
   const wsCallbacks = useMemo(() => ({
@@ -147,27 +153,42 @@ export function useTicketQueue() {
       // Não deixar o fechamento do WebSocket quebrar a aplicação
     },
     onMessage: (msg: any) => {
-      if (!msg || typeof msg !== 'object') return;
-      const { type, data } = msg as any;
-      
-      console.log('🔌 WebSocket message received:', { type, data });
-      
-      if (type === 'queue_update') {
-        console.log('🔄 Atualizando fila via WebSocket');
-        try {
-          queryClient.setQueryData(['tickets', 'queue'], data);
-        } catch (error) {
-          console.error('Erro ao atualizar fila via WebSocket:', error);
+      try {
+        // ✅ PROTEÇÃO: Validações robustas
+        if (!msg || typeof msg !== 'object') {
+          console.warn('WebSocket: mensagem inválida recebida:', msg);
+          return;
         }
-      }
-      if (type === 'equipment_update') {
-        console.log('🔄 Atualizando equipamentos via WebSocket');
-        try {
-          queryClient.invalidateQueries({ queryKey: ['equipment'] });
-        } catch (error) {
-          console.error('Erro ao invalidar equipamentos via WebSocket:', error);
+        
+        const { type, data } = msg as any;
+        
+        if (!type) {
+          console.warn('WebSocket: mensagem sem type:', msg);
+          return;
         }
-      }
+        
+        console.log('🔌 WebSocket message received:', { type, data });
+        
+        if (type === 'queue_update') {
+          console.log('🔄 Atualizando fila via WebSocket');
+          try {
+            if (data && queryClient) {
+              queryClient.setQueryData(['tickets', 'queue'], data);
+            }
+          } catch (error) {
+            console.error('Erro ao atualizar fila via WebSocket:', error);
+          }
+        }
+        if (type === 'equipment_update') {
+          console.log('🔄 Atualizando equipamentos via WebSocket');
+          try {
+            if (queryClient) {
+              queryClient.invalidateQueries({ queryKey: ['equipment'] });
+            }
+          } catch (error) {
+            console.error('Erro ao invalidar equipamentos via WebSocket:', error);
+          }
+        }
       if (type === 'ticket_update') {
         console.log('🔄 Atualizando ticket específico via WebSocket');
         try {
@@ -205,14 +226,19 @@ export function useTicketQueue() {
           console.error('Erro ao invalidar pagamentos via WebSocket:', error);
         }
       }
+      } catch (error) {
+        console.error('Erro crítico no onMessage do WebSocket:', error);
+        // ✅ PROTEÇÃO: Não deixar erros quebrar a aplicação
+      }
     },
   }), [queryClient]);
 
-  // Reativando WebSocket com callbacks memoizados - apenas quando autenticado e URL válida
-  const shouldConnectWebSocket = isAuthenticated && wsUrl && wsUrl.startsWith('ws');
+  // ✅ SOLUÇÃO: WebSocket com proteções robustas
+  const shouldConnectWebSocket = isAuthenticated && wsUrl && typeof wsUrl === 'string' && wsUrl.startsWith('ws');
   
   useWebSocket({
-    url: wsUrl,
+    url: shouldConnectWebSocket ? wsUrl : null, // ✅ Passar null se não deve conectar
+    enabled: shouldConnectWebSocket, // ✅ Usar propriedade enabled
     ...wsCallbacks,
   });
 

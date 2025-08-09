@@ -7,6 +7,8 @@ import { useServiceProgress } from '../hooks/useServiceProgress';
 import { useOperatorConfig } from '../hooks/useOperatorConfig';
 import { useOperatorPreferences } from '../hooks/useOperatorPreferences';
 import { fetchServices, fetchEquipments, fetchExtras, createService, createExtra, updateService as apiUpdateService, deleteService as apiDeleteService, updateExtra as apiUpdateExtra, deleteExtra as apiDeleteExtra, saveOperationConfig } from '../services/operatorConfigService';
+// ✅ PROTEÇÃO: Importar Error Boundary
+import { WebSocketErrorBoundary } from '@totem/hooks';
 import { ServiceModal } from '../components/ServiceModal';
 import { ExtraModal } from '../components/ExtraModal';
 import { equipmentService } from '../services/equipmentService';
@@ -213,7 +215,12 @@ const BRAND_COLORS = {
 };
 
 // Componente de Resumo Visual com cores da marca
-function ResumoVisual({ servicos, equipamentos, extras, tickets }) {
+function ResumoVisual({ servicos, equipamentos, extras, tickets }: {
+  servicos: number;
+  equipamentos: number;
+  extras: number;
+  tickets: number;
+}) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
       <div className="flex items-center p-4 bg-white rounded-xl shadow-lg border border-accent gap-3 hover:shadow-xl transition-all">
@@ -256,6 +263,19 @@ function ResumoVisual({ servicos, equipamentos, extras, tickets }) {
   );
 }
 
+// NOVA: Função para calcular prioridade do ticket
+const getTicketPriority = (ticket: Ticket, currentServiceId: string): TicketPriority => {
+  const services = ticket.services || [ticket.service];
+  const currentServiceIndex = services.findIndex(s => s?.id === currentServiceId);
+  
+  return {
+    isFirstService: currentServiceIndex === 0,
+    isLastService: currentServiceIndex === services.length - 1,
+    serviceOrder: currentServiceIndex + 1,
+    totalServices: services.length
+  };
+};
+
 // NOVO: Componente TicketCard melhorado para filas por serviço
 const TicketCard = ({ 
   ticket, 
@@ -271,8 +291,8 @@ const TicketCard = ({
   callLoading: boolean;
 }) => {
   const priority = getTicketPriority(ticket, currentService);
-  const services = ticket.services || [ticket.service];
-  const currentServiceData = services.find(s => s.id === currentService);
+  const services = ticket.services || [ticket.service].filter(Boolean);
+  const currentServiceData = services.find(s => s?.id === currentService);
   
   // Calcular tempo de espera
   const created = ticket.createdAt ? new Date(ticket.createdAt) : null;
@@ -358,13 +378,13 @@ const TicketCard = ({
               <span className="text-xs font-semibold text-gray-600">TAMBÉM AGUARDA:</span>
             </div>
             <div className="flex flex-wrap gap-2">
-              {services.filter(s => s.id !== currentService).map((service, idx) => (
-                <span key={service.id || idx} className="bg-gray-100 text-gray-700 rounded-full px-3 py-1 text-xs font-medium shadow-sm border border-gray-200">
-                  {service.name}
-                  {service.duration && (
+              {services.filter(s => s?.id !== currentService).map((service, idx) => (
+                <span key={service?.id || idx} className="bg-gray-100 text-gray-700 rounded-full px-3 py-1 text-xs font-medium shadow-sm border border-gray-200">
+                  {service?.name}
+                  {service?.duration && (
                     <span className="ml-1 text-gray-600">({service.duration}min)</span>
                   )}
-                  {service.price && (
+                  {service?.price && (
                     <span className="ml-1 text-gray-600">R$ {service.price.toFixed(2).replace('.', ',')}</span>
                   )}
                 </span>
@@ -636,12 +656,15 @@ const OperatorPage: React.FC = () => {
     ...ticketQueueRest
   } = useTicketQueue();
 
-  // Garantir que todos os arrays sejam sempre válidos
-  const safeMyTickets = myTickets || [];
-  const safeTickets = tickets || [];
-  const safeEquipment = equipment || [];
-  const safePendingPaymentTickets = pendingPaymentTickets || [];
-  const safeOperationConfig = operationConfig || { isOperating: false, serviceDuration: 10 };
+  // ✅ CORREÇÃO: Memoizar arrays para evitar loops infinitos
+  const safeMyTickets = useMemo(() => myTickets || [], [myTickets]);
+  const safeTickets = useMemo(() => tickets || [], [tickets]);
+  const safeEquipment = useMemo(() => equipment || [], [equipment]);
+  const safePendingPaymentTickets = useMemo(() => pendingPaymentTickets || [], [pendingPaymentTickets]);
+  const safeOperationConfig = useMemo(() => 
+    operationConfig || { isOperating: false, serviceDuration: 10 }, 
+    [operationConfig]
+  );
 
   // Obter tenantId do usuário
   const tenantId = user?.tenant_id || '';
@@ -838,9 +861,12 @@ const OperatorPage: React.FC = () => {
       
       loadServiceProgress();
     }
-  }, [safeMyTickets, currentStep, fetchServiceProgress]); // fetchServiceProgress já é memoizado pelo hook
+  }, [safeMyTickets.length, currentStep, fetchServiceProgress]); // ✅ Usar length para evitar loop
 
   // CORRIGIDO: Funções utilitárias agora usam useCallback para evitar recriações
+  // ✅ CORREÇÃO: Memoizar serviceProgress keys para evitar loop
+  const serviceProgressKeys = useMemo(() => Object.keys(serviceProgress), [serviceProgress]);
+  
   const getTicketOverallStatus = useCallback((ticketId: string) => {
     const progress = serviceProgress[ticketId];
     if (!progress || progress.length === 0) return 'pending';
@@ -851,7 +877,7 @@ const OperatorPage: React.FC = () => {
     if (completed === 0) return 'pending';
     if (completed === total) return 'completed';
     return 'in_progress';
-  }, [serviceProgress]);
+  }, [serviceProgress]); // serviceProgress vem do hook e é memoizado
 
   const getTicketProgressSummary = useCallback((ticketId: string) => {
     const progress = serviceProgress[ticketId];
@@ -1783,18 +1809,7 @@ const OperatorPage: React.FC = () => {
       });
     };
 
-    // CORRIGIDO: Função para calcular prioridade do ticket - definida como função normal
-    const getTicketPriority = (ticket: Ticket, currentServiceId: string): TicketPriority => {
-      const services = ticket.services || [ticket.service];
-      const currentServiceIndex = services.findIndex(s => s.id === currentServiceId);
-      
-      return {
-        isFirstService: currentServiceIndex === 0,
-        isLastService: currentServiceIndex === services.length - 1,
-        serviceOrder: currentServiceIndex + 1,
-        totalServices: services.length
-      };
-    };
+    // Função getTicketPriority já definida no escopo global, removendo duplicata
 
     // CORRIGIDO: Função para obter tickets de um serviço específico - definida como função normal
     const getTicketsForService = (serviceId: string) => {
@@ -2632,7 +2647,7 @@ const OperatorPage: React.FC = () => {
   // CORRIGIDO: useEffect para carregar dados quando operação estiver ativa
   useEffect(() => {
     try {
-      if (safeOperationConfig?.isOperating && tenantId) {
+      if (operationConfig?.isOperating && tenantId) {
         console.log('🔄 Operação ativa detectada, carregando dados...');
         // Adicionar delay para evitar problemas de timing
         setTimeout(() => {
@@ -2647,7 +2662,7 @@ const OperatorPage: React.FC = () => {
     } catch (error) {
       console.error('Erro no useEffect de carregar dados:', error);
     }
-  }, [safeOperationConfig?.isOperating, tenantId, refetch, refetchOperation]);
+  }, [operationConfig?.isOperating, tenantId, refetch, refetchOperation]);
 
   // NOVO: Limpar cache quando operação muda de estado
   useEffect(() => {
@@ -2659,10 +2674,10 @@ const OperatorPage: React.FC = () => {
     };
 
     // Limpar cache quando operação para de estar ativa
-    if (!safeOperationConfig?.isOperating) {
+    if (!operationConfig?.isOperating) {
       clearCacheOnOperationChange();
     }
-  }, [safeOperationConfig?.isOperating, queryClient]);
+  }, [operationConfig?.isOperating, queryClient]);
 
   // NOVO: Verificar se os dados estão carregando - MELHORADO
   const isLoading = !user || !tenantId || !safeOperationConfig || !services || !equipments || !extras || 
@@ -2713,4 +2728,13 @@ const OperatorPage: React.FC = () => {
   }
 };
 
-export default OperatorPage; 
+// ✅ SOLUÇÃO: Wrapper com Error Boundary para capturar React Error #310
+const OperatorPageWithErrorBoundary: React.FC = () => {
+  return (
+    <WebSocketErrorBoundary>
+      <OperatorPage />
+    </WebSocketErrorBoundary>
+  );
+};
+
+export default OperatorPageWithErrorBoundary; 
