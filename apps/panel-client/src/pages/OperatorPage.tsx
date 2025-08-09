@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTicketQueue } from '../hooks/useTicketQueue';
 import { useOperatorActions } from '../hooks/useOperatorActions';
@@ -2664,19 +2664,35 @@ const OperatorPage: React.FC = () => {
     }
   }, [operationConfig?.isOperating, tenantId, refetch, refetchOperation]);
 
-  // NOVO: Limpar cache quando operação muda de estado
-  useEffect(() => {
-    const clearCacheOnOperationChange = () => {
-      console.log('🧹 Limpando cache devido a mudança de operação');
-      queryClient.invalidateQueries({ queryKey: ['tickets'] });
-      queryClient.invalidateQueries({ queryKey: ['equipment'] });
-      queryClient.invalidateQueries({ queryKey: ['operation'] });
-    };
+  // ✅ CORREÇÃO: Limpar cache apenas quando necessário para evitar React Error #310/#300
+  const previousOperatingState = useRef<boolean | null>(null);
 
-    // Limpar cache quando operação para de estar ativa
-    if (!operationConfig?.isOperating) {
-      clearCacheOnOperationChange();
+  useEffect(() => {
+    const isCurrentlyOperating = operationConfig?.isOperating;
+    
+    // Apenas executar quando há uma mudança REAL de estado (não na inicialização)
+    if (previousOperatingState.current !== null && 
+        previousOperatingState.current !== isCurrentlyOperating) {
+      
+      console.log('🧹 Limpando cache devido a mudança de operação', {
+        anterior: previousOperatingState.current,
+        atual: isCurrentlyOperating
+      });
+      
+      // Usar timeout para evitar conflitos com outros useEffects
+      setTimeout(() => {
+        try {
+          queryClient.invalidateQueries({ queryKey: ['tickets'] });
+          queryClient.invalidateQueries({ queryKey: ['equipment'] });
+          queryClient.invalidateQueries({ queryKey: ['operation'] });
+        } catch (error) {
+          console.error('Erro ao limpar cache:', error);
+        }
+      }, 100);
     }
+    
+    // Atualizar referência
+    previousOperatingState.current = isCurrentlyOperating;
   }, [operationConfig?.isOperating, queryClient]);
 
   // NOVO: Verificar se os dados estão carregando - MELHORADO

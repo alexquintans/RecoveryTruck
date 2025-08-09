@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTicketQueue } from '../hooks/useTicketQueue';
 import { ExportReportButton } from '../components/ExportReportButton';
@@ -70,20 +70,22 @@ export default function DashboardPage() {
   const formatCurrency = (value: number) =>
     value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  /** Cálculos de estatísticas rápidas */
-  const allTickets = [
+  /** ✅ CORREÇÃO: Cálculos de estatísticas memoizados para evitar React Error #300 */
+  const allTickets = useMemo(() => [
     ...tickets,
     ...myTickets,
     ...completedTickets,
     ...cancelledTickets,
-  ];
+  ], [tickets, myTickets, completedTickets, cancelledTickets]);
   
   // Remover duplicatas baseado no ID do ticket
-  const uniqueTickets = allTickets.filter((ticket, index, self) => 
-    index === self.findIndex(t => t.id === ticket.id)
+  const uniqueTickets = useMemo(() => 
+    allTickets.filter((ticket, index, self) => 
+      index === self.findIndex(t => t.id === ticket.id)
+    ), [allTickets]
   );
   
-  const ticketCounts = {
+  const ticketCounts = useMemo(() => ({
     inQueue: tickets.filter((t: any) => t.status === 'in_queue').length,
     inProgress: myTickets.filter((t: any) => t.status === 'in_progress').length,
     called: myTickets.filter((t: any) => t.status === 'called').length,
@@ -92,53 +94,75 @@ export default function DashboardPage() {
     total: uniqueTickets.length,
     // Contagem corrigida para "Em Atendimento" - apenas tickets em progresso (não chamados)
     inService: myTickets.filter((t: any) => t.status === 'in_progress').length,
-  };
+  }), [tickets, myTickets, completedTickets, cancelledTickets, uniqueTickets]);
 
-  const equipmentCounts = {
+  const equipmentCounts = useMemo(() => ({
     available: equipment.filter((e: any) => e.status === 'available').length,
     inUse: equipment.filter((e: any) => e.status === 'in_use').length,
     maintenance: equipment.filter((e: any) => e.status === 'maintenance').length,
     total: equipment.length,
-  };
+  }), [equipment]);
 
-  const utilization = equipmentCounts.total
-    ? Math.round((equipmentCounts.inUse / equipmentCounts.total) * 100)
-    : 0;
+  const utilization = useMemo(() => 
+    equipmentCounts.total
+      ? Math.round((equipmentCounts.inUse / equipmentCounts.total) * 100)
+      : 0, [equipmentCounts.total, equipmentCounts.inUse]
+  );
 
   // Tickets recentes (últimos 5, incluindo todos os status, ordenados pelo evento mais recente)
-  const recentTickets = allTickets
-    .sort((a: any, b: any) => {
-      const aDate = new Date(a.completedAt || a.cancelledAt || a.createdAt || 0);
-      const bDate = new Date(b.completedAt || b.cancelledAt || b.createdAt || 0);
-      return bDate.getTime() - aDate.getTime();
-    })
-    .slice(0, 5);
+  const recentTickets = useMemo(() => 
+    allTickets
+      .sort((a: any, b: any) => {
+        const aDate = new Date(a.completedAt || a.cancelledAt || a.createdAt || 0);
+        const bDate = new Date(b.completedAt || b.cancelledAt || b.createdAt || 0);
+        return bDate.getTime() - aDate.getTime();
+      })
+      .slice(0, 5), [allTickets]
+  );
 
-  // Debug logs para verificar integridade dos dados
+  // ✅ CORREÇÃO: Debug logs memoizados para evitar loops infinitos
+  const debugData = useMemo(() => ({
+    tickets: {
+      queue: tickets.length,
+      myTickets: myTickets.length,
+      completed: completedTickets.length,
+      cancelled: cancelledTickets.length,
+      total: allTickets.length,
+      unique: uniqueTickets.length
+    },
+    equipment: {
+      total: equipment.length,
+      available: equipmentCounts.available,
+      inUse: equipmentCounts.inUse,
+      maintenance: equipmentCounts.maintenance,
+      utilization: utilization
+    },
+    operation: {
+      isOperating: operationConfig.isOperating,
+      serviceDuration: operationConfig.serviceDuration,
+      tenantId
+    }
+  }), [
+    tickets.length, 
+    myTickets.length, 
+    completedTickets.length, 
+    cancelledTickets.length, 
+    allTickets.length, 
+    uniqueTickets.length,
+    equipment.length,
+    equipmentCounts.available,
+    equipmentCounts.inUse,
+    equipmentCounts.maintenance,
+    utilization,
+    operationConfig.isOperating,
+    operationConfig.serviceDuration,
+    tenantId
+  ]);
+
+  // Debug logs executam apenas quando dados realmente mudam
   useEffect(() => {
-    console.log('🔍 DEBUG - Dashboard Data Integrity:', {
-      tickets: {
-        queue: tickets.length,
-        myTickets: myTickets.length,
-        completed: completedTickets.length,
-        cancelled: cancelledTickets.length,
-        total: allTickets.length,
-        unique: uniqueTickets.length
-      },
-      equipment: {
-        total: equipment.length,
-        available: equipmentCounts.available,
-        inUse: equipmentCounts.inUse,
-        maintenance: equipmentCounts.maintenance,
-        utilization: utilization
-      },
-      operation: {
-        isOperating: operationConfig.isOperating,
-        serviceDuration: operationConfig.serviceDuration,
-        tenantId
-      }
-    });
-  }, [tickets, myTickets, completedTickets, cancelledTickets, equipment, operationConfig, tenantId]);
+    console.log('🔍 DEBUG - Dashboard Data Integrity:', debugData);
+  }, [debugData]);
 
   return (
     <div className="dashboard-container p-4 space-y-6">
