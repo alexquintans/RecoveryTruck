@@ -242,7 +242,8 @@ export function useTicketQueue() {
     ...wsCallbacks,
   });
 
-  const normalizeTicket = (t: any) => {
+  // ✅ CORREÇÃO: Memoizar função para evitar React Error #310
+  const normalizeTicket = useCallback((t: any) => {
     const normalized = {
       ...t,
       operatorId: t.assigned_operator_id || t.operator_id || t.operatorId,
@@ -260,24 +261,33 @@ export function useTicketQueue() {
     };
     
     return normalized;
-  };
+  }, []); // Sem dependências pois é uma função pura
 
-  // Mapear tickets da fila
-  const queueTickets = ((queueQuery.data as any)?.items ?? []).map(normalizeTicket);
+  // ✅ CORREÇÃO: Memoizar arrays de tickets para evitar React Error #310
+  const queueTickets = useMemo(() => 
+    ((queueQuery.data as any)?.items ?? []).map(normalizeTicket), 
+    [queueQuery.data, normalizeTicket]
+  );
 
-  // Mapear tickets do operador
-  const myTickets = ((myTicketsQuery.data as any[]) ?? []).map(normalizeTicket);
-  
+  const myTickets = useMemo(() => 
+    ((myTicketsQuery.data as any[]) ?? []).map(normalizeTicket), 
+    [myTicketsQuery.data, normalizeTicket]
+  );
 
+  const completedTickets = useMemo(() => 
+    ((completedTicketsQuery.data as any)?.items ?? []).map(normalizeTicket), 
+    [completedTicketsQuery.data, normalizeTicket]
+  );
 
-  // Mapear tickets concluídos
-  const completedTickets = ((completedTicketsQuery.data as any)?.items ?? []).map(normalizeTicket);
+  const cancelledTickets = useMemo(() => 
+    ((cancelledTicketsQuery.data as any)?.items ?? []).map(normalizeTicket), 
+    [cancelledTicketsQuery.data, normalizeTicket]
+  );
 
-  // Mapear tickets cancelados
-  const cancelledTickets = ((cancelledTicketsQuery.data as any)?.items ?? []).map(normalizeTicket);
-
-  // Mapear tickets aguardando confirmação de pagamento
-  const pendingPaymentTickets = ((pendingPaymentQuery.data as any[]) ?? []).map(normalizeTicket);
+  const pendingPaymentTickets = useMemo(() => 
+    ((pendingPaymentQuery.data as any[]) ?? []).map(normalizeTicket), 
+    [pendingPaymentQuery.data, normalizeTicket]
+  );
 
   // Mapear equipamentos para status amigável do dashboard
   const operationConfig = (operationQuery.data as any) ?? { 
@@ -288,24 +298,26 @@ export function useTicketQueue() {
   
   const { myTickets: _, ...queueQueryWithoutMyTickets } = queueQuery;
   
-  const normalizedOperationConfig = {
+  // ✅ CORREÇÃO: Memoizar objetos para evitar React Error #310
+  const normalizedOperationConfig = useMemo(() => ({
     isOperating: operationConfig.is_operating ?? false,
     serviceDuration: operationConfig.service_duration ?? 10,
     equipmentCounts: operationConfig.equipment_counts ?? {},
-  };
+  }), [operationConfig.is_operating, operationConfig.service_duration, operationConfig.equipment_counts]);
   
-  const equipment = ((equipmentQuery.data as any[]) ?? []).map((e) => ({
-    ...e,
-    status:
-      e.status === 'online'
-        ? 'available'
-        : e.status === 'maintenance'
-        ? 'maintenance'
-        : 'in_use',
-  })).filter((e) => {
-    // Filtrar apenas equipamentos da operação ativa
-    return e.operation_id === operationConfig.operation_id || !e.operation_id;
-  });
+  const equipment = useMemo(() => 
+    ((equipmentQuery.data as any[]) ?? []).map((e) => ({
+      ...e,
+      status:
+        e.status === 'online'
+          ? 'available'
+          : e.status === 'maintenance'
+          ? 'maintenance'
+          : 'in_use',
+    })).filter((e) => {
+      // Filtrar apenas equipamentos da operação ativa
+      return e.operation_id === operationConfig.operation_id || !e.operation_id;
+    }), [equipmentQuery.data, operationConfig.operation_id]);
 
   return {
     ...queueQueryWithoutMyTickets,
@@ -316,13 +328,16 @@ export function useTicketQueue() {
     pendingPaymentTickets,
     equipment,
     operationConfig: normalizedOperationConfig,
-    refetchOperation: () => queryClient.invalidateQueries({ queryKey: ['operation'] }),
-    refetch: () => {
+    refetchOperation: useCallback(() => 
+      queryClient.invalidateQueries({ queryKey: ['operation'] }), 
+      [queryClient]
+    ),
+    refetch: useCallback(() => {
       queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
       queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
       queryClient.invalidateQueries({ queryKey: ['tickets', 'pending-payment'] });
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
-    },
+    }, [queryClient]),
   } as typeof queueQuery & {
     tickets: any[];
     myTickets: any[];
