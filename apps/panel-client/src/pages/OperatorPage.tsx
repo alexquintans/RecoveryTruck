@@ -1898,9 +1898,12 @@ const OperatorPage: React.FC = () => {
             status: sampleTicket.status,
             services: sampleTicket.services,
             service: sampleTicket.service,
+            service_details: sampleTicket.service_details,
             hasServices: !!sampleTicket.services,
             hasService: !!sampleTicket.service,
-            servicesLength: sampleTicket.services?.length || 0
+            hasServiceDetails: !!sampleTicket.service_details,
+            servicesLength: sampleTicket.services?.length || 0,
+            serviceDetailsLength: sampleTicket.service_details?.length || 0
           });
         }
       
@@ -1919,11 +1922,11 @@ const OperatorPage: React.FC = () => {
           
           // ✅ CORREÇÃO: Log detalhado para debug dos serviços do ticket
           console.log(`🔍 DEBUG - Ticket ${ticket.number || ticket.ticket_number} - Serviços:`, {
-            serviceIds: ticketServices.map(s => s?.id || 'N/A'),
+            serviceIds: ticketServices.map(s => s?.id || s?.service || 'N/A'),
             serviceNames: ticketServices.map(s => s?.name || 'N/A'),
             lookingFor: service.id,
             lookingForName: service.name,
-            match: ticketServices.some(s => s && (s.id === service.id || s.service_id === service.id)),
+            match: ticketServices.some(s => s && (s.id === service.id || s.service_id === service.id || s.service === service.id)),
             // ✅ ADICIONADO: Log dos IDs reais para debug
             serviceIdsDetailed: ticketServices.map(s => ({
               id: s?.id,
@@ -1933,13 +1936,17 @@ const OperatorPage: React.FC = () => {
             })),
             // ✅ ADICIONADO: Log expandido dos IDs para debug
             serviceIdsExpanded: ticketServices.map(s => s?.id),
-            serviceNamesExpanded: ticketServices.map(s => s?.name)
+            serviceNamesExpanded: ticketServices.map(s => s?.name),
+            // ✅ ADICIONADO: Log dos IDs reais para debug
+            serviceIdsReal: ticketServices.map(s => s?.id || 'undefined'),
+            serviceNamesReal: ticketServices.map(s => s?.name || 'undefined')
           });
           
                       // Log removido para reduzir spam - já temos o log acima
           
                       // ✅ CORREÇÃO: Usar o campo correto para comparação
-            return ticketServices.some(s => s && (s.id === service.id || s.service_id === service.id));
+            // ✅ CORREÇÃO: Usar o campo correto para comparação
+            return ticketServices.some(s => s && (s.id === service.id || s.service_id === service.id || s.service === service.id));
         });
         
         console.log(`🔍 DEBUG -   Serviço ${service.name}: ${serviceTickets.length} tickets`);
