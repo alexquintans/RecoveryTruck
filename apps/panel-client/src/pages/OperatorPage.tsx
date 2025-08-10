@@ -1867,9 +1867,10 @@ const OperatorPage: React.FC = () => {
       }
       
       // ✅ CORREÇÃO: Logs para debug da função
-      console.log('🔍 DEBUG - organizeTicketsByService - Início:');
-      console.log('🔍 DEBUG -   Total de tickets:', tickets.length);
-      console.log('🔍 DEBUG -   Total de serviços ativos:', activeServices.length);
+              console.log('🔍 DEBUG - organizeTicketsByService - Início:');
+        console.log('🔍 DEBUG -   Total de tickets:', tickets.length);
+        console.log('🔍 DEBUG -   Total de serviços ativos:', activeServices.length);
+        console.log('🔍 DEBUG -   Serviços ativos:', activeServices.map(s => ({ id: s.id, name: s.name })));
       
       // Filtrar apenas tickets que estão na fila (in_queue), excluindo pending_payment
       const queueTickets = tickets.filter(ticket => {
@@ -1877,7 +1878,22 @@ const OperatorPage: React.FC = () => {
         return ticket.status === 'in_queue';
       });
       
-      console.log('🔍 DEBUG -   Tickets na fila (in_queue):', queueTickets.length);
+              console.log('🔍 DEBUG -   Tickets na fila (in_queue):', queueTickets.length);
+        
+        // ✅ CORREÇÃO: Log da estrutura de um ticket para debug
+        if (queueTickets.length > 0) {
+          const sampleTicket = queueTickets[0];
+          console.log('🔍 DEBUG - Estrutura de um ticket:', {
+            id: sampleTicket.id,
+            number: sampleTicket.number || sampleTicket.ticket_number,
+            status: sampleTicket.status,
+            services: sampleTicket.services,
+            service: sampleTicket.service,
+            hasServices: !!sampleTicket.services,
+            hasService: !!sampleTicket.service,
+            servicesLength: sampleTicket.services?.length || 0
+          });
+        }
       
       const result = activeServices.map(service => {
         if (!service || !service.id) {
@@ -1891,10 +1907,23 @@ const OperatorPage: React.FC = () => {
           // Verificar se o ticket tem serviços
           const ticketServices = ticket.services || (ticket.service ? [ticket.service] : []);
           
+          // ✅ CORREÇÃO: Log detalhado para debug dos serviços do ticket
+          console.log(`🔍 DEBUG - Ticket ${ticket.number || ticket.ticket_number} - Estrutura completa:`, {
+            ticketId: ticket.id,
+            services: ticketServices,
+            servicesLength: ticketServices.length,
+            serviceIds: ticketServices.map(s => s?.id || 'N/A'),
+            serviceNames: ticketServices.map(s => s?.name || 'N/A'),
+            serviceObjects: ticketServices.map(s => ({ id: s?.id, name: s?.name, service: s?.service }))
+          });
+          
           console.log(`🔍 DEBUG -   Ticket ${ticket.number || ticket.ticket_number}:`, {
             ticketServices: ticketServices.length,
             serviceIds: ticketServices.map(s => s?.id || 'N/A'),
-            lookingFor: service.id
+            serviceNames: ticketServices.map(s => s?.name || 'N/A'),
+            lookingFor: service.id,
+            lookingForName: service.name,
+            match: ticketServices.some(s => s && s.id === service.id)
           });
           
           return ticketServices.some(s => s && s.id === service.id);

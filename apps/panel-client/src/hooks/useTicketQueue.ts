@@ -29,6 +29,15 @@ export function useTicketQueue() {
             id: s.service?.id,
             name: s.service?.name,
             price: s.price
+          })) || [],
+          // ✅ CORREÇÃO: Log detalhado da estrutura dos serviços
+          services_structure: t.services?.map((s: any) => ({
+            service_id: s.service_id,
+            service_object: s.service,
+            price: s.price,
+            has_service: !!s.service,
+            service_id_type: typeof s.service_id,
+            service_object_type: typeof s.service
           })) || []
         }))
       });
