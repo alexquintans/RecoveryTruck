@@ -2575,166 +2575,181 @@ const OperatorPage: React.FC = () => {
   );
   };
 
-  // CORRIGIDO: useEffect unificado para gerenciar a etapa inicial e mudanças de status da operação
-  // Problema: Dependências estavam causando loops infinitos
-  // Solução: Memoizar as funções e usar useCallback para evitar recriações
-  const isOperating = operationConfig?.isOperating;
+  // ✅ CORREÇÃO: useEffect unificado para gerenciar a etapa inicial e mudanças de status da operação
+  // Problema: Dependências estavam causando loops infinitos e React Errors #300/#310
+  // Solução: Memoizar valores e usar useRef para evitar recriações
+  const isOperating = safeOperationConfig?.isOperating;
+  
+  // ✅ CORREÇÃO: Usar useRef para rastrear mudanças de estado
+  const previousOperatingState = useRef<boolean | null>(null);
+  const isInitialized = useRef<boolean>(false);
   
   useEffect(() => {
     try {
-      console.log('🔍 DEBUG - useEffect unificado:', {
-        currentStep,
-        operationConfig: isOperating,
-        isSavingConfig
-      });
+      // ✅ CORREÇÃO: Evitar execução desnecessária no primeiro render
+      if (!isInitialized.current) {
+        isInitialized.current = true;
+        
+        // Definir etapa inicial baseado no status da operação
+        if (currentStep === null) {
+          if (isOperating) {
+            console.log('🔍 Operação ativa, indo para operação');
+            setCurrentStep('operation');
+            localStorage.setItem('operator_current_step', 'operation');
+          } else {
+            console.log('🔍 Operação não ativa, indo para configuração');
+            setCurrentStep('name');
+            localStorage.setItem('operator_current_step', 'name');
+          }
+        }
+        return;
+      }
       
-      // Não fazer nada se estiver salvando configuração
+      // ✅ CORREÇÃO: Não fazer nada se estiver salvando configuração
       if (isSavingConfig) {
         console.log('🔍 Salvando configuração, ignorando mudanças');
         return;
       }
       
-      // Se não há etapa definida, definir baseado no status da operação
-      if (currentStep === null) {
+      // ✅ CORREÇÃO: Verificar mudanças reais de estado da operação
+      const hasOperatingStateChanged = previousOperatingState.current !== null && 
+                                      previousOperatingState.current !== isOperating;
+      
+      if (hasOperatingStateChanged) {
+        console.log('🔍 Mudança de estado da operação detectada:', {
+          anterior: previousOperatingState.current,
+          atual: isOperating
+        });
+        
         if (isOperating) {
-          console.log('🔍 Operação ativa, indo para operação');
+          // Operação ficou ativa
+          console.log('🔍 Operação ativa detectada, redirecionando para operação');
           setCurrentStep('operation');
           localStorage.setItem('operator_current_step', 'operation');
         } else {
-          console.log('🔍 Operação não ativa, indo para configuração');
-          setCurrentStep('name');
-          localStorage.setItem('operator_current_step', 'name');
+          // Operação foi encerrada
+          console.log('🔍 Operação encerrada, redirecionando para configuração');
+          
+          // ✅ CORREÇÃO: Usar timeout para evitar conflitos de renderização
+          setTimeout(() => {
+            try {
+              // Limpar localStorage de forma segura
+              localStorage.removeItem('operator_current_step');
+              localStorage.removeItem('operator_config');
+              localStorage.removeItem('operator_name');
+              localStorage.removeItem('operator_selected_equipment');
+              localStorage.removeItem('operator_active_tab');
+              localStorage.removeItem('operator_active_service_tab');
+              localStorage.removeItem('operator_preferences');
+              
+              // Atualizar estado React de forma segura
+              setCurrentStep('name');
+              setOperatorName('');
+              setSelectedEquipment('');
+              setActiveTab('operation');
+              setActiveServiceTab('');
+              
+              // Limpar configuração e preferências de forma segura
+              if (typeof clearConfig === 'function') {
+                try {
+                  clearConfig();
+                } catch (error) {
+                  console.warn('Erro ao limpar config:', error);
+                }
+              }
+              
+              if (typeof clearPreferences === 'function') {
+                try {
+                  clearPreferences();
+                } catch (error) {
+                  console.warn('Erro ao limpar preferences:', error);
+                }
+              }
+              
+              // ✅ CORREÇÃO: NÃO limpar cache aqui para evitar React Error #310
+              // O cache será limpo pelo useEffect específico
+              
+              localStorage.setItem('operator_current_step', 'name');
+            } catch (error) {
+              console.error('Erro ao limpar estado da operação:', error);
+              // Fallback: apenas definir a etapa
+              setCurrentStep('name');
+              localStorage.setItem('operator_current_step', 'name');
+            }
+          }, 100); // ✅ Aumentar delay para evitar conflitos
         }
-        return;
       }
       
-      // Se a operação está ativa e o usuário está em etapa de configuração, redirecionar
-      if (isOperating && (currentStep === 'name' || currentStep === 'config')) {
-        console.log('🔍 Operação ativa detectada, redirecionando para operação');
-        setCurrentStep('operation');
-        localStorage.setItem('operator_current_step', 'operation');
-        return;
-      }
+      // Atualizar referência
+      previousOperatingState.current = isOperating;
       
-      // ✅ CORREÇÃO: Se a operação não está ativa e o usuário está na etapa de operação, redirecionar
-      // Mas apenas se não for o primeiro carregamento e de forma mais segura
-      if (!isOperating && currentStep === 'operation') {
-        console.log('🔍 Operação encerrada, redirecionando para configuração');
-        
-        // Usar timeout para evitar conflitos de renderização
-        setTimeout(() => {
-          try {
-            // Limpar localStorage de forma segura
-            localStorage.removeItem('operator_current_step');
-            localStorage.removeItem('operator_config');
-            localStorage.removeItem('operator_name');
-            localStorage.removeItem('operator_selected_equipment');
-            localStorage.removeItem('operator_active_tab');
-            localStorage.removeItem('operator_active_service_tab');
-            localStorage.removeItem('operator_preferences');
-            
-            // Atualizar estado React de forma segura
-            setCurrentStep('name');
-            setOperatorName('');
-            setSelectedEquipment('');
-            setActiveTab('operation');
-            setActiveServiceTab('');
-            
-            // Limpar configuração e preferências de forma segura
-            if (typeof clearConfig === 'function') {
-              try {
-                clearConfig();
-              } catch (error) {
-                console.warn('Erro ao limpar config:', error);
-              }
-            }
-            
-            if (typeof clearPreferences === 'function') {
-              try {
-                clearPreferences();
-              } catch (error) {
-                console.warn('Erro ao limpar preferences:', error);
-              }
-            }
-            
-            // Limpar cache do React Query de forma segura
-            if (queryClient && typeof queryClient.clear === 'function') {
-              try {
-                queryClient.clear();
-              } catch (error) {
-                console.warn('Erro ao limpar cache:', error);
-              }
-            }
-            
-            localStorage.setItem('operator_current_step', 'name');
-          } catch (error) {
-            console.error('Erro ao limpar estado da operação:', error);
-            // Fallback: apenas definir a etapa
-            setCurrentStep('name');
-            localStorage.setItem('operator_current_step', 'name');
-          }
-        }, 50); // Pequeno delay para evitar conflitos
-        
-        return;
-      }
     } catch (error) {
       console.error('Erro no useEffect unificado:', error);
       // Fallback: ir para configuração em caso de erro
       setCurrentStep('name');
       localStorage.setItem('operator_current_step', 'name');
     }
-  }, [isOperating, currentStep, isSavingConfig, clearConfig, clearPreferences, queryClient]);
+  }, [isOperating, currentStep, isSavingConfig, clearConfig, clearPreferences]); // ✅ Remover queryClient das dependências
 
-  // CORRIGIDO: useEffect para carregar dados quando operação estiver ativa
+  // ✅ CORREÇÃO: useEffect para carregar dados quando operação estiver ativa
   useEffect(() => {
     try {
-      if (operationConfig?.isOperating && tenantId) {
+      if (safeOperationConfig?.isOperating && tenantId) {
         console.log('🔄 Operação ativa detectada, carregando dados...');
-        // Adicionar delay para evitar problemas de timing
+        // ✅ CORREÇÃO: Adicionar delay para evitar problemas de timing
         setTimeout(() => {
           try {
-            refetch();
-            refetchOperation();
+            // ✅ CORREÇÃO: Usar queryClient diretamente ao invés de funções que podem ser recriadas
+            if (queryClient) {
+              queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
+              queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+              queryClient.invalidateQueries({ queryKey: ['equipment'] });
+              queryClient.invalidateQueries({ queryKey: ['operation'] });
+            }
           } catch (error) {
             console.error('Erro ao refetch dados:', error);
           }
-        }, 100);
+        }, 150); // ✅ Aumentar delay para evitar conflitos
       }
     } catch (error) {
       console.error('Erro no useEffect de carregar dados:', error);
     }
-  }, [operationConfig?.isOperating, tenantId, refetch, refetchOperation]);
+  }, [safeOperationConfig?.isOperating, tenantId, queryClient]); // ✅ Usar safeOperationConfig
 
   // ✅ CORREÇÃO: Limpar cache apenas quando necessário para evitar React Error #310/#300
-  const previousOperatingState = useRef<boolean | null>(null);
-
+  // Usar o mesmo useRef do useEffect anterior para evitar conflitos
   useEffect(() => {
-    const isCurrentlyOperating = operationConfig?.isOperating;
+    const isCurrentlyOperating = safeOperationConfig?.isOperating;
     
-    // Apenas executar quando há uma mudança REAL de estado (não na inicialização)
+    // ✅ CORREÇÃO: Apenas executar quando há uma mudança REAL de estado (não na inicialização)
     if (previousOperatingState.current !== null && 
         previousOperatingState.current !== isCurrentlyOperating) {
       
-      console.log('🧹 Limpando cache devido a mudança de operação', {
-        anterior: previousOperatingState.current,
-        atual: isCurrentlyOperating
-      });
-      
-      // Usar timeout para evitar conflitos com outros useEffects
-      setTimeout(() => {
-        try {
-          queryClient.invalidateQueries({ queryKey: ['tickets'] });
-          queryClient.invalidateQueries({ queryKey: ['equipment'] });
-          queryClient.invalidateQueries({ queryKey: ['operation'] });
-        } catch (error) {
-          console.error('Erro ao limpar cache:', error);
-        }
-      }, 100);
+      // ✅ CORREÇÃO: Só limpar cache quando operação para de estar ativa (false)
+      // NÃO limpar quando operação fica ativa (true) para evitar React Error #310
+      if (previousOperatingState.current === true && isCurrentlyOperating === false) {
+        console.log('🧹 Operação encerrada, limpando cache...');
+        
+        // ✅ CORREÇÃO: Usar timeout para evitar conflitos com outros useEffects
+        setTimeout(() => {
+          try {
+            if (queryClient) {
+              queryClient.invalidateQueries({ queryKey: ['tickets'] });
+              queryClient.invalidateQueries({ queryKey: ['equipment'] });
+              queryClient.invalidateQueries({ queryKey: ['operation'] });
+            }
+          } catch (error) {
+            console.error('Erro ao limpar cache:', error);
+          }
+        }, 200); // ✅ Aumentar delay para evitar conflitos
+      } else if (previousOperatingState.current === false && isCurrentlyOperating === true) {
+        console.log('🧹 Operação iniciada, NÃO limpando cache para evitar React Error #310');
+      }
     }
     
-    // Atualizar referência
-    previousOperatingState.current = isCurrentlyOperating;
-  }, [operationConfig?.isOperating, queryClient]);
+    // ✅ CORREÇÃO: NÃO atualizar referência aqui, pois já é atualizada no useEffect anterior
+    // previousOperatingState.current = isCurrentlyOperating;
+  }, [safeOperationConfig?.isOperating, queryClient]); // ✅ Usar safeOperationConfig
 
   // NOVO: Verificar se os dados estão carregando - MELHORADO
   const isLoading = !user || !tenantId || !safeOperationConfig || !services || !equipments || !extras || 

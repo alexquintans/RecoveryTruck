@@ -319,6 +319,19 @@ export function useTicketQueue() {
       return e.operation_id === operationConfig.operation_id || !e.operation_id;
     }), [equipmentQuery.data, operationConfig.operation_id]);
 
+  // ✅ CORREÇÃO: Memoizar funções de refetch para evitar React Error #310
+  const refetchOperation = useCallback(() => 
+    queryClient.invalidateQueries({ queryKey: ['operation'] }), 
+    [queryClient]
+  );
+
+  const refetch = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
+    queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+    queryClient.invalidateQueries({ queryKey: ['tickets', 'pending-payment'] });
+    queryClient.invalidateQueries({ queryKey: ['equipment'] });
+  }, [queryClient]);
+
   return {
     ...queueQueryWithoutMyTickets,
     tickets: queueTickets,
@@ -328,16 +341,8 @@ export function useTicketQueue() {
     pendingPaymentTickets,
     equipment,
     operationConfig: normalizedOperationConfig,
-    refetchOperation: useCallback(() => 
-      queryClient.invalidateQueries({ queryKey: ['operation'] }), 
-      [queryClient]
-    ),
-    refetch: useCallback(() => {
-      queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
-      queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
-      queryClient.invalidateQueries({ queryKey: ['tickets', 'pending-payment'] });
-      queryClient.invalidateQueries({ queryKey: ['equipment'] });
-    }, [queryClient]),
+    refetchOperation,
+    refetch,
   } as typeof queueQuery & {
     tickets: any[];
     myTickets: any[];
