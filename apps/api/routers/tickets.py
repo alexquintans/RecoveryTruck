@@ -231,6 +231,14 @@ async def get_ticket_queue(
         include_in_progress=False
     )
     
+    # ✅ CORREÇÃO: Logs para debug da fila
+    logger.info(f"🔍 DEBUG - Fila carregada: {len(tickets)} tickets para tenant {current_operator.tenant_id}")
+    for ticket in tickets:
+        logger.info(f"🔍 DEBUG - Ticket {ticket.ticket_number}: status={ticket.status}, services={len(ticket.services) if ticket.services else 0}")
+        if ticket.services:
+            for ts in ticket.services:
+                logger.info(f"🔍 DEBUG -   Serviço: {ts.service.name if ts.service else 'N/A'} (ID: {ts.service_id})")
+    
     # Converter para TicketInQueue com informações adicionais
     queue_tickets = []
     for ticket in tickets:
@@ -320,6 +328,13 @@ async def get_ticket_queue(
         for t in queue_tickets 
         if t.status == TicketStatus.IN_QUEUE.value
     ])
+    
+    # ✅ CORREÇÃO: Logs para debug do resultado final
+    logger.info(f"🔍 DEBUG - Resultado final da fila:")
+    logger.info(f"🔍 DEBUG -   Total de tickets: {len(queue_tickets)}")
+    logger.info(f"🔍 DEBUG -   Agrupamento por serviço: {list(by_service.keys())}")
+    for service_name, tickets in by_service.items():
+        logger.info(f"🔍 DEBUG -     '{service_name}': {len(tickets)} tickets")
     
     return TicketQueue(
         items=queue_tickets,

@@ -1866,31 +1866,51 @@ const OperatorPage: React.FC = () => {
         return [];
       }
       
+      // ✅ CORREÇÃO: Logs para debug da função
+      console.log('🔍 DEBUG - organizeTicketsByService - Início:');
+      console.log('🔍 DEBUG -   Total de tickets:', tickets.length);
+      console.log('🔍 DEBUG -   Total de serviços ativos:', activeServices.length);
+      
       // Filtrar apenas tickets que estão na fila (in_queue), excluindo pending_payment
       const queueTickets = tickets.filter(ticket => {
         if (!ticket || typeof ticket !== 'object') return false;
         return ticket.status === 'in_queue';
       });
       
-      return activeServices.map(service => {
+      console.log('🔍 DEBUG -   Tickets na fila (in_queue):', queueTickets.length);
+      
+      const result = activeServices.map(service => {
         if (!service || !service.id) {
           console.warn('organizeTicketsByService: serviço inválido:', service);
           return { serviceId: '', serviceName: '', tickets: [] };
         }
         
+        const serviceTickets = queueTickets.filter(ticket => {
+          if (!ticket) return false;
+          
+          // Verificar se o ticket tem serviços
+          const ticketServices = ticket.services || (ticket.service ? [ticket.service] : []);
+          
+          console.log(`🔍 DEBUG -   Ticket ${ticket.number || ticket.ticket_number}:`, {
+            ticketServices: ticketServices.length,
+            serviceIds: ticketServices.map(s => s?.id || 'N/A'),
+            lookingFor: service.id
+          });
+          
+          return ticketServices.some(s => s && s.id === service.id);
+        });
+        
+        console.log(`🔍 DEBUG -   Serviço ${service.name}: ${serviceTickets.length} tickets`);
+        
         return {
           serviceId: service.id,
           serviceName: service.name || '',
-          tickets: queueTickets.filter(ticket => {
-            if (!ticket) return false;
-            
-            // Verificar se o ticket tem serviços
-            const ticketServices = ticket.services || (ticket.service ? [ticket.service] : []);
-            
-            return ticketServices.some(s => s && s.id === service.id);
-          })
+          tickets: serviceTickets
         };
       });
+      
+      console.log('🔍 DEBUG - organizeTicketsByService - Resultado final:', result);
+      return result;
     };
 
     // Função getTicketPriority já definida no escopo global, removendo duplicata
@@ -1972,7 +1992,20 @@ const OperatorPage: React.FC = () => {
           console.warn('organizedQueues useMemo: dados inválidos:', { safeTickets, activeServices });
           return [];
         }
-        return organizeTicketsByService(safeTickets, activeServices);
+        
+        // ✅ CORREÇÃO: Logs para debug das filas organizadas
+        console.log('🔍 DEBUG - Organizando filas por serviço:');
+        console.log('🔍 DEBUG -   safeTickets:', safeTickets.length);
+        console.log('🔍 DEBUG -   activeServices:', activeServices.length);
+        
+        const result = organizeTicketsByService(safeTickets, activeServices);
+        
+        console.log('🔍 DEBUG - Resultado das filas organizadas:');
+        result.forEach(queue => {
+          console.log(`🔍 DEBUG -   ${queue.serviceName}: ${queue.tickets.length} tickets`);
+        });
+        
+        return result;
       } catch (error) {
         console.error('organizedQueues useMemo: erro ao organizar filas:', error);
         return [];
