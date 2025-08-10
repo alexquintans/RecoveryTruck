@@ -955,16 +955,28 @@ const OperatorPage: React.FC = () => {
             extras: extrasData.items || extrasData
           });
           
-          setServices(servicesData.items || servicesData);
+          setServices((servicesData.items || servicesData).map((service: any) => ({
+            ...service,
+            isActive: service.is_active || service.isActive || false,
+            duration: service.duration_minutes || service.duration || 10,
+            equipment_count: service.equipment_count || 1,
+            type: service.type || 'default',
+            color: service.color || '#3B82F6'
+          })));
           setEquipments((equipmentsData.items || equipmentsData).map((eq: any) => ({
             id: eq.id,
             name: eq.name || eq.identifier || 'Equipamento',
             type: eq.type,
             serviceId: eq.service_id,
             count: 1,
-            isActive: true,
+            isActive: eq.is_active || eq.isActive || true,
           })));
-          setExtras(extrasData.items || extrasData);
+          setExtras((extrasData.items || extrasData).map((extra: any) => ({
+            ...extra,
+            isActive: extra.is_active || extra.isActive || false,
+            category: extra.category || 'default',
+            stock: extra.stock || 0
+          })));
         } catch (error) {
           console.error('❌ Erro ao carregar dados:', error);
         }
@@ -993,16 +1005,40 @@ const OperatorPage: React.FC = () => {
           });
           
           // ✅ Atualizar estados com dados da operação
-          setServices(servicesData.items || servicesData);
-          setEquipments((equipmentsData.items || equipmentsData).map((eq: any) => ({
+          const mappedServices = (servicesData.items || servicesData).map((service: any) => ({
+            ...service,
+            isActive: service.is_active || service.isActive || false,
+            duration: service.duration_minutes || service.duration || 10,
+            equipment_count: service.equipment_count || 1,
+            type: service.type || 'default',
+            color: service.color || '#3B82F6'
+          }));
+          
+          const mappedEquipments = (equipmentsData.items || equipmentsData).map((eq: any) => ({
             id: eq.id,
             name: eq.name || eq.identifier || 'Equipamento',
             type: eq.type,
             serviceId: eq.service_id,
             count: 1,
-            isActive: true,
-          })));
-          setExtras(extrasData.items || extrasData);
+            isActive: eq.is_active || eq.isActive || true,
+          }));
+          
+          const mappedExtras = (extrasData.items || extrasData).map((extra: any) => ({
+            ...extra,
+            isActive: extra.is_active || extra.isActive || false,
+            category: extra.category || 'default',
+            stock: extra.stock || 0
+          }));
+          
+          console.log('🔍 DEBUG - Dados mapeados:', {
+            services: mappedServices.map(s => ({ id: s.id, name: s.name, isActive: s.isActive, is_active: s.is_active })),
+            equipments: mappedEquipments.map(e => ({ id: e.id, name: e.name, isActive: e.isActive })),
+            extras: mappedExtras.map(ex => ({ id: ex.id, name: ex.name, isActive: ex.isActive, is_active: ex.is_active }))
+          });
+          
+          setServices(mappedServices);
+          setEquipments(mappedEquipments);
+          setExtras(mappedExtras);
         } catch (error) {
           console.error('❌ Erro ao carregar dados da operação:', error);
         }
