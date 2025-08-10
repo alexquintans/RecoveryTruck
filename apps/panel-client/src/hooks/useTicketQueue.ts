@@ -236,9 +236,13 @@ export function useTicketQueue() {
   // ✅ SOLUÇÃO: WebSocket com proteções robustas
   const shouldConnectWebSocket = isAuthenticated && wsUrl && typeof wsUrl === 'string' && wsUrl.startsWith('ws');
   
-  useWebSocket({
+  // ✅ CORREÇÃO: Sempre chamar useWebSocket para evitar React Error #310
+  // O hook deve ser sempre executado, mas com URL null quando não deve conectar
+  const webSocket = useWebSocket({
     url: shouldConnectWebSocket ? wsUrl : null, // ✅ Passar null se não deve conectar
     enabled: shouldConnectWebSocket, // ✅ Usar propriedade enabled
+    reconnectInterval: 5000,
+    reconnectAttempts: 5,
     ...wsCallbacks,
   });
 

@@ -865,7 +865,17 @@ const OperatorPage: React.FC = () => {
 
   // CORRIGIDO: Funções utilitárias agora usam useCallback para evitar recriações
   // ✅ CORREÇÃO: Memoizar serviceProgress keys para evitar loop
-  const serviceProgressKeys = useMemo(() => Object.keys(serviceProgress), [serviceProgress]);
+  const serviceProgressKeys = useMemo(() => {
+    try {
+      if (!serviceProgress || typeof serviceProgress !== 'object') {
+        return [];
+      }
+      return Object.keys(serviceProgress);
+    } catch (error) {
+      console.error('Erro ao memoizar serviceProgressKeys:', error);
+      return [];
+    }
+  }, [serviceProgress]);
   
   const getTicketOverallStatus = useCallback((ticketId: string) => {
     const progress = serviceProgress[ticketId];
@@ -1870,15 +1880,24 @@ const OperatorPage: React.FC = () => {
     // Problema: Dependências estavam causando loops infinitos
     // Solução: Memoizar as dependências e usar useCallback
     const activeServices = useMemo(() => {
-      if (!services || !Array.isArray(services)) {
-        console.warn('activeServices useMemo: services não é um array válido:', services);
+      try {
+        if (!services || !Array.isArray(services)) {
+          console.warn('activeServices useMemo: services não é um array válido:', services);
+          return [];
+        }
+        return services.filter(s => s && s.isActive);
+      } catch (error) {
+        console.error('Erro no activeServices useMemo:', error);
         return [];
       }
-      return services.filter(s => s && s.isActive);
     }, [services]);
     
     const organizedQueues = useMemo(() => {
       try {
+        if (!safeTickets || !Array.isArray(safeTickets) || !activeServices || !Array.isArray(activeServices)) {
+          console.warn('organizedQueues useMemo: dados inválidos:', { safeTickets, activeServices });
+          return [];
+        }
         return organizeTicketsByService(safeTickets, activeServices);
       } catch (error) {
         console.error('organizedQueues useMemo: erro ao organizar filas:', error);
