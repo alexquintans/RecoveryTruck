@@ -1645,13 +1645,18 @@ async def confirm_payment(
 
     logger.info(f"🎯 Ticket #{ticket.ticket_number} pagamento confirmado e movido para fila")
 
-    # Opcional: enviar update pelo websocket
+    # ✅ CORREÇÃO: Enviar update pelo websocket com estrutura correta
     try:
         await websocket_manager.broadcast_to_tenant(str(ticket.tenant_id), {
             "type": "payment_update",
-            "ticket_id": str(ticket.id),
-            "payment_confirmed": True,
-            "status": "in_queue"
+            "data": {
+                "id": str(ticket.id),
+                "ticket_id": str(ticket.id),
+                "payment_confirmed": True,
+                "status": "in_queue",
+                "ticket_number": ticket.ticket_number,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
         })
         logger.info(f"🔍 DEBUG - Broadcast de confirmação de pagamento enviado para tenant {ticket.tenant_id}")
     except Exception as e:

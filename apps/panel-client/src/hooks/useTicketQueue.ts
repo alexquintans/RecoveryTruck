@@ -169,6 +169,18 @@ export function useTicketQueue() {
         
         console.log('🔌 WebSocket message received:', { type, data });
         
+        // ✅ CORREÇÃO: Log detalhado para debug de pagamento
+        if (type === 'payment_update') {
+          console.log('🔍 DEBUG - Estrutura da mensagem de pagamento:', {
+            type,
+            data,
+            hasData: !!data,
+            hasPaymentConfirmed: data?.payment_confirmed,
+            hasTicketId: data?.ticket_id,
+            dataKeys: data ? Object.keys(data) : []
+          });
+        }
+        
         if (type === 'queue_update') {
           console.log('🔄 Atualizando fila via WebSocket');
           try {
@@ -218,6 +230,28 @@ export function useTicketQueue() {
       if (type === 'payment_update') {
         console.log('🔄 Atualização de pagamento via WebSocket:', data);
         try {
+          // ✅ CORREÇÃO: Processar dados específicos do pagamento
+          if (data && data.payment_confirmed && data.ticket_id) {
+            console.log(`🎯 Pagamento confirmado para ticket ${data.ticket_id}, movendo para fila...`);
+            
+            // Atualizar o ticket específico no cache
+            queryClient.setQueryData<any>(['tickets', 'queue'], (old: any) => {
+              if (!old || !old.items) return old;
+              const items = old.items.map((t: any) => 
+                t.id === data.ticket_id 
+                  ? { ...t, status: 'in_queue', payment_confirmed: true, queued_at: data.updated_at }
+                  : t
+              );
+              return { ...old, items };
+            });
+            
+            // Atualizar tickets de pagamento pendente
+            queryClient.setQueryData<any>(['tickets', 'pending-payment'], (old: any) => {
+              if (!old || !Array.isArray(old)) return old;
+              return old.filter((t: any) => t.id !== data.ticket_id);
+            });
+          }
+          
           // Invalidar queries relacionadas a pagamento quando um pagamento for confirmado
           queryClient.invalidateQueries({ queryKey: ['tickets', 'pending-payment'] });
           queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
