@@ -291,8 +291,9 @@ const TicketCard = ({
   callLoading: boolean;
 }) => {
   const priority = getTicketPriority(ticket, currentService);
-  const services = ticket.services || [ticket.service].filter(Boolean);
-  const currentServiceData = services.find(s => s?.id === currentService);
+  // ✅ CORREÇÃO: Usar service_details em vez de services
+  const ticketServices = ticket.service_details || ticket.services || (ticket.service ? [ticket.service] : []);
+  const currentServiceData = ticketServices.find(s => s && (s.id === currentService || s.service === currentService || s.service_id === currentService));
   
   // Calcular tempo de espera
   const created = ticket.createdAt ? new Date(ticket.createdAt) : null;
@@ -311,7 +312,7 @@ const TicketCard = ({
           </span>
           
           {/* Indicadores de múltiplos serviços - MELHORADO */}
-          {services.length > 1 && (
+          {ticketServices.length > 1 && (
             <div className="flex items-center gap-2">
               {/* Badge de ordem do serviço */}
               <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium border border-blue-200">
@@ -357,7 +358,8 @@ const TicketCard = ({
             <span className="text-xs font-semibold text-gray-600">SERVIÇO ATUAL:</span>
           </div>
           <span className="bg-blue-100 text-blue-700 rounded-full px-3 py-1 text-xs font-medium shadow-sm border border-blue-200">
-            {currentServiceData?.name}
+            {/* ✅ CORREÇÃO: Mostrar nome do serviço atual corretamente */}
+            {currentServiceData?.name || (currentServiceData?.service && `Serviço ${currentServiceData.service}`)}
             {currentServiceData?.duration && (
               <span className="ml-1 text-blue-600">({currentServiceData.duration}min)</span>
             )}
@@ -368,7 +370,7 @@ const TicketCard = ({
         </div>
         
         {/* Outros serviços (se houver múltiplos) - MELHORADO */}
-        {services.length > 1 && (
+        {ticketServices.length > 1 && (
           <div className="mt-2">
             <div className="flex items-center gap-2 mb-1">
               <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -378,9 +380,10 @@ const TicketCard = ({
               <span className="text-xs font-semibold text-gray-600">TAMBÉM AGUARDA:</span>
             </div>
             <div className="flex flex-wrap gap-2">
-              {services.filter(s => s?.id !== currentService).map((service, idx) => (
-                <span key={service?.id || idx} className="bg-gray-100 text-gray-700 rounded-full px-3 py-1 text-xs font-medium shadow-sm border border-gray-200">
-                  {service?.name}
+              {ticketServices.filter(s => s && (s.id !== currentService && s.service !== currentService && s.service_id !== currentService)).map((service, idx) => (
+                <span key={service?.id || service?.service || idx} className="bg-gray-100 text-gray-700 rounded-full px-3 py-1 text-xs font-medium shadow-sm border border-gray-200">
+                  {/* ✅ CORREÇÃO: Mostrar nome do serviço corretamente */}
+                  {service?.name || (service?.service && `Serviço ${service.service}`)}
                   {service?.duration && (
                     <span className="ml-1 text-gray-600">({service.duration}min)</span>
                   )}
