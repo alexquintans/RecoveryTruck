@@ -1903,7 +1903,9 @@ const OperatorPage: React.FC = () => {
             hasService: !!sampleTicket.service,
             hasServiceDetails: !!sampleTicket.service_details,
             servicesLength: sampleTicket.services?.length || 0,
-            serviceDetailsLength: sampleTicket.service_details?.length || 0
+            serviceDetailsLength: sampleTicket.service_details?.length || 0,
+            // ✅ ADICIONADO: Log completo do ticket para debug
+            ticketComplete: sampleTicket
           });
         }
       
@@ -1926,13 +1928,36 @@ const OperatorPage: React.FC = () => {
             serviceNames: ticketServices.map(s => s?.name || 'N/A'),
             lookingFor: service.id,
             lookingForName: service.name,
-            match: ticketServices.some(s => s && (s.id === service.id || s.service_id === service.id || s.service === service.id)),
+            match: ticketServices.some(s => s && (
+              s.id === service.id || 
+              s.service_id === service.id || 
+              s.service === service.id ||
+              (s.service && s.service.id === service.id) ||
+              (typeof s.service === 'string' && s.service === service.id)
+            )),
+            // ✅ ADICIONADO: Log da estrutura completa para debug
+            ticketServicesRaw: ticketServices,
+            ticketServicesLength: ticketServices.length,
+            // ✅ ADICIONADO: Log detalhado da comparação
+            comparisonDetails: ticketServices.map(s => ({
+              s_id: s?.id,
+              s_service_id: s?.service_id,
+              s_service: s?.service,
+              s_service_type: typeof s?.service,
+              s_service_id_value: s?.service?.id,
+              lookingFor: service.id,
+              match_id: s?.id === service.id,
+              match_service_id: s?.service_id === service.id,
+              match_service: s?.service === service.id,
+              match_service_obj: s?.service?.id === service.id,
+              match_service_string: typeof s?.service === 'string' && s?.service === service.id
+            })),
             // ✅ ADICIONADO: Log dos IDs reais para debug
             serviceIdsDetailed: ticketServices.map(s => ({
               id: s?.id,
               name: s?.name,
               service_id: s?.service_id,
-              service: s?.service?.id
+              service: s?.service
             })),
             // ✅ ADICIONADO: Log expandido dos IDs para debug
             serviceIdsExpanded: ticketServices.map(s => s?.id),
@@ -1946,7 +1971,14 @@ const OperatorPage: React.FC = () => {
           
                       // ✅ CORREÇÃO: Usar o campo correto para comparação
             // ✅ CORREÇÃO: Usar o campo correto para comparação
-            return ticketServices.some(s => s && (s.id === service.id || s.service_id === service.id || s.service === service.id));
+            // ✅ CORREÇÃO: Acessar o campo correto dentro do objeto service
+            return ticketServices.some(s => s && (
+              s.id === service.id || 
+              s.service_id === service.id || 
+              s.service === service.id ||
+              (s.service && s.service.id === service.id) ||
+              (typeof s.service === 'string' && s.service === service.id)
+            ));
         });
         
         console.log(`🔍 DEBUG -   Serviço ${service.name}: ${serviceTickets.length} tickets`);

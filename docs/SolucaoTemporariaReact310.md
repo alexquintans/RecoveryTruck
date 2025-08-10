@@ -198,3 +198,4 @@ const isLoading = !user || !tenantId || !safeOperationConfig || !services || !eq
 - [ ] Interface não quebra durante transições
 
 
+
