@@ -1907,24 +1907,16 @@ const OperatorPage: React.FC = () => {
           // Verificar se o ticket tem serviços
           const ticketServices = ticket.services || (ticket.service ? [ticket.service] : []);
           
-          // ✅ CORREÇÃO: Log detalhado para debug dos serviços do ticket
-          console.log(`🔍 DEBUG - Ticket ${ticket.number || ticket.ticket_number} - Estrutura completa:`, {
-            ticketId: ticket.id,
-            services: ticketServices,
-            servicesLength: ticketServices.length,
-            serviceIds: ticketServices.map(s => s?.id || 'N/A'),
-            serviceNames: ticketServices.map(s => s?.name || 'N/A'),
-            serviceObjects: ticketServices.map(s => ({ id: s?.id, name: s?.name, service: s?.service }))
-          });
-          
-          console.log(`🔍 DEBUG -   Ticket ${ticket.number || ticket.ticket_number}:`, {
-            ticketServices: ticketServices.length,
+          // ✅ CORREÇÃO: Log simplificado para debug dos serviços do ticket
+          console.log(`🔍 DEBUG - Ticket ${ticket.number || ticket.ticket_number} - Serviços:`, {
             serviceIds: ticketServices.map(s => s?.id || 'N/A'),
             serviceNames: ticketServices.map(s => s?.name || 'N/A'),
             lookingFor: service.id,
             lookingForName: service.name,
             match: ticketServices.some(s => s && s.id === service.id)
           });
+          
+                      // Log removido para reduzir spam - já temos o log acima
           
           return ticketServices.some(s => s && s.id === service.id);
         });
