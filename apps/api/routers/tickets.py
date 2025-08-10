@@ -1641,6 +1641,36 @@ async def confirm_payment(
     ticket.status = TicketStatus.IN_QUEUE.value
     ticket.queued_at = datetime.now(timezone.utc)
     ticket.updated_at = datetime.now(timezone.utc)
+    
+    # ✅ CORREÇÃO: Garantir que o ticket tenha serviços associados na tabela ticket_services
+    if not ticket.services:
+        # Buscar os serviços do payment_session se disponível
+        service_ids = []
+        if ticket.payment_session_id:
+            payment_session = db.query(PaymentSession).filter(PaymentSession.id == ticket.payment_session_id).first()
+            if payment_session:
+                service_ids.append(payment_session.service_id)
+        
+        # Se não encontrou service_ids, usar serviços padrão do tenant
+        if not service_ids:
+            default_services = db.query(Service).filter(
+                Service.tenant_id == ticket.tenant_id,
+                Service.is_active == True
+            ).limit(3).all()  # Limitar a 3 serviços padrão
+            service_ids = [s.id for s in default_services]
+        
+        # Criar associações na tabela ticket_services para múltiplos serviços
+        for service_id in service_ids:
+            ticket_service = TicketService(
+                ticket_id=ticket.id,
+                service_id=service_id,
+                price=0.0  # Valor será atualizado quando necessário
+            )
+            db.add(ticket_service)
+            logger.info(f"🔍 DEBUG - Criada associação ticket_service para ticket {ticket.id} com service_id {service_id}")
+        
+        logger.info(f"🔍 DEBUG - Total de {len(service_ids)} serviços associados ao ticket {ticket.id}")
+    
     db.commit()
 
     logger.info(f"🎯 Ticket #{ticket.ticket_number} pagamento confirmado e movido para fila")

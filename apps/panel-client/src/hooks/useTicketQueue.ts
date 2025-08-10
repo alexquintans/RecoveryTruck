@@ -13,7 +13,27 @@ export function useTicketQueue() {
 
   const queueQuery = useQuery({
     queryKey: ['tickets', 'queue'],
-    queryFn: () => ticketService.getQueue(),
+    queryFn: async () => {
+      const result = await ticketService.getQueue();
+      console.log('🔍 DEBUG - Queue query result:', {
+        total: result?.total || 0,
+        itemsCount: result?.items?.length || 0,
+        byService: result?.by_service || {},
+        itemsDetails: result?.items?.map((t: any) => ({
+          id: t.id,
+          ticket_number: t.ticket_number,
+          status: t.status,
+          services: t.services?.length || 0,
+          service_names: t.services?.map((s: any) => s.service?.name) || [],
+          service_details: t.services?.map((s: any) => ({
+            id: s.service?.id,
+            name: s.service?.name,
+            price: s.price
+          })) || []
+        }))
+      });
+      return result;
+    },
     enabled: isAuthenticated,
     staleTime: 30_000, // 30 segundos
     cacheTime: 60_000, // 1 minuto
@@ -178,6 +198,15 @@ export function useTicketQueue() {
             hasPaymentConfirmed: data?.payment_confirmed,
             hasTicketId: data?.ticket_id,
             dataKeys: data ? Object.keys(data) : []
+          });
+        }
+        
+        // ✅ CORREÇÃO: Log detalhado para debug de tickets com múltiplos serviços
+        if (type === 'ticket_update') {
+          console.log('🔍 DEBUG - Ticket update com múltiplos serviços:', {
+            ticketId: data?.id,
+            services: data?.services?.length || 0,
+            serviceNames: data?.services?.map((s: any) => s.service?.name) || []
           });
         }
         

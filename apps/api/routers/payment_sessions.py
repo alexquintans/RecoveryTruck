@@ -402,7 +402,6 @@ async def create_ticket_from_payment_session(payment_session: PaymentSession, db
         # Create ticket with IN_QUEUE status (pagamento já confirmado, ir direto para fila)
         ticket = Ticket(
             tenant_id=payment_session.tenant_id,
-            service_id=payment_session.service_id,
             payment_session_id=payment_session.id,
             ticket_number=ticket_number,
             status=TicketStatus.IN_QUEUE.value,  # Ir direto para fila
@@ -415,6 +414,27 @@ async def create_ticket_from_payment_session(payment_session: PaymentSession, db
         )
         
         db.add(ticket)
+        db.flush()  # Para obter o ID do ticket
+        
+        # ✅ CORREÇÃO: Criar associações na tabela ticket_services para múltiplos serviços
+        from models import TicketService
+        
+        # Buscar todos os serviços da sessão de pagamento
+        # Por enquanto, criar apenas o serviço principal, mas preparar para múltiplos
+        services_to_add = [payment_session.service_id]
+        
+        # TODO: Implementar suporte a múltiplos serviços na PaymentSession
+        # Por enquanto, usar apenas o service_id principal
+        
+        for service_id in services_to_add:
+            ticket_service = TicketService(
+                ticket_id=ticket.id,
+                service_id=service_id,
+                price=payment_session.amount / len(services_to_add)  # Dividir valor entre serviços
+            )
+            db.add(ticket_service)
+            logger.info(f"🔍 DEBUG - Criada associação ticket_service para ticket {ticket.id} com service_id {service_id}")
+        
         db.commit()
         db.refresh(ticket)
         
