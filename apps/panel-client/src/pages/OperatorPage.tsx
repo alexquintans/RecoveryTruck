@@ -1871,6 +1871,13 @@ const OperatorPage: React.FC = () => {
         console.log('🔍 DEBUG -   Total de tickets:', tickets.length);
         console.log('🔍 DEBUG -   Total de serviços ativos:', activeServices.length);
         console.log('🔍 DEBUG -   Serviços ativos:', activeServices.map(s => ({ id: s.id, name: s.name })));
+        // ✅ ADICIONADO: Log detalhado dos serviços ativos
+        console.log('🔍 DEBUG -   Serviços ativos detalhados:', activeServices.map(s => ({
+          id: s.id,
+          name: s.name,
+          isActive: s.isActive,
+          duration: s.duration
+        })));
       
       // Filtrar apenas tickets que estão na fila (in_queue), excluindo pending_payment
       const queueTickets = tickets.filter(ticket => {
@@ -1907,13 +1914,20 @@ const OperatorPage: React.FC = () => {
           // Verificar se o ticket tem serviços
           const ticketServices = ticket.services || (ticket.service ? [ticket.service] : []);
           
-          // ✅ CORREÇÃO: Log simplificado para debug dos serviços do ticket
+          // ✅ CORREÇÃO: Log detalhado para debug dos serviços do ticket
           console.log(`🔍 DEBUG - Ticket ${ticket.number || ticket.ticket_number} - Serviços:`, {
             serviceIds: ticketServices.map(s => s?.id || 'N/A'),
             serviceNames: ticketServices.map(s => s?.name || 'N/A'),
             lookingFor: service.id,
             lookingForName: service.name,
-            match: ticketServices.some(s => s && s.id === service.id)
+            match: ticketServices.some(s => s && s.id === service.id),
+            // ✅ ADICIONADO: Log dos IDs reais para debug
+            serviceIdsDetailed: ticketServices.map(s => ({
+              id: s?.id,
+              name: s?.name,
+              service_id: s?.service_id,
+              service: s?.service?.id
+            }))
           });
           
                       // Log removido para reduzir spam - já temos o log acima
