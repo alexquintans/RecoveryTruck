@@ -295,6 +295,16 @@ const TicketCard = ({
   const ticketServices = ticket.service_details || ticket.services || (ticket.service ? [ticket.service] : []);
   const currentServiceData = ticketServices.find(s => s && (s.id === currentService || s.service === currentService || s.service_id === currentService));
   
+  // ✅ ADICIONADO: Log para debug da estrutura dos dados
+  console.log('🔍 DEBUG - TicketCard - Estrutura dos dados:', {
+    ticketId: ticket.id,
+    ticketNumber: ticket.number,
+    currentService,
+    ticketServices,
+    currentServiceData,
+    serviceDetails: ticket.service_details
+  });
+  
   // Calcular tempo de espera
   const created = ticket.createdAt ? new Date(ticket.createdAt) : null;
   const now = new Date();
@@ -359,7 +369,7 @@ const TicketCard = ({
           </div>
           <span className="bg-blue-100 text-blue-700 rounded-full px-3 py-1 text-xs font-medium shadow-sm border border-blue-200">
             {/* ✅ CORREÇÃO: Mostrar nome do serviço atual corretamente */}
-            {currentServiceData?.name || (currentServiceData?.service && `Serviço ${currentServiceData.service}`)}
+            {currentServiceData?.name || (currentServiceData?.service && (typeof currentServiceData.service === 'string' ? `Serviço ${currentServiceData.service}` : `Serviço ${currentServiceData.service.id || currentServiceData.service.name || 'Desconhecido'}`))}
             {currentServiceData?.duration && (
               <span className="ml-1 text-blue-600">({currentServiceData.duration}min)</span>
             )}
@@ -383,7 +393,7 @@ const TicketCard = ({
               {ticketServices.filter(s => s && (s.id !== currentService && s.service !== currentService && s.service_id !== currentService)).map((service, idx) => (
                 <span key={service?.id || service?.service || idx} className="bg-gray-100 text-gray-700 rounded-full px-3 py-1 text-xs font-medium shadow-sm border border-gray-200">
                   {/* ✅ CORREÇÃO: Mostrar nome do serviço corretamente */}
-                  {service?.name || (service?.service && `Serviço ${service.service}`)}
+                  {service?.name || (service?.service && (typeof service.service === 'string' ? `Serviço ${service.service}` : `Serviço ${service.service.id || service.service.name || 'Desconhecido'}`))}
                   {service?.duration && (
                     <span className="ml-1 text-gray-600">({service.duration}min)</span>
                   )}
