@@ -974,6 +974,44 @@ const OperatorPage: React.FC = () => {
     }
   }, [tenantId]);
 
+  // ✅ CORREÇÃO: Carregar dados quando operação estiver ativa
+  useEffect(() => {
+    if (tenantId && safeOperationConfig?.isOperating) {
+      const loadOperationData = async () => {
+        try {
+          console.log('🔄 Carregando dados da operação ativa para tenant:', tenantId);
+          const [servicesData, equipmentsData, extrasData] = await Promise.all([
+            fetchServices({ tenant_id: tenantId }).catch(() => ({ items: [] })),
+            fetchEquipments({ tenant_id: tenantId }).catch(() => ({ items: [] })),
+            fetchExtras({ tenant_id: tenantId }).catch(() => ({ items: [] }))
+          ]);
+          
+          console.log('✅ Dados da operação carregados:', { 
+            services: servicesData.items || servicesData,
+            equipments: equipmentsData.items || equipmentsData,
+            extras: extrasData.items || extrasData
+          });
+          
+          // ✅ Atualizar estados com dados da operação
+          setServices(servicesData.items || servicesData);
+          setEquipments((equipmentsData.items || equipmentsData).map((eq: any) => ({
+            id: eq.id,
+            name: eq.name || eq.identifier || 'Equipamento',
+            type: eq.type,
+            serviceId: eq.service_id,
+            count: 1,
+            isActive: true,
+          })));
+          setExtras(extrasData.items || extrasData);
+        } catch (error) {
+          console.error('❌ Erro ao carregar dados da operação:', error);
+        }
+      };
+      
+      loadOperationData();
+    }
+  }, [tenantId, safeOperationConfig?.isOperating]); // ← Executar quando operação ficar ativa
+
   // CORRIGIDO: useEffect para fechar modais
   useEffect(() => {
     if (currentStep) {
@@ -2774,6 +2812,22 @@ const OperatorPage: React.FC = () => {
   const isLoading = !user || !tenantId || !safeOperationConfig || !services || !equipments || !extras || 
                    !Array.isArray(services) || !Array.isArray(equipments) || !Array.isArray(extras) ||
                    !safeMyTickets || !safeTickets || !safeEquipment;
+
+  // ✅ CORREÇÃO: Logs para debug dos dados do ResumoVisual
+  useEffect(() => {
+    console.log('🔍 DEBUG - ResumoVisual dados:', {
+      services: services?.length || 0,
+      servicesAtivos: services?.filter(s => s && s.isActive).length || 0,
+      equipments: equipments?.length || 0,
+      equipmentsAtivos: equipments?.filter(e => e && e.isActive).length || 0,
+      extras: extras?.length || 0,
+      extrasAtivos: extras?.filter(e => e && e.isActive).length || 0,
+      tickets: safeMyTickets?.length || 0,
+      operationConfig: safeOperationConfig?.isOperating,
+      currentStep,
+      tenantId
+    });
+  }, [services, equipments, extras, safeMyTickets, safeOperationConfig?.isOperating, currentStep, tenantId]);
 
   // Se ainda está carregando, mostrar loading
   if (isLoading) {
