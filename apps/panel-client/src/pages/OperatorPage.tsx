@@ -1878,6 +1878,8 @@ const OperatorPage: React.FC = () => {
           isActive: s.isActive,
           duration: s.duration
         })));
+        // ✅ ADICIONADO: Log expandido dos IDs dos serviços ativos
+        console.log('🔍 DEBUG -   IDs dos serviços ativos:', activeServices.map(s => s.id));
       
       // Filtrar apenas tickets que estão na fila (in_queue), excluindo pending_payment
       const queueTickets = tickets.filter(ticket => {
@@ -1912,7 +1914,8 @@ const OperatorPage: React.FC = () => {
           if (!ticket) return false;
           
           // Verificar se o ticket tem serviços
-          const ticketServices = ticket.services || (ticket.service ? [ticket.service] : []);
+          // ✅ CORREÇÃO: Usar service_details em vez de services
+        const ticketServices = ticket.service_details || ticket.services || (ticket.service ? [ticket.service] : []);
           
           // ✅ CORREÇÃO: Log detalhado para debug dos serviços do ticket
           console.log(`🔍 DEBUG - Ticket ${ticket.number || ticket.ticket_number} - Serviços:`, {
@@ -1920,19 +1923,23 @@ const OperatorPage: React.FC = () => {
             serviceNames: ticketServices.map(s => s?.name || 'N/A'),
             lookingFor: service.id,
             lookingForName: service.name,
-            match: ticketServices.some(s => s && s.id === service.id),
+            match: ticketServices.some(s => s && (s.id === service.id || s.service_id === service.id)),
             // ✅ ADICIONADO: Log dos IDs reais para debug
             serviceIdsDetailed: ticketServices.map(s => ({
               id: s?.id,
               name: s?.name,
               service_id: s?.service_id,
               service: s?.service?.id
-            }))
+            })),
+            // ✅ ADICIONADO: Log expandido dos IDs para debug
+            serviceIdsExpanded: ticketServices.map(s => s?.id),
+            serviceNamesExpanded: ticketServices.map(s => s?.name)
           });
           
                       // Log removido para reduzir spam - já temos o log acima
           
-          return ticketServices.some(s => s && s.id === service.id);
+                      // ✅ CORREÇÃO: Usar o campo correto para comparação
+            return ticketServices.some(s => s && (s.id === service.id || s.service_id === service.id));
         });
         
         console.log(`🔍 DEBUG -   Serviço ${service.name}: ${serviceTickets.length} tickets`);
