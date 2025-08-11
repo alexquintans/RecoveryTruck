@@ -333,8 +333,12 @@ const TicketCard = ({
   const now = new Date();
   const waitingMinutes = created ? Math.floor((now.getTime() - created.getTime()) / 60000) : null;
   
-  // ✅ NOVO: Verificar se o ticket já foi chamado em outras filas
+  // ✅ CORREÇÃO: Verificar se o ticket já foi chamado em outras filas
+  // Mas permitir que apareça na fila do serviço atual se ainda não foi chamado para este serviço específico
   const isCalledInOtherQueues = ticket.status === 'called' || ticket.status === 'in_progress';
+  const isCalledForThisService = ticket.serviceProgress?.some(p => 
+    p.service_name === currentService && p.status === 'in_progress'
+  );
   
   return (
     <div className={`flex items-center justify-between bg-white rounded-2xl border p-5 shadow-md hover:shadow-xl transition-transform hover:-translate-y-1 group focus-within:ring-2 focus-within:ring-blue-400 ${
@@ -368,10 +372,16 @@ const TicketCard = ({
                   🏁 Último
                 </span>
               )}
+              {/* ✅ CORREÇÃO: Badge para serviço já em andamento */}
+              {isCalledForThisService && (
+                <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium border border-green-200">
+                  ✅ Em Andamento
+                </span>
+              )}
               {/* ✅ NOVO: Badge para ticket já chamado em outras filas */}
-              {isCalledInOtherQueues && (
+              {isCalledInOtherQueues && !isCalledForThisService && (
                 <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-xs font-medium border border-yellow-200">
-                  ⚠️ Já Chamado
+                  ⚠️ Outro Serviço
                 </span>
               )}
             </div>
@@ -472,19 +482,18 @@ const TicketCard = ({
       {/* Botão de chamada - MELHORADO */}
       <div className="flex gap-2 ml-6">
         <button
-          disabled={callLoading || !selectedEquipment || isCalledInOtherQueues}
+          disabled={callLoading || !selectedEquipment || isCalledForThisService}
           onClick={() => onCall(ticket, currentService)}
           className={`px-4 py-2 rounded-lg font-semibold transition-all ${
             priority.isFirstService 
               ? 'bg-green-600 hover:bg-green-700 text-white' 
-              : isCalledInOtherQueues
+              : isCalledForThisService
               ? 'bg-gray-400 text-gray-600'
               : 'bg-blue-600 hover:bg-blue-700 text-white'
           } disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg`}
         >
           {callLoading ? 'Chamando...' : 
-           isCalledInOtherQueues ? 'Já Chamado' :
-           priority.isFirstService ? '🥇 Chamar Primeiro' : 'Chamar'}
+           isCalledForThisService ? 'Serviço em Andamento' : 'Chamar Serviço'}
         </button>
       </div>
     </div>
@@ -2199,24 +2208,20 @@ const OperatorPage: React.FC = () => {
         // ✅ CORREÇÃO: Marcar o serviço específico como chamado
         ticketLastCallTime.current.set(serviceCallKey, Date.now());
         
-        if (isFirstService) {
-          // Chamar o ticket completo (primeiro serviço)
-          const callTicketParams = { ticketId: ticket.id, equipmentId: selectedEquipment };
-          console.log('🔍 DEBUG - Chamando ticket completo (primeiro serviço):', callTicketParams);
-          await callTicket(callTicketParams);
-        } else {
-          // Chamar apenas o serviço específico (não é o primeiro)
-          const callServiceParams = { ticketId: ticket.id, serviceId: serviceId, equipmentId: selectedEquipment };
-          console.log('🔍 DEBUG - Chamando serviço específico:', {
-            ticketId: ticket.id,
-            serviceId: serviceId,
-            equipment: selectedEquipment,
-            ticketIdType: typeof ticket.id,
-            ticketIdValue: ticket.id,
-            callServiceParams
-          });
-          await callService(callServiceParams);
-        }
+        // ✅ CORREÇÃO: SEMPRE chamar apenas o serviço específico, nunca o ticket completo
+        // Isso evita que o ticket seja processado em múltiplas filas simultaneamente
+        const callServiceParams = { ticketId: ticket.id, serviceId: serviceId, equipmentId: selectedEquipment };
+        console.log('🔍 DEBUG - Chamando serviço específico:', {
+          ticketId: ticket.id,
+          serviceId: serviceId,
+          equipment: selectedEquipment,
+          ticketIdType: typeof ticket.id,
+          ticketIdValue: ticket.id,
+          isFirstService,
+          callServiceParams
+        });
+        
+        await callService(callServiceParams);
         
         // ✅ CORREÇÃO: Mostrar feedback visual
         const serviceName = services.find(s => s.id === serviceId)?.name || 'Serviço';
@@ -2225,9 +2230,7 @@ const OperatorPage: React.FC = () => {
           serviceName,
           foundService: services.find(s => s.id === serviceId)
         });
-        const message = isFirstService 
-          ? `Ticket #${ticket.number} chamado para ${serviceName} (primeiro serviço)`
-          : `Ticket #${ticket.number} chamado para ${serviceName}`;
+        const message = `Ticket #${ticket.number} chamado para ${serviceName} (serviço específico)`;
         
         // TODO: Implementar notificação toast
         console.log('✅', message);
@@ -2565,11 +2568,32 @@ const OperatorPage: React.FC = () => {
                     <div className="flex-1 flex flex-col gap-1 md:gap-2 w-full">
                       <div className="font-semibold text-base md:text-lg text-gray-800 break-words">{ticket.customer_name}</div>
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {ticket.services?.map((s, idx) => (
-                          <span key={s.id || idx} className="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full text-xs font-medium">
-                            {s.service?.name || s.name || 'Serviço'}
-                          </span>
-                        ))}
+                        {ticket.services?.map((s, idx) => {
+                          // ✅ NOVO: Verificar status do serviço específico
+                          const serviceProgress = serviceProgress[ticket.id] || [];
+                          const thisServiceProgress = serviceProgress.find(p => 
+                            p.service_name === (s.service?.name || s.name)
+                          );
+                          
+                          const statusColor = thisServiceProgress?.status === 'completed' 
+                            ? 'bg-green-100 text-green-700' 
+                            : thisServiceProgress?.status === 'in_progress'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-yellow-100 text-yellow-700';
+                          
+                          const statusIcon = thisServiceProgress?.status === 'completed' 
+                            ? '✅' 
+                            : thisServiceProgress?.status === 'in_progress'
+                            ? '⟳'
+                            : '⏳';
+                          
+                          return (
+                            <span key={s.id || idx} className={`${statusColor} px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1`}>
+                              <span>{statusIcon}</span>
+                              {s.service?.name || s.name || 'Serviço'}
+                            </span>
+                          );
+                        })}
                       </div>
                       {/* Chips de extras */}
                       {ticket.extras && ticket.extras.length > 0 && (

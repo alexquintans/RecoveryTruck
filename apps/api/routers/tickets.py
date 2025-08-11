@@ -74,15 +74,18 @@ async def get_my_tickets(
     logger.info(f"🔍 DEBUG - Tenant ID: {current_operator.tenant_id}")
     logger.info(f"🔍 DEBUG - Operador nome: {current_operator.name}")
     
-    # Buscar tickets do operador
+    # ✅ CORREÇÃO: Buscar tickets do operador com serviços em andamento
+    # Buscar tickets que têm pelo menos um serviço em andamento
     tickets = db.query(Ticket).options(
         joinedload(Ticket.services).joinedload(TicketService.service),
         joinedload(Ticket.extras).joinedload(TicketExtra.extra)
-    ).filter(
+    ).join(TicketService, Ticket.id == TicketService.ticket_id)\
+     .join(TicketServiceProgress, TicketService.id == TicketServiceProgress.ticket_service_id)\
+     .filter(
         Ticket.tenant_id == current_operator.tenant_id,
         Ticket.assigned_operator_id == current_operator.id,
-        Ticket.status.in_(['called', 'in_progress'])
-    ).order_by(Ticket.called_at.desc()).all()
+        TicketServiceProgress.status.in_(['in_progress', 'completed'])
+    ).distinct().order_by(Ticket.called_at.desc()).all()
     
     logger.info(f"🔍 DEBUG - Tickets encontrados: {len(tickets)}")
     
@@ -90,10 +93,36 @@ async def get_my_tickets(
     for ticket in tickets:
         logger.info(f"🔍 DEBUG - Processando ticket {ticket.id} (status: {ticket.status})")
         
-        # Converter serviços
+        # ✅ NOVO: Verificar progresso dos serviços para este ticket
+        ticket_services = db.query(TicketService).filter(TicketService.ticket_id == ticket.id).all()
+        services_with_progress = []
+        
+        for ts in ticket_services:
+            progress = db.query(TicketServiceProgress).filter(
+                TicketServiceProgress.ticket_service_id == ts.id
+            ).first()
+            
+            if progress:
+                logger.info(f"🔍 DEBUG - Serviço {ts.service.name}: status {progress.status}")
+                services_with_progress.append({
+                    'service': ts.service,
+                    'progress': progress,
+                    'ticket_service': ts
+                })
+            else:
+                logger.info(f"🔍 DEBUG - Serviço {ts.service.name}: sem progresso")
+        
+        logger.info(f"🔍 DEBUG - Ticket {ticket.id} tem {len(services_with_progress)} serviços com progresso")
+        
+        # ✅ CORREÇÃO: Converter serviços com informações de progresso
         services_with_details = []
         if ticket.services:
             for ts in ticket.services:
+                # Buscar progresso deste serviço específico
+                progress = db.query(TicketServiceProgress).filter(
+                    TicketServiceProgress.ticket_service_id == ts.id
+                ).first()
+                
                 service_for_ticket = ServiceForTicket(
                     id=ts.service.id,
                     name=ts.service.name,
@@ -104,7 +133,9 @@ async def get_my_tickets(
                     service=service_for_ticket
                 )
                 services_with_details.append(service_with_details)
-                logger.info(f"🔍 DEBUG - Serviço adicionado: {ts.service.name} (R$ {ts.price})")
+                
+                status_info = f"status: {progress.status}" if progress else "sem progresso"
+                logger.info(f"🔍 DEBUG - Serviço adicionado: {ts.service.name} (R$ {ts.price}) - {status_info}")
         
         # Converter extras
         extras_with_details = []
@@ -1005,18 +1036,15 @@ async def call_ticket_service(
             logger.warning(f"🔍 DEBUG - Tentativa de chamar ticket recentemente chamado: {ticket_id}")
             raise HTTPException(status_code=400, detail="Este ticket foi chamado recentemente. Aguarde alguns segundos antes de tentar novamente.")
     
-    # Se o ticket não foi chamado ainda, chamá-lo primeiro
+    # ✅ CORREÇÃO: NÃO chamar o ticket completo, apenas marcar que foi chamado para este serviço
+    # Isso evita que o ticket seja processado em múltiplas filas simultaneamente
     if ticket.status == TicketStatus.IN_QUEUE.value:
-        logger.info(f"🔍 DEBUG - Chamando ticket completo primeiro")
-        status_update = TicketStatusUpdate(
-            status=TicketStatus.CALLED,
-            operator_notes=f"Chamado pelo operador {current_operator.name} para serviço específico"
-        )
-        await update_ticket_status(ticket_id, status_update, db, current_operator)
-        
-        # Atualizar o equipment_id e operator_id do ticket
-        ticket.equipment_id = request.equipment_id
+        logger.info(f"🔍 DEBUG - Marcando ticket como chamado para serviço específico (sem afetar outras filas)")
+        # Apenas atualizar o status para 'called' sem afetar outras filas
+        ticket.status = TicketStatus.CALLED.value
+        ticket.called_at = datetime.now(timezone.utc)
         ticket.assigned_operator_id = current_operator.id
+        # NÃO atualizar equipment_id aqui - será atualizado apenas para o serviço específico
     
     # Iniciar o serviço específico
     logger.info(f"🔍 DEBUG - Iniciando serviço específico")
