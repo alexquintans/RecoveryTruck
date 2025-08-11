@@ -87,6 +87,19 @@ async def get_my_tickets(
     
     logger.info(f"🔍 DEBUG - Tickets encontrados: {len(tickets)}")
     
+    # ✅ NOVO: Log detalhado de cada ticket encontrado
+    for ticket in tickets:
+        logger.info(f"🔍 DEBUG - Ticket {ticket.id} (nº {ticket.ticket_number}):", {
+            'id': str(ticket.id),
+            'ticket_number': ticket.ticket_number,
+            'status': ticket.status,
+            'assigned_operator_id': str(ticket.assigned_operator_id) if ticket.assigned_operator_id else None,
+            'current_operator_id': str(current_operator.id),
+            'tenant_id': str(ticket.tenant_id),
+            'called_at': ticket.called_at.isoformat() if ticket.called_at else None,
+            'services_count': len(ticket.services) if ticket.services else 0
+        })
+    
     result = []
     for ticket in tickets:
         logger.info(f"🔍 DEBUG - Processando ticket {ticket.id} (status: {ticket.status})")

@@ -19,7 +19,13 @@ export const ticketService = {
 
   async getMyTickets() {
     try {
+      console.log('🔍 DEBUG - ticketService.getMyTickets - Iniciando chamada...');
       const response = await api.get('/tickets/my-tickets', { params: withTenant() });
+      console.log('🔍 DEBUG - ticketService.getMyTickets - Response:', {
+        status: response.status,
+        dataLength: response.data?.length || 0,
+        data: response.data
+      });
       return response.data;
     } catch (error) {
       console.error('❌ ERRO em getMyTickets:', error);

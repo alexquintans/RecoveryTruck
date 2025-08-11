@@ -12,6 +12,7 @@ import { WebSocketErrorBoundary } from '@totem/hooks';
 import { ServiceModal } from '../components/ServiceModal';
 import { ExtraModal } from '../components/ExtraModal';
 import { equipmentService } from '../services/equipmentService';
+import { ticketService } from '../services/ticketService';
 import { FaCogs, FaTools, FaGift, FaTicketAlt } from 'react-icons/fa';
 import { EquipmentCard } from '../components/EquipmentCard';
 import { MdConfirmationNumber } from 'react-icons/md';
@@ -2522,14 +2523,32 @@ const OperatorPage: React.FC = () => {
           <section className="bg-white p-6 rounded-xl shadow flex flex-col gap-4">
             <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold mb-2">Meus Tickets</h2>
-              <button
-                onClick={() => {
-                  queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
-                }}
-                className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors"
-              >
-                🔄
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+                  }}
+                  className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors"
+                >
+                  🔄
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      console.log('🧪 TESTE - Chamando getMyTickets diretamente...');
+                      const result = await ticketService.getMyTickets();
+                      console.log('🧪 TESTE - Resultado direto:', result);
+                      alert(`Tickets encontrados: ${result?.length || 0}`);
+                    } catch (error) {
+                      console.error('🧪 TESTE - Erro:', error);
+                      alert(`Erro: ${error}`);
+                    }
+                  }}
+                  className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition-colors"
+                >
+                  🧪 Teste
+                </button>
+              </div>
             </div>
             {(() => {
               console.log('🔍 DEBUG - Meus tickets:', {

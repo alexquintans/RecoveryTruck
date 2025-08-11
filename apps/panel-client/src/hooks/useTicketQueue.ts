@@ -54,9 +54,43 @@ export function useTicketQueue() {
     queryKey: ['tickets', 'my-tickets'],
     queryFn: async () => {
       try {
+        console.log('🔍 DEBUG - Chamando getMyTickets...');
         const result = await ticketService.getMyTickets();
+        console.log('🔍 DEBUG - getMyTickets result:', {
+          total: result?.length || 0,
+          tickets: result?.map((t: any) => ({
+            id: t.id,
+            ticket_number: t.ticket_number,
+            status: t.status,
+            assigned_operator_id: t.assigned_operator_id,
+            called_at: t.called_at,
+            services_count: t.services?.length || 0
+          })) || []
+        });
+        
+        // ✅ TEMPORÁRIO: Remover filtro para debug
+        console.log('🔍 DEBUG - getMyTickets - SEM FILTRO:', {
+          total: result?.length || 0,
+          tickets: result?.map((t: any) => ({
+            id: t.id,
+            ticket_number: t.ticket_number,
+            status: t.status,
+            assigned_operator_id: t.assigned_operator_id
+          })) || []
+        });
+        
         // Filtrar apenas tickets da operação ativa
-        return result.filter((ticket: any) => ticket.status !== 'completed' && ticket.status !== 'cancelled');
+        const filtered = result.filter((ticket: any) => ticket.status !== 'completed' && ticket.status !== 'cancelled');
+        console.log('🔍 DEBUG - getMyTickets filtered:', {
+          total: filtered?.length || 0,
+          tickets: filtered?.map((t: any) => ({
+            id: t.id,
+            ticket_number: t.ticket_number,
+            status: t.status
+          })) || []
+        });
+        
+        return result; // ✅ TEMPORÁRIO: Retornar todos os tickets para debug
       } catch (error) {
         console.error('❌ ERRO em getMyTickets:', error);
         throw error;
