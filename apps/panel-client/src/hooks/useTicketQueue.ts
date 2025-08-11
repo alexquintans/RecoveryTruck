@@ -84,18 +84,21 @@ export function useTicketQueue() {
           })) || []
         });
         
-        // Filtrar apenas tickets da operação ativa
-        const filtered = result.filter((ticket: any) => ticket.status !== 'completed' && ticket.status !== 'cancelled');
-        console.log('🔍 DEBUG - getMyTickets - APÓS FILTRO:', {
+        // ✅ CORREÇÃO: Filtrar apenas tickets em atendimento (called ou in_progress)
+        const filtered = result.filter((ticket: any) => 
+          ticket.status === 'called' || ticket.status === 'in_progress'
+        );
+        console.log('🔍 DEBUG - getMyTickets - APÓS FILTRO CORRIGIDO:', {
           total: filtered?.length || 0,
           tickets: filtered?.map((t: any) => ({
             id: t.id,
             ticket_number: t.ticket_number,
-            status: t.status
+            status: t.status,
+            assigned_operator_id: t.assigned_operator_id
           })) || []
         });
         
-        return filtered; // ✅ CORREÇÃO: Retornar tickets filtrados
+        return filtered; // ✅ CORREÇÃO: Retornar apenas tickets em atendimento
       } catch (error) {
         console.error('❌ ERRO em getMyTickets:', error);
         throw error;
@@ -160,7 +163,20 @@ export function useTicketQueue() {
   // Query para tickets aguardando confirmação de pagamento
   const pendingPaymentQuery = useQuery({
     queryKey: ['tickets', 'pending-payment'],
-    queryFn: () => ticketService.getPendingPayment(),
+    queryFn: async () => {
+      console.log('🔍 DEBUG - pendingPaymentQuery - Iniciando...');
+      const result = await ticketService.getPendingPayment();
+      console.log('🔍 DEBUG - pendingPaymentQuery - Resultado:', {
+        total: result?.length || 0,
+        tickets: result?.map((t: any) => ({
+          id: t.id,
+          ticket_number: t.ticket_number,
+          status: t.status,
+          payment_confirmed: t.payment_confirmed
+        })) || []
+      });
+      return result;
+    },
     enabled: !!user,
     staleTime: 30_000, // 30 segundos
     cacheTime: 60_000, // 1 minuto
