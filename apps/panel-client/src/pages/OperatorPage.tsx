@@ -707,9 +707,9 @@ const OperatorPage: React.FC = () => {
     ...ticketQueueRest
   } = useTicketQueue();
 
-  // ✅ CORREÇÃO: Memoizar arrays para evitar loops infinitos
+  // ✅ CORREÇÃO CRÍTICA: Memoizar arrays para evitar loops infinitos
   const safeMyTickets = useMemo(() => {
-    console.log('🔍 DEBUG - safeMyTickets useMemo:', {
+    console.log('🔍 DEBUG - safeMyTickets useMemo CORRIGIDO:', {
       myTickets: myTickets,
       myTicketsLength: myTickets?.length || 0,
       result: myTickets || [],
@@ -722,9 +722,20 @@ const OperatorPage: React.FC = () => {
         assigned_operator_id: t.assigned_operator_id || t.operatorId,
         hasServices: !!t.services,
         servicesCount: t.services?.length || 0
-      })) || []
+      })) || [],
+      // ✅ NOVO: Verificar se myTickets é um array válido
+      isArray: Array.isArray(myTickets),
+      isNull: myTickets === null,
+      isUndefined: myTickets === undefined
     });
-    return myTickets || [];
+    
+    // ✅ CORREÇÃO CRÍTICA: Garantir que sempre retorne um array
+    if (!myTickets || !Array.isArray(myTickets)) {
+      console.warn('🔍 DEBUG - safeMyTickets: myTickets não é um array válido, retornando array vazio');
+      return [];
+    }
+    
+    return myTickets;
   }, [myTickets]);
   const safeTickets = useMemo(() => tickets || [], [tickets]);
   const safeEquipment = useMemo(() => equipment || [], [equipment]);
@@ -2475,9 +2486,12 @@ const OperatorPage: React.FC = () => {
               </div>
             </div>
             {(() => {
-              console.log('🔍 DEBUG - Meus tickets - RENDERIZAÇÃO:', {
-                safeMyTicketsLength: safeMyTickets.length,
-                safeMyTickets: safeMyTickets?.map((t: any) => ({
+              // ✅ CORREÇÃO CRÍTICA: Usar dados diretos do hook em vez de safeMyTickets
+              const ticketsToRender = myTickets || [];
+              
+              console.log('🔍 DEBUG - Meus tickets - RENDERIZAÇÃO CORRIGIDA:', {
+                ticketsToRenderLength: ticketsToRender.length,
+                ticketsToRender: ticketsToRender?.map((t: any) => ({
                   id: t.id,
                   ticket_number: t.ticket_number || t.number,
                   status: t.status,
@@ -2485,32 +2499,26 @@ const OperatorPage: React.FC = () => {
                   customer_name: t.customer_name || t.customer?.name
                 })),
                 myTicketsLength: myTickets?.length,
-                myTickets: myTickets?.map((t: any) => ({
-                  id: t.id,
-                  ticket_number: t.ticket_number || t.number,
-                  status: t.status,
-                  assigned_operator_id: t.assigned_operator_id || t.operatorId,
-                  customer_name: t.customer_name || t.customer?.name
-                })),
+                safeMyTicketsLength: safeMyTickets.length,
                 // ✅ NOVO: Verificar se há diferença entre os arrays
-                arraysEqual: JSON.stringify(safeMyTickets) === JSON.stringify(myTickets),
-                safeMyTicketsType: typeof safeMyTickets,
+                arraysEqual: JSON.stringify(ticketsToRender) === JSON.stringify(myTickets),
+                ticketsToRenderType: typeof ticketsToRender,
                 myTicketsType: typeof myTickets
               });
               
-              console.log('🔍 DEBUG - Meus tickets - CONDIÇÃO DE RENDERIZAÇÃO:', {
-                safeMyTicketsLength: safeMyTickets.length,
-                shouldShowEmpty: safeMyTickets.length === 0,
-                safeMyTicketsIsArray: Array.isArray(safeMyTickets),
-                safeMyTicketsFirstItem: safeMyTickets[0]
+              console.log('🔍 DEBUG - Meus tickets - CONDIÇÃO DE RENDERIZAÇÃO CORRIGIDA:', {
+                ticketsToRenderLength: ticketsToRender.length,
+                shouldShowEmpty: ticketsToRender.length === 0,
+                ticketsToRenderIsArray: Array.isArray(ticketsToRender),
+                ticketsToRenderFirstItem: ticketsToRender[0]
               });
               
-              return safeMyTickets.length === 0 ? (
+              return ticketsToRender.length === 0 ? (
                 <div className="text-gray-400 text-center py-8">
-                  Nenhum ticket em atendimento (Total: {safeMyTickets.length})
+                  Nenhum ticket em atendimento (Total: {ticketsToRender.length})
                 </div>
               ) : (
-              safeMyTickets.map(ticket => {
+              ticketsToRender.map(ticket => {
                 console.log('Ticket em andamento:', ticket);
                 return (
                   <div
