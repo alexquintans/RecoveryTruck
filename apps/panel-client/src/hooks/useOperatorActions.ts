@@ -5,7 +5,17 @@ export function useOperatorActions() {
   const queryClient = useQueryClient();
 
   const callMutation = useMutation({
-    mutationFn: ({ ticketId, equipmentId }: { ticketId: string; equipmentId: string }) => ticketService.call(ticketId, equipmentId),
+    mutationFn: ({ ticketId, equipmentId }: { ticketId: string; equipmentId: string }) => {
+      // ✅ ADICIONADO: Log para debug da mutation
+      console.log('🔍 DEBUG - callMutation.mutationFn:', {
+        ticketId,
+        equipmentId,
+        ticketIdType: typeof ticketId,
+        equipmentIdType: typeof equipmentId
+      });
+      
+      return ticketService.call(ticketId, equipmentId);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
       queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });

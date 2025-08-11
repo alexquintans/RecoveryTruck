@@ -28,6 +28,16 @@ export const ticketService = {
   },
 
   async call(ticketId: string, equipmentId: string) {
+    // ✅ ADICIONADO: Log para debug da chamada da API
+    console.log('🔍 DEBUG - ticketService.call:', {
+      ticketId,
+      equipmentId,
+      ticketIdType: typeof ticketId,
+      equipmentIdType: typeof equipmentId,
+      url: `/tickets/${ticketId}/call`,
+      body: { equipment_id: equipmentId }
+    });
+    
     const response = await api.post(`/tickets/${ticketId}/call`, { equipment_id: equipmentId }, { params: withTenant() });
     return response.data;
   },

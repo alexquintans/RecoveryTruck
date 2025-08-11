@@ -2139,8 +2139,9 @@ const OperatorPage: React.FC = () => {
       try {
         if (isFirstService) {
           // Chamar o ticket completo (primeiro serviço)
-          console.log('🔍 DEBUG - Chamando ticket completo (primeiro serviço)');
-          await callTicket(ticket.id, selectedEquipment);
+          const callTicketParams = { ticketId: ticket.id, equipmentId: selectedEquipment };
+          console.log('🔍 DEBUG - Chamando ticket completo (primeiro serviço):', callTicketParams);
+          await callTicket(callTicketParams);
         } else {
           // Chamar apenas o serviço específico (não é o primeiro)
           const callServiceParams = { ticketId: ticket.id, serviceId: serviceId, equipmentId: selectedEquipment };
