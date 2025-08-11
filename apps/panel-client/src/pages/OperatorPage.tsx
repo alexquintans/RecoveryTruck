@@ -723,7 +723,16 @@ const OperatorPage: React.FC = () => {
       myTickets: myTickets,
       myTicketsLength: myTickets?.length || 0,
       result: myTickets || [],
-      resultLength: (myTickets || []).length
+      resultLength: (myTickets || []).length,
+      // ✅ NOVO: Log detalhado de cada ticket
+      myTicketsDetails: myTickets?.map((t: any) => ({
+        id: t.id,
+        ticket_number: t.ticket_number || t.number,
+        status: t.status,
+        assigned_operator_id: t.assigned_operator_id || t.operatorId,
+        hasServices: !!t.services,
+        servicesCount: t.services?.length || 0
+      })) || []
     });
     return myTickets || [];
   }, [myTickets]);
@@ -2571,17 +2580,30 @@ const OperatorPage: React.FC = () => {
                 safeMyTicketsLength: safeMyTickets.length,
                 safeMyTickets: safeMyTickets?.map((t: any) => ({
                   id: t.id,
-                  ticket_number: t.ticket_number,
+                  ticket_number: t.ticket_number || t.number,
                   status: t.status,
-                  assigned_operator_id: t.assigned_operator_id
+                  assigned_operator_id: t.assigned_operator_id || t.operatorId,
+                  customer_name: t.customer_name || t.customer?.name
                 })),
                 myTicketsLength: myTickets?.length,
                 myTickets: myTickets?.map((t: any) => ({
                   id: t.id,
-                  ticket_number: t.ticket_number,
+                  ticket_number: t.ticket_number || t.number,
                   status: t.status,
-                  assigned_operator_id: t.assigned_operator_id
-                }))
+                  assigned_operator_id: t.assigned_operator_id || t.operatorId,
+                  customer_name: t.customer_name || t.customer?.name
+                })),
+                // ✅ NOVO: Verificar se há diferença entre os arrays
+                arraysEqual: JSON.stringify(safeMyTickets) === JSON.stringify(myTickets),
+                safeMyTicketsType: typeof safeMyTickets,
+                myTicketsType: typeof myTickets
+              });
+              
+              console.log('🔍 DEBUG - Meus tickets - CONDIÇÃO DE RENDERIZAÇÃO:', {
+                safeMyTicketsLength: safeMyTickets.length,
+                shouldShowEmpty: safeMyTickets.length === 0,
+                safeMyTicketsIsArray: Array.isArray(safeMyTickets),
+                safeMyTicketsFirstItem: safeMyTickets[0]
               });
               
               return safeMyTickets.length === 0 ? (

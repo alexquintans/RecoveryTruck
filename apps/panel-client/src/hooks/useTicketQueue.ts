@@ -398,7 +398,9 @@ export function useTicketQueue() {
         serviceName: s.service?.name,
         price: s.price,
         originalStructure: s
-      })) || []
+      })) || [],
+      // ✅ NOVO: Log completo do ticket original
+      originalTicket: t
     });
     
     const normalized = {
@@ -467,10 +469,30 @@ export function useTicketQueue() {
     [queueQuery.data, normalizeTicket]
   );
 
-  const myTickets = useMemo(() => 
-    ((myTicketsQuery.data as any[]) ?? []).map(normalizeTicket), 
-    [myTicketsQuery.data, normalizeTicket]
-  );
+  const myTickets = useMemo(() => {
+    console.log('🔍 DEBUG - myTickets useMemo - DADOS BRUTOS:', {
+      myTicketsQueryData: myTicketsQuery.data,
+      myTicketsQueryDataLength: myTicketsQuery.data?.length || 0,
+      myTicketsQueryDataType: typeof myTicketsQuery.data,
+      isArray: Array.isArray(myTicketsQuery.data)
+    });
+    
+    const rawData = (myTicketsQuery.data as any[]) ?? [];
+    console.log('🔍 DEBUG - myTickets useMemo - DADOS APÓS FALLBACK:', {
+      rawData,
+      rawDataLength: rawData.length,
+      rawDataType: typeof rawData
+    });
+    
+    const normalized = rawData.map(normalizeTicket);
+    console.log('🔍 DEBUG - myTickets useMemo - DADOS NORMALIZADOS:', {
+      normalized,
+      normalizedLength: normalized.length,
+      normalizedIds: normalized.map((t: any) => t.id)
+    });
+    
+    return normalized;
+  }, [myTicketsQuery.data, normalizeTicket]);
 
   const completedTickets = useMemo(() => 
     ((completedTicketsQuery.data as any)?.items ?? []).map(normalizeTicket), 
