@@ -885,12 +885,16 @@ const OperatorPage: React.FC = () => {
   // Solução: fetchServiceProgress já é memoizado pelo hook useServiceProgress
   useEffect(() => {
     if (currentStep === 'operation' && safeMyTickets.length > 0) {
+      console.log('🔄 Carregando progresso automático para tickets:', safeMyTickets.map(t => t.id));
+      
       const loadServiceProgress = async () => {
         for (const ticket of safeMyTickets) {
           try {
+            console.log('🔄 Carregando progresso do ticket:', ticket.id);
             await fetchServiceProgress(ticket.id);
+            console.log('✅ Progresso carregado para ticket:', ticket.id);
           } catch (error) {
-            console.error('Erro ao carregar progresso do ticket:', ticket.id, error);
+            console.error('❌ Erro ao carregar progresso do ticket:', ticket.id, error);
           }
         }
       };
@@ -939,9 +943,32 @@ const OperatorPage: React.FC = () => {
 
   const canCompleteTicket = useCallback((ticketId: string) => {
     const progress = serviceProgress[ticketId];
-    if (!progress || progress.length === 0) return false;
     
-    return progress.every(p => p.status === 'completed');
+    console.log('🔍 DEBUG - canCompleteTicket:', {
+      ticketId,
+      hasProgress: !!progress,
+      progressLength: progress?.length || 0,
+      progress: progress
+    });
+    
+    // ✅ CORREÇÃO: Permitir concluir se não há progresso (ticket simples)
+    if (!progress || progress.length === 0) {
+      console.log('✅ Permitindo concluir ticket sem progresso (ticket simples)');
+      return true;
+    }
+    
+    // ✅ CORREÇÃO: Permitir concluir se pelo menos um serviço está completo
+    const hasCompletedServices = progress.some(p => p.status === 'completed');
+    const allServicesCompleted = progress.every(p => p.status === 'completed');
+    
+    console.log('🔍 DEBUG - Status dos serviços:', {
+      hasCompletedServices,
+      allServicesCompleted,
+      serviceStatuses: progress.map(p => ({ id: p.id, status: p.status }))
+    });
+    
+    // Permitir concluir se pelo menos um serviço está completo
+    return hasCompletedServices;
   }, [serviceProgress]);
 
   // CORRIGIDO: useEffect para buscar configuração de pagamento
@@ -2056,6 +2083,20 @@ const OperatorPage: React.FC = () => {
         return;
       }
       
+      // ✅ ADICIONADO: Verificação de segurança para selectedEquipment
+      if (!selectedEquipment) {
+        console.error('❌ ERRO: selectedEquipment está undefined!', { selectedEquipment });
+        alert('Erro: Equipamento não selecionado!');
+        return;
+      }
+      
+      // ✅ ADICIONADO: Verificação de segurança para serviceId
+      if (!serviceId) {
+        console.error('❌ ERRO: serviceId está undefined!', { serviceId });
+        alert('Erro: ID do serviço não encontrado!');
+        return;
+      }
+      
       // Verificar se o ticket já foi chamado
       if (ticket.status === 'called') {
         console.log('🔍 DEBUG - Ticket já foi chamado, pulando...');
@@ -2072,9 +2113,8 @@ const OperatorPage: React.FC = () => {
       
       // ✅ CORREÇÃO: Se o ticket já está em andamento, não permitir nova chamada
       if (ticket.status === 'in_progress') {
-        console.log('🔍 DEBUG - Ticket já está em andamento, pulando...');
-        alert('Este ticket já está em andamento!');
-        return;
+        console.log('🔍 DEBUG - Ticket já está em andamento, mas permitindo chamada de serviço específico');
+        // Não bloquear mais - permitir chamada de serviço específico mesmo para tickets em andamento
       }
       
       // ✅ ADICIONADO: Log adicional para debug do ticket.id
@@ -2530,44 +2570,30 @@ const OperatorPage: React.FC = () => {
                           );
                         })()}
                         
-                        {/* Resumo visual do progresso */}
-                        {(() => {
-                          const summary = getTicketProgressSummary(ticket.id);
-                          const overallStatus = getTicketOverallStatus(ticket.id);
-                          
-                          return (
-                            <div className="mb-3 p-2 bg-gray-50 rounded-lg">
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="font-medium">Progresso Geral:</span>
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                  overallStatus === 'completed' ? 'bg-green-100 text-green-700' :
-                                  overallStatus === 'in_progress' ? 'bg-blue-100 text-blue-700' :
-                                  overallStatus === 'cancelled' ? 'bg-red-100 text-red-700' :
-                                  'bg-gray-100 text-gray-700'
-                                }`}>
-                                  {overallStatus === 'completed' ? 'Concluído' :
-                                   overallStatus === 'in_progress' ? 'Em Andamento' :
-                                   overallStatus === 'cancelled' ? 'Cancelado' :
-                                   'Pendente'}
-                                </span>
-                              </div>
-                              <div className="flex gap-2 mt-1 text-xs text-gray-600">
-                                <span>Total: {summary.total}</span>
-                                <span className="text-green-600">✓ {summary.completed}</span>
-                                <span className="text-blue-600">⟳ {summary.inProgress}</span>
-                                <span className="text-gray-600">⏳ {summary.pending}</span>
-                              </div>
-                            </div>
-                          );
-                        })()}
-                        
                         {/* Carregar progresso dos serviços */}
                         {(() => {
                           const progress = serviceProgress[ticket.id] || [];
-                          if (progress.length === 0) {
+                          const isLoading = progressLoading[ticket.id] || false;
+                          
+                          console.log('🔍 DEBUG - Progresso do ticket:', {
+                            ticketId: ticket.id,
+                            progressLength: progress.length,
+                            isLoading,
+                            progress: progress
+                          });
+                          
+                          if (isLoading) {
                             return (
                               <div className="text-xs text-gray-500 italic">
                                 Carregando progresso dos serviços...
+                              </div>
+                            );
+                          }
+                          
+                          if (progress.length === 0) {
+                            return (
+                              <div className="text-xs text-gray-500 italic">
+                                Nenhum progresso encontrado. Clique em "Atualizar" para carregar.
                               </div>
                             );
                           }
@@ -2596,10 +2622,21 @@ const OperatorPage: React.FC = () => {
                       </div>
 
                       <div className="text-xs text-gray-400 mt-1">
-                        {ticket.calledAt ? `Chamado há ${formatDistanceToNow(new Date(ticket.calledAt), { addSuffix: true, locale: ptBR })}` : ""}
+                        {ticket.calledAt ? formatDistanceToNow(new Date(ticket.calledAt), { addSuffix: true, locale: ptBR }) : ""}
                       </div>
                       {ticket.status === 'in_progress' && (
                         <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 w-full">
+                          {(() => {
+                            const canComplete = canCompleteTicket(ticket.id);
+                            console.log('🔍 DEBUG - Botões do ticket:', {
+                              ticketId: ticket.id,
+                              status: ticket.status,
+                              canComplete,
+                              completeLoading,
+                              cancelLoading
+                            });
+                            return null;
+                          })()}
                           {(ticket.startedAt || ticket.started_at) && (
                             <div className="flex-1 flex flex-col items-center sm:items-start">
                               <ServiceCountdown
@@ -2622,14 +2659,26 @@ const OperatorPage: React.FC = () => {
                               aria-label={`Concluir atendimento do ticket ${ticket.number}`}
                               disabled={completeLoading || !canCompleteTicket(ticket.id)}
                               onClick={async () => {
-                                // Verificar se todos os serviços estão completos
-                                if (!canCompleteTicket(ticket.id)) {
-                                  alert('Todos os serviços devem estar completos para finalizar o ticket!');
-                                  return;
+                                try {
+                                  console.log('🔄 Tentando concluir ticket:', { ticketId: ticket.id });
+                                  
+                                  // Verificar se pode concluir
+                                  const canComplete = canCompleteTicket(ticket.id);
+                                  console.log('🔍 DEBUG - Pode concluir:', canComplete);
+                                  
+                                  if (!canComplete) {
+                                    alert('Não é possível concluir este ticket. Verifique se pelo menos um serviço está completo.');
+                                    return;
+                                  }
+                                  
+                                  console.log('🔄 Concluindo ticket:', ticket.id);
+                                  await completeService({ ticketId: ticket.id });
+                                  await refetch();
+                                  console.log('✅ Ticket concluído com sucesso');
+                                } catch (error) {
+                                  console.error('❌ Erro ao concluir ticket:', error);
+                                  alert('Erro ao concluir ticket. Tente novamente.');
                                 }
-                                
-                                await completeService({ ticketId: ticket.id });
-                                await refetch();
                               }}
                             >
                               {completeLoading ? 'Concluindo...' : 'Concluir'}
@@ -2639,8 +2688,22 @@ const OperatorPage: React.FC = () => {
                               aria-label={`Cancelar atendimento do ticket ${ticket.number}`}
                               disabled={cancelLoading}
                               onClick={async () => {
-                                await cancelTicket({ ticketId: ticket.id });
-                                await refetch();
+                                try {
+                                  // ✅ CORREÇÃO: Solicitar motivo do cancelamento
+                                  const reason = prompt('Motivo do cancelamento:');
+                                  if (!reason) {
+                                    alert('É necessário informar um motivo para cancelar o ticket.');
+                                    return;
+                                  }
+                                  
+                                  console.log('🔄 Cancelando ticket:', { ticketId: ticket.id, reason });
+                                  await cancelTicket({ ticketId: ticket.id, reason });
+                                  await refetch();
+                                  console.log('✅ Ticket cancelado com sucesso');
+                                } catch (error) {
+                                  console.error('❌ Erro ao cancelar ticket:', error);
+                                  alert('Erro ao cancelar ticket. Tente novamente.');
+                                }
                               }}
                             >
                               {cancelLoading ? 'Cancelando...' : 'Cancelar'}
@@ -2654,10 +2717,17 @@ const OperatorPage: React.FC = () => {
                         className="mt-4 md:mt-0 w-full md:w-auto px-7 py-3 bg-yellow-500 text-white rounded-xl font-bold shadow-lg hover:bg-yellow-600 focus:ring-2 focus:ring-yellow-400 focus:outline-none transition-all scale-100 group-hover:scale-105 disabled:bg-gray-300 disabled:text-gray-500"
                         aria-label={`Iniciar atendimento do ticket ${ticket.number}`}
                         onClick={async () => {
-                          await startService({ ticketId: ticket.id });
-                          await refetch();
-                          queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
-                          queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+                          try {
+                            console.log('🔄 Iniciando ticket:', { ticketId: ticket.id });
+                            await startService({ ticketId: ticket.id });
+                            await refetch();
+                            queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
+                            queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+                            console.log('✅ Ticket iniciado com sucesso');
+                          } catch (error) {
+                            console.error('❌ Erro ao iniciar ticket:', error);
+                            alert('Erro ao iniciar ticket. Tente novamente.');
+                          }
                         }}
                       >
                         Iniciar
@@ -2698,8 +2768,15 @@ const OperatorPage: React.FC = () => {
                         aria-label={`Mover ticket ${ticket.number} para fila`}
                         disabled={moveToQueueLoading}
                         onClick={async () => {
-                          await moveToQueue({ ticketId: ticket.id });
-                          await refetch();
+                          try {
+                            console.log('🔄 Movendo ticket para fila:', { ticketId: ticket.id });
+                            await moveToQueue({ ticketId: ticket.id });
+                            await refetch();
+                            console.log('✅ Ticket movido para fila com sucesso');
+                          } catch (error) {
+                            console.error('❌ Erro ao mover ticket para fila:', error);
+                            alert('Erro ao mover ticket para fila. Tente novamente.');
+                          }
                         }}
                       >
                         {moveToQueueLoading ? 'Movendo...' : 'Mover para Fila'}
