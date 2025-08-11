@@ -74,18 +74,16 @@ async def get_my_tickets(
     logger.info(f"🔍 DEBUG - Tenant ID: {current_operator.tenant_id}")
     logger.info(f"🔍 DEBUG - Operador nome: {current_operator.name}")
     
-    # ✅ CORREÇÃO: Buscar tickets do operador com serviços em andamento
-    # Buscar tickets que têm pelo menos um serviço em andamento
+    # ✅ CORREÇÃO: Voltar para lógica original mas melhorada
+    # Buscar tickets atribuídos ao operador com status 'called' ou 'in_progress'
     tickets = db.query(Ticket).options(
         joinedload(Ticket.services).joinedload(TicketService.service),
         joinedload(Ticket.extras).joinedload(TicketExtra.extra)
-    ).join(TicketService, Ticket.id == TicketService.ticket_id)\
-     .join(TicketServiceProgress, TicketService.id == TicketServiceProgress.ticket_service_id)\
-     .filter(
+    ).filter(
         Ticket.tenant_id == current_operator.tenant_id,
         Ticket.assigned_operator_id == current_operator.id,
-        TicketServiceProgress.status.in_(['in_progress', 'completed'])
-    ).distinct().order_by(Ticket.called_at.desc()).all()
+        Ticket.status.in_(['called', 'in_progress'])
+    ).order_by(Ticket.called_at.desc()).all()
     
     logger.info(f"🔍 DEBUG - Tickets encontrados: {len(tickets)}")
     
@@ -113,6 +111,17 @@ async def get_my_tickets(
                 logger.info(f"🔍 DEBUG - Serviço {ts.service.name}: sem progresso")
         
         logger.info(f"🔍 DEBUG - Ticket {ticket.id} tem {len(services_with_progress)} serviços com progresso")
+        
+        # ✅ NOVO: Log detalhado do ticket
+        logger.info(f"🔍 DEBUG - Ticket {ticket.id} detalhes:", {
+            'id': ticket.id,
+            'number': ticket.ticket_number,
+            'status': ticket.status,
+            'assigned_operator_id': ticket.assigned_operator_id,
+            'called_at': ticket.called_at,
+            'services_count': len(ticket.services) if ticket.services else 0,
+            'services_with_progress_count': len(services_with_progress)
+        })
         
         # ✅ CORREÇÃO: Converter serviços com informações de progresso
         services_with_details = []

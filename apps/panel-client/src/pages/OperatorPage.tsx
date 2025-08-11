@@ -2531,9 +2531,17 @@ const OperatorPage: React.FC = () => {
                 🔄
               </button>
             </div>
-            {safeMyTickets.length === 0 ? (
-              <div className="text-gray-400 text-center py-8">Nenhum ticket em atendimento</div>
-            ) : (
+            {(() => {
+              console.log('🔍 DEBUG - Meus tickets:', {
+                safeMyTicketsLength: safeMyTickets.length,
+                safeMyTickets: safeMyTickets,
+                myTicketsLength: myTickets?.length,
+                myTickets: myTickets
+              });
+              
+              return safeMyTickets.length === 0 ? (
+                <div className="text-gray-400 text-center py-8">Nenhum ticket em atendimento</div>
+              ) : (
               safeMyTickets.map(ticket => {
                 console.log('Ticket em andamento:', ticket);
                 return (
@@ -2569,30 +2577,39 @@ const OperatorPage: React.FC = () => {
                       <div className="font-semibold text-base md:text-lg text-gray-800 break-words">{ticket.customer_name}</div>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {ticket.services?.map((s, idx) => {
-                          // ✅ NOVO: Verificar status do serviço específico
-                          const serviceProgress = serviceProgress[ticket.id] || [];
-                          const thisServiceProgress = serviceProgress.find(p => 
-                            p.service_name === (s.service?.name || s.name)
-                          );
-                          
-                          const statusColor = thisServiceProgress?.status === 'completed' 
-                            ? 'bg-green-100 text-green-700' 
-                            : thisServiceProgress?.status === 'in_progress'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-yellow-100 text-yellow-700';
-                          
-                          const statusIcon = thisServiceProgress?.status === 'completed' 
-                            ? '✅' 
-                            : thisServiceProgress?.status === 'in_progress'
-                            ? '⟳'
-                            : '⏳';
-                          
-                          return (
-                            <span key={s.id || idx} className={`${statusColor} px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1`}>
-                              <span>{statusIcon}</span>
-                              {s.service?.name || s.name || 'Serviço'}
-                            </span>
-                          );
+                          // ✅ CORREÇÃO: Verificar status do serviço específico com segurança
+                          try {
+                            const ticketProgress = serviceProgress?.[ticket.id] || [];
+                            const thisServiceProgress = ticketProgress.find(p => 
+                              p?.service_name === (s?.service?.name || s?.name)
+                            );
+                            
+                            const statusColor = thisServiceProgress?.status === 'completed' 
+                              ? 'bg-green-100 text-green-700' 
+                              : thisServiceProgress?.status === 'in_progress'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-yellow-100 text-yellow-700';
+                            
+                            const statusIcon = thisServiceProgress?.status === 'completed' 
+                              ? '✅' 
+                              : thisServiceProgress?.status === 'in_progress'
+                              ? '⟳'
+                              : '⏳';
+                            
+                            return (
+                              <span key={s?.id || idx} className={`${statusColor} px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1`}>
+                                <span>{statusIcon}</span>
+                                {s?.service?.name || s?.name || 'Serviço'}
+                              </span>
+                            );
+                          } catch (error) {
+                            console.error('❌ Erro ao renderizar serviço:', error);
+                            return (
+                              <span key={s?.id || idx} className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                                {s?.service?.name || s?.name || 'Serviço'}
+                              </span>
+                            );
+                          }
                         })}
                       </div>
                       {/* Chips de extras */}
@@ -2885,6 +2902,7 @@ const OperatorPage: React.FC = () => {
                   </div>
                 );
               })
+            )}
             )}
           </section>
 
