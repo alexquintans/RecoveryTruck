@@ -333,9 +333,14 @@ const TicketCard = ({
   const now = new Date();
   const waitingMinutes = created ? Math.floor((now.getTime() - created.getTime()) / 60000) : null;
   
+  // ✅ NOVO: Verificar se o ticket já foi chamado em outras filas
+  const isCalledInOtherQueues = ticket.status === 'called' || ticket.status === 'in_progress';
+  
   return (
     <div className={`flex items-center justify-between bg-white rounded-2xl border p-5 shadow-md hover:shadow-xl transition-transform hover:-translate-y-1 group focus-within:ring-2 focus-within:ring-blue-400 ${
-      priority.isFirstService ? 'border-blue-300 bg-blue-50 ring-2 ring-blue-200' : 'border-blue-200'
+      priority.isFirstService ? 'border-blue-300 bg-blue-50 ring-2 ring-blue-200' : 
+      isCalledInOtherQueues ? 'border-orange-300 bg-orange-50 ring-2 ring-orange-200' : 
+      'border-blue-200'
     }`}>
       <div className="flex flex-col gap-1 w-full">
         <div className="flex items-center gap-3 mb-1">
@@ -361,6 +366,12 @@ const TicketCard = ({
               {priority.isLastService && !priority.isFirstService && (
                 <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded-full text-xs font-medium border border-orange-200">
                   🏁 Último
+                </span>
+              )}
+              {/* ✅ NOVO: Badge para ticket já chamado em outras filas */}
+              {isCalledInOtherQueues && (
+                <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-xs font-medium border border-yellow-200">
+                  ⚠️ Já Chamado
                 </span>
               )}
             </div>
@@ -461,15 +472,19 @@ const TicketCard = ({
       {/* Botão de chamada - MELHORADO */}
       <div className="flex gap-2 ml-6">
         <button
-          disabled={callLoading || !selectedEquipment}
+          disabled={callLoading || !selectedEquipment || isCalledInOtherQueues}
           onClick={() => onCall(ticket, currentService)}
           className={`px-4 py-2 rounded-lg font-semibold transition-all ${
             priority.isFirstService 
               ? 'bg-green-600 hover:bg-green-700 text-white' 
+              : isCalledInOtherQueues
+              ? 'bg-gray-400 text-gray-600'
               : 'bg-blue-600 hover:bg-blue-700 text-white'
           } disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg`}
         >
-          {callLoading ? 'Chamando...' : priority.isFirstService ? '🥇 Chamar Primeiro' : 'Chamar'}
+          {callLoading ? 'Chamando...' : 
+           isCalledInOtherQueues ? 'Já Chamado' :
+           priority.isFirstService ? '🥇 Chamar Primeiro' : 'Chamar'}
         </button>
       </div>
     </div>
@@ -1986,20 +2001,25 @@ const OperatorPage: React.FC = () => {
           // ✅ CORREÇÃO: Usar service_details em vez de services
           const ticketServices = ticket.service_details || ticket.services || (ticket.service ? [ticket.service] : []);
           
-          // ✅ NOVO: Verificar se o ticket já foi processado por outro serviço
-          // Para evitar duplicação, só mostrar o ticket na fila do primeiro serviço
-          const isFirstServiceForTicket = ticketServices.length > 0 && ticketServices[0]?.id === service.id;
+          // ✅ CORREÇÃO: Mostrar ticket em todas as filas dos seus serviços
+          // Mas marcar se é o primeiro serviço para controle de chamada
+          const hasService = ticketServices.some(s => s && (
+            s.id === service.id || 
+            s.service_id === service.id || 
+            s.service === service.id ||
+            (s.service && s.service.id === service.id) ||
+            (typeof s.service === 'string' && s.service === service.id)
+          ));
           
           // ✅ NOVO: Log para debug da lógica de filtro
           console.log(`🔍 DEBUG - Ticket ${ticket.number} - Filtro para serviço ${service.name}:`, {
             ticketServices: ticketServices.map(s => ({ id: s?.id, name: s?.name })),
-            firstServiceId: ticketServices[0]?.id,
             currentServiceId: service.id,
-            isFirstServiceForTicket,
-            willShow: isFirstServiceForTicket
+            hasService,
+            willShow: hasService
           });
           
-          return isFirstServiceForTicket;
+          return hasService;
           
           // ✅ CORREÇÃO: Log detalhado para debug dos serviços do ticket
           console.log(`🔍 DEBUG - Ticket ${ticket.number || ticket.ticket_number} - Serviços:`, {
@@ -2113,10 +2133,26 @@ const OperatorPage: React.FC = () => {
         return;
       }
       
-      // ✅ NOVO: Proteção contra chamadas duplicadas
+      // ✅ CORREÇÃO: Proteção contra chamadas duplicadas
       const callKey = `${ticket.id}-${serviceId}`;
       if (callLoading) {
         console.log('🔍 DEBUG - Já existe uma chamada em andamento, aguardando...');
+        return;
+      }
+      
+      // ✅ NOVO: Verificar se este serviço específico já foi chamado
+      const serviceCallKey = `${ticket.id}-${serviceId}`;
+      const lastServiceCallTime = ticketLastCallTime.current.get(serviceCallKey) || 0;
+      const timeSinceLastServiceCall = Date.now() - lastServiceCallTime;
+      
+      if (timeSinceLastServiceCall < 3000) { // 3 segundos de proteção por serviço
+        console.log('🔍 DEBUG - Serviço específico chamado recentemente, aguardando...', {
+          ticketId: ticket.id,
+          serviceId,
+          timeSinceLastServiceCall,
+          lastServiceCallTime: new Date(lastServiceCallTime)
+        });
+        alert('Este serviço foi chamado recentemente. Aguarde alguns segundos antes de tentar novamente.');
         return;
       }
       
@@ -2160,24 +2196,8 @@ const OperatorPage: React.FC = () => {
       const isFirstService = services[0]?.id === serviceId;
       
       try {
-        // ✅ NOVO: Verificar se o ticket já foi chamado recentemente
-        const now = Date.now();
-        const lastCallTime = ticketLastCallTime.current.get(ticket.id) || 0;
-        const timeSinceLastCall = now - lastCallTime;
-        
-        if (timeSinceLastCall < 5000) { // 5 segundos de proteção
-          console.log('🔍 DEBUG - Ticket chamado recentemente, aguardando...', {
-            ticketId: ticket.id,
-            timeSinceLastCall,
-            lastCallTime: new Date(lastCallTime),
-            now: new Date(now)
-          });
-          alert('Este ticket foi chamado recentemente. Aguarde alguns segundos antes de tentar novamente.');
-          return;
-        }
-        
-        // ✅ NOVO: Marcar o ticket como chamado
-        ticketLastCallTime.current.set(ticket.id, now);
+        // ✅ CORREÇÃO: Marcar o serviço específico como chamado
+        ticketLastCallTime.current.set(serviceCallKey, Date.now());
         
         if (isFirstService) {
           // Chamar o ticket completo (primeiro serviço)
