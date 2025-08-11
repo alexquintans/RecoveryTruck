@@ -73,32 +73,20 @@ export function useTicketQueue() {
           })) || []
         });
         
-        // ✅ CORREÇÃO: Verificar filtro
-        console.log('🔍 DEBUG - getMyTickets - ANTES DO FILTRO:', {
+        // ✅ CORREÇÃO CRÍTICA: Backend já filtra tickets em atendimento
+        // Não aplicar filtro adicional no frontend para evitar duplicação
+        console.log('🔍 DEBUG - getMyTickets - RESULTADO DO BACKEND (sem filtro adicional):', {
           total: result?.length || 0,
           tickets: result?.map((t: any) => ({
             id: t.id,
             ticket_number: t.ticket_number,
             status: t.status,
             assigned_operator_id: t.assigned_operator_id
-          })) || []
+          })) || [],
+          statuses: result?.map((t: any) => t.status) || []
         });
         
-        // ✅ CORREÇÃO: Filtrar apenas tickets em atendimento (called ou in_progress)
-        const filtered = result.filter((ticket: any) => 
-          ticket.status === 'called' || ticket.status === 'in_progress'
-        );
-        console.log('🔍 DEBUG - getMyTickets - APÓS FILTRO CORRIGIDO:', {
-          total: filtered?.length || 0,
-          tickets: filtered?.map((t: any) => ({
-            id: t.id,
-            ticket_number: t.ticket_number,
-            status: t.status,
-            assigned_operator_id: t.assigned_operator_id
-          })) || []
-        });
-        
-        return filtered; // ✅ CORREÇÃO: Retornar apenas tickets em atendimento
+        return result; // ✅ CORREÇÃO: Retornar resultado direto do backend
       } catch (error) {
         console.error('❌ ERRO em getMyTickets:', error);
         throw error;
@@ -232,18 +220,20 @@ export function useTicketQueue() {
     }
   }, [user?.tenant_id]); // ✅ Dependência correta
 
-  // Memoizar as callbacks do WebSocket para evitar recriações
+  // ✅ CORREÇÃO CRÍTICA: Callbacks do WebSocket com tratamento robusto de erros
   const wsCallbacks = useMemo(() => ({
     onOpen: () => {
       console.log('🔌 WebSocket conectado com sucesso!');
     },
     onError: (error: any) => {
-      console.log('🔌 WebSocket error:', error);
-      // Não deixar o erro do WebSocket quebrar a aplicação
+      console.error('🔌 WebSocket error:', error);
+      // ✅ CORREÇÃO CRÍTICA: Não deixar erro quebrar a aplicação
+      // Log do erro mas continuar funcionamento
     },
     onClose: () => {
       console.log('🔌 WebSocket fechado');
-      // Não deixar o fechamento do WebSocket quebrar a aplicação
+      // ✅ CORREÇÃO CRÍTICA: Implementar reconexão automática
+      // O hook useWebSocket já gerencia reconexão automaticamente
     },
     onMessage: (msg: any) => {
       try {
@@ -332,11 +322,11 @@ export function useTicketQueue() {
       if (type === 'payment_update') {
         console.log('🔄 Atualização de pagamento via WebSocket:', data);
         try {
-          // ✅ CORREÇÃO: Processar dados específicos do pagamento
+          // ✅ CORREÇÃO CRÍTICA: Processar dados específicos do pagamento
           if (data && data.payment_confirmed && data.ticket_id) {
             console.log(`🎯 Pagamento confirmado para ticket ${data.ticket_id}, movendo para fila...`);
             
-            // Atualizar o ticket específico no cache
+            // ✅ CORREÇÃO CRÍTICA: Atualizar o ticket específico no cache
             queryClient.setQueryData<any>(['tickets', 'queue'], (old: any) => {
               if (!old || !old.items) return old;
               const items = old.items.map((t: any) => 
@@ -347,19 +337,23 @@ export function useTicketQueue() {
               return { ...old, items };
             });
             
-            // Atualizar tickets de pagamento pendente
+            // ✅ CORREÇÃO CRÍTICA: Atualizar tickets de pagamento pendente
             queryClient.setQueryData<any>(['tickets', 'pending-payment'], (old: any) => {
               if (!old || !Array.isArray(old)) return old;
               return old.filter((t: any) => t.id !== data.ticket_id);
             });
+            
+            // ✅ CORREÇÃO CRÍTICA: Invalidar todas as queries relacionadas
+            Promise.all([
+              queryClient.invalidateQueries({ queryKey: ['tickets', 'pending-payment'] }),
+              queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] }),
+              queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] })
+            ]).catch(error => {
+              console.error('Erro ao invalidar queries de pagamento:', error);
+            });
           }
-          
-          // Invalidar queries relacionadas a pagamento quando um pagamento for confirmado
-          queryClient.invalidateQueries({ queryKey: ['tickets', 'pending-payment'] });
-          queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
-          queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
         } catch (error) {
-          console.error('Erro ao invalidar pagamentos via WebSocket:', error);
+          console.error('Erro ao processar atualização de pagamento via WebSocket:', error);
         }
       }
       } catch (error) {
@@ -382,7 +376,7 @@ export function useTicketQueue() {
     ...wsCallbacks,
   });
 
-  // ✅ CORREÇÃO: Memoizar função para evitar React Error #310
+  // ✅ CORREÇÃO CRÍTICA: Normalização padronizada e consistente
   const normalizeTicket = useCallback((t: any) => {
     // ✅ ADICIONADO: Log para debug da normalização
     console.log('🔍 DEBUG - Normalizando ticket:', {
@@ -405,7 +399,7 @@ export function useTicketQueue() {
     
     const normalized = {
       ...t,
-      // ✅ CORREÇÃO: Garantir que o ID seja preservado
+      // ✅ CORREÇÃO CRÍTICA: Garantir que o ID seja preservado
       id: t.id,
       operatorId: t.assigned_operator_id || t.operator_id || t.operatorId,
       equipmentId: t.equipment_id || t.equipmentId,
@@ -414,16 +408,27 @@ export function useTicketQueue() {
       calledAt: t.called_at || t.calledAt,
       status: t.status,
       payment_confirmed: t.payment_confirmed,
-      // ✅ CORREÇÃO: Mapear corretamente a estrutura de serviços do backend
-      services: (t.services || []).map((ts: any) => ({
-        id: ts.service?.id || ts.id,
-        name: ts.service?.name || ts.name,
-        price: ts.price || ts.service?.price,
-        duration: ts.service?.duration_minutes || ts.duration,
-        // Preservar a estrutura original para compatibilidade
-        service: ts.service,
-        ticketService: ts
-      })),
+      // ✅ CORREÇÃO CRÍTICA: Padronizar estrutura de serviços
+      services: (t.services || []).map((ts: any) => {
+        // ✅ PADRONIZAÇÃO: Sempre usar a estrutura service.id
+        const serviceId = ts.service?.id || ts.id;
+        const serviceName = ts.service?.name || ts.name;
+        const servicePrice = ts.price || ts.service?.price;
+        const serviceDuration = ts.service?.duration_minutes || ts.duration;
+        
+        return {
+          id: serviceId, // ✅ SEMPRE usar service.id como padrão
+          name: serviceName,
+          price: servicePrice,
+          duration: serviceDuration,
+          // Preservar estrutura original para compatibilidade
+          service: ts.service,
+          ticketService: ts,
+          // ✅ NOVO: Adicionar campos padronizados
+          service_id: serviceId, // Para compatibilidade com backend
+          service_name: serviceName
+        };
+      }),
       extras: (t.extras || []).map((te: any) => ({
         id: te.extra?.id || te.id,
         name: te.extra?.name || te.name,

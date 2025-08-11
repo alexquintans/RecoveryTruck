@@ -300,33 +300,23 @@ const TicketCard = ({
     hasId: !!ticket.id
   });
   const priority = getTicketPriority(ticket, currentService);
-  // ✅ CORREÇÃO: Usar service_details em vez de services
-  const ticketServices = ticket.service_details || ticket.services || (ticket.service ? [ticket.service] : []);
-  const currentServiceData = ticketServices.find(s => s && (
-    s.id === currentService || 
-    s.service === currentService || 
-    s.service_id === currentService ||
-    (s.service && s.service.id === currentService) ||
-    (typeof s.service === 'object' && s.service && s.service.id === currentService)
-  ));
+  // ✅ CORREÇÃO CRÍTICA: Usar estrutura normalizada de serviços
+  const ticketServices = ticket.services || [];
+  const currentServiceData = ticketServices.find(s => 
+    s && (s.id === currentService || s.service_id === currentService)
+  );
   
-  // ✅ ADICIONADO: Log para debug da estrutura dos dados
+  // ✅ CORREÇÃO CRÍTICA: Log simplificado para debug
   console.log('🔍 DEBUG - TicketCard - Estrutura dos dados:', {
     ticketId: ticket.id,
     ticketNumber: ticket.number,
     currentService,
-    ticketServices,
-    currentServiceData,
-    serviceDetails: ticket.service_details,
-    // ✅ ADICIONADO: Log detalhado da busca
-    searchDetails: ticketServices.map(s => ({
-      hasService: !!s.service,
-      serviceId: s.service?.id,
-      serviceName: s.service?.name,
-      matchesCurrentService: s.service?.id === currentService,
-      sId: s.id,
-      sServiceId: s.service_id
-    }))
+    ticketServicesCount: ticketServices.length,
+    currentServiceData: currentServiceData ? {
+      id: currentServiceData.id,
+      name: currentServiceData.name,
+      price: currentServiceData.price
+    } : null
   });
   
   // Calcular tempo de espera
@@ -1966,7 +1956,7 @@ const OperatorPage: React.FC = () => {
       ),
     };
 
-    // CORRIGIDO: Função para organizar tickets por serviço - definida como função normal
+    // ✅ CORREÇÃO CRÍTICA: Função simplificada para organizar tickets por serviço
     const organizeTicketsByService = (tickets: Ticket[], activeServices: Service[]) => {
       // Proteção contra dados undefined/null
       if (!tickets || !Array.isArray(tickets)) {
@@ -1979,48 +1969,18 @@ const OperatorPage: React.FC = () => {
         return [];
       }
       
-      // ✅ CORREÇÃO: Logs para debug da função
-              console.log('🔍 DEBUG - organizeTicketsByService - Início:');
-        console.log('🔍 DEBUG -   Total de tickets:', tickets.length);
-        console.log('🔍 DEBUG -   Total de serviços ativos:', activeServices.length);
-        console.log('🔍 DEBUG -   Serviços ativos:', activeServices.map(s => ({ id: s.id, name: s.name })));
-        // ✅ ADICIONADO: Log detalhado dos serviços ativos
-        console.log('🔍 DEBUG -   Serviços ativos detalhados:', activeServices.map(s => ({
-          id: s.id,
-          name: s.name,
-          isActive: s.isActive,
-          duration: s.duration
-        })));
-        // ✅ ADICIONADO: Log expandido dos IDs dos serviços ativos
-        console.log('🔍 DEBUG -   IDs dos serviços ativos:', activeServices.map(s => s.id));
-      
-      // Filtrar apenas tickets que estão na fila (in_queue), excluindo pending_payment
-      const queueTickets = tickets.filter(ticket => {
-        if (!ticket || typeof ticket !== 'object') return false;
-        return ticket.status === 'in_queue';
+      console.log('🔍 DEBUG - organizeTicketsByService - Início:', {
+        totalTickets: tickets.length,
+        totalServices: activeServices.length,
+        services: activeServices.map(s => ({ id: s.id, name: s.name }))
       });
       
-              console.log('🔍 DEBUG -   Tickets na fila (in_queue):', queueTickets.length);
-        
-        // ✅ CORREÇÃO: Log da estrutura de um ticket para debug
-        if (queueTickets.length > 0) {
-          const sampleTicket = queueTickets[0];
-          console.log('🔍 DEBUG - Estrutura de um ticket:', {
-            id: sampleTicket.id,
-            number: sampleTicket.number || sampleTicket.ticket_number,
-            status: sampleTicket.status,
-            services: sampleTicket.services,
-            service: sampleTicket.service,
-            service_details: sampleTicket.service_details,
-            hasServices: !!sampleTicket.services,
-            hasService: !!sampleTicket.service,
-            hasServiceDetails: !!sampleTicket.service_details,
-            servicesLength: sampleTicket.services?.length || 0,
-            serviceDetailsLength: sampleTicket.service_details?.length || 0,
-            // ✅ ADICIONADO: Log completo do ticket para debug
-            ticketComplete: sampleTicket
-          });
-        }
+      // ✅ CORREÇÃO CRÍTICA: Filtrar apenas tickets na fila
+      const queueTickets = tickets.filter(ticket => 
+        ticket && typeof ticket === 'object' && ticket.status === 'in_queue'
+      );
+      
+      console.log('🔍 DEBUG - Tickets na fila:', queueTickets.length);
       
       const result = activeServices.map(service => {
         if (!service || !service.id) {
@@ -2028,94 +1988,28 @@ const OperatorPage: React.FC = () => {
           return { serviceId: '', serviceName: '', tickets: [] };
         }
         
-        // ✅ NOVO: Filtrar tickets que pertencem a este serviço
+        // ✅ CORREÇÃO CRÍTICA: Lógica simplificada de filtro
         const serviceTickets = queueTickets.filter(ticket => {
           if (!ticket) return false;
           
-          // Verificar se o ticket tem serviços
-          // ✅ CORREÇÃO: Usar service_details em vez de services
-          const ticketServices = ticket.service_details || ticket.services || (ticket.service ? [ticket.service] : []);
+          // ✅ PADRONIZAÇÃO: Usar sempre a estrutura normalizada
+          const ticketServices = ticket.services || [];
           
-          // ✅ CORREÇÃO: Mostrar ticket em todas as filas dos seus serviços
-          // Mas marcar se é o primeiro serviço para controle de chamada
-          const hasService = ticketServices.some(s => s && (
-            s.id === service.id || 
-            s.service_id === service.id || 
-            s.service === service.id ||
-            (s.service && s.service.id === service.id) ||
-            (typeof s.service === 'string' && s.service === service.id)
-          ));
+          // ✅ CORREÇÃO CRÍTICA: Comparação simples e direta
+          const hasService = ticketServices.some(s => 
+            s && (s.id === service.id || s.service_id === service.id)
+          );
           
-          // ✅ NOVO: Log para debug da lógica de filtro
-          console.log(`🔍 DEBUG - Ticket ${ticket.number} - Filtro para serviço ${service.name}:`, {
+          console.log(`🔍 DEBUG - Ticket ${ticket.number} - Serviço ${service.name}:`, {
             ticketServices: ticketServices.map(s => ({ id: s?.id, name: s?.name })),
-            currentServiceId: service.id,
-            hasService,
-            willShow: hasService
+            serviceId: service.id,
+            hasService
           });
           
           return hasService;
-          
-          // ✅ CORREÇÃO: Log detalhado para debug dos serviços do ticket
-          console.log(`🔍 DEBUG - Ticket ${ticket.number || ticket.ticket_number} - Serviços:`, {
-            serviceIds: ticketServices.map(s => s?.id || s?.service || 'N/A'),
-            serviceNames: ticketServices.map(s => s?.name || 'N/A'),
-            lookingFor: service.id,
-            lookingForName: service.name,
-            match: ticketServices.some(s => s && (
-              s.id === service.id || 
-              s.service_id === service.id || 
-              s.service === service.id ||
-              (s.service && s.service.id === service.id) ||
-              (typeof s.service === 'string' && s.service === service.id)
-            )),
-            // ✅ ADICIONADO: Log da estrutura completa para debug
-            ticketServicesRaw: ticketServices,
-            ticketServicesLength: ticketServices.length,
-            // ✅ ADICIONADO: Log detalhado da comparação
-            comparisonDetails: ticketServices.map(s => ({
-              s_id: s?.id,
-              s_service_id: s?.service_id,
-              s_service: s?.service,
-              s_service_type: typeof s?.service,
-              s_service_id_value: s?.service?.id,
-              lookingFor: service.id,
-              match_id: s?.id === service.id,
-              match_service_id: s?.service_id === service.id,
-              match_service: s?.service === service.id,
-              match_service_obj: s?.service?.id === service.id,
-              match_service_string: typeof s?.service === 'string' && s?.service === service.id
-            })),
-            // ✅ ADICIONADO: Log dos IDs reais para debug
-            serviceIdsDetailed: ticketServices.map(s => ({
-              id: s?.id,
-              name: s?.name,
-              service_id: s?.service_id,
-              service: s?.service
-            })),
-            // ✅ ADICIONADO: Log expandido dos IDs para debug
-            serviceIdsExpanded: ticketServices.map(s => s?.id),
-            serviceNamesExpanded: ticketServices.map(s => s?.name),
-            // ✅ ADICIONADO: Log dos IDs reais para debug
-            serviceIdsReal: ticketServices.map(s => s?.id || 'undefined'),
-            serviceNamesReal: ticketServices.map(s => s?.name || 'undefined')
-          });
-          
-                      // Log removido para reduzir spam - já temos o log acima
-          
-                      // ✅ CORREÇÃO: Usar o campo correto para comparação
-            // ✅ CORREÇÃO: Usar o campo correto para comparação
-            // ✅ CORREÇÃO: Acessar o campo correto dentro do objeto service
-            return ticketServices.some(s => s && (
-              s.id === service.id || 
-              s.service_id === service.id || 
-              s.service === service.id ||
-              (s.service && s.service.id === service.id) ||
-              (typeof s.service === 'string' && s.service === service.id)
-            ));
         });
         
-        console.log(`🔍 DEBUG -   Serviço ${service.name}: ${serviceTickets.length} tickets`);
+        console.log(`🔍 DEBUG - Serviço ${service.name}: ${serviceTickets.length} tickets`);
         
         return {
           serviceId: service.id,
@@ -2136,136 +2030,141 @@ const OperatorPage: React.FC = () => {
       return queue?.tickets || [];
     };
 
-    // CORRIGIDO: Função de chamada inteligente - MELHORADA conforme NewTickets.md
-    const handleCallTicket = async (ticket: Ticket, serviceId: string) => {
-      console.log('🔍 DEBUG - Chamando ticket:', {
+      // ✅ CORREÇÃO CRÍTICA: Proteção robusta contra chamadas duplicadas
+  const handleCallTicket = async (ticket: Ticket, serviceId: string) => {
+    console.log('🔍 DEBUG - Chamando ticket:', {
+      ticketId: ticket.id,
+      ticketNumber: ticket.number,
+      status: ticket.status,
+      equipment: selectedEquipment,
+      serviceId: serviceId,
+      ticketComplete: ticket
+    });
+    
+    // ✅ CORREÇÃO CRÍTICA: Verificações de segurança robustas
+    if (!ticket.id) {
+      console.error('❌ ERRO: ticket.id está undefined!', ticket);
+      alert('Erro: ID do ticket não encontrado!');
+      return;
+    }
+    
+    if (!selectedEquipment) {
+      console.error('❌ ERRO: selectedEquipment está undefined!', { selectedEquipment });
+      alert('Erro: Equipamento não selecionado!');
+      return;
+    }
+    
+    if (!serviceId) {
+      console.error('❌ ERRO: serviceId está undefined!', { serviceId });
+      alert('Erro: ID do serviço não encontrado!');
+      return;
+    }
+    
+    // ✅ CORREÇÃO CRÍTICA: Verificar se equipamento está disponível
+    const equipment = safeEquipment.find(e => e.id === selectedEquipment);
+    if (!equipment || equipment.status !== 'available') {
+      console.error('❌ ERRO: Equipamento não está disponível!', { equipment, selectedEquipment });
+      alert('Erro: Equipamento não está disponível para uso!');
+      return;
+    }
+    
+    // ✅ CORREÇÃO CRÍTICA: Proteção contra chamadas duplicadas por serviço específico
+    const serviceCallKey = `${ticket.id}-${serviceId}`;
+    const lastServiceCallTime = ticketLastCallTime.current.get(serviceCallKey) || 0;
+    const timeSinceLastServiceCall = Date.now() - lastServiceCallTime;
+    
+    if (timeSinceLastServiceCall < 3000) { // 3 segundos de proteção por serviço
+      console.log('🔍 DEBUG - Serviço específico chamado recentemente, aguardando...', {
         ticketId: ticket.id,
-        ticketNumber: ticket.number,
-        status: ticket.status,
-        equipment: selectedEquipment,
-        serviceId: serviceId,
-        ticketComplete: ticket
+        serviceId,
+        timeSinceLastServiceCall,
+        lastServiceCallTime: new Date(lastServiceCallTime)
       });
+      alert('Este serviço foi chamado recentemente. Aguarde alguns segundos antes de tentar novamente.');
+      return;
+    }
+    
+    // ✅ CORREÇÃO CRÍTICA: Verificar se já existe chamada em andamento
+    if (callLoading) {
+      console.log('🔍 DEBUG - Já existe uma chamada em andamento, aguardando...');
+      alert('Já existe uma chamada em andamento. Aguarde a conclusão.');
+      return;
+    }
+    
+    // ✅ CORREÇÃO CRÍTICA: Verificar se o ticket está disponível para chamada
+    if (!['in_queue', 'called', 'in_progress'].includes(ticket.status)) {
+      console.log('🔍 DEBUG - Ticket não está disponível para chamada, status:', ticket.status);
+      alert(`Este ticket não está disponível para chamada! Status atual: ${ticket.status}`);
+      return;
+    }
+    
+    // ✅ CORREÇÃO CRÍTICA: Verificar se este serviço específico já está em andamento
+    const isServiceInProgress = ticket.serviceProgress?.some(p => 
+      p.service_name === serviceId && p.status === 'in_progress'
+    );
+    
+    if (isServiceInProgress) {
+      console.log('🔍 DEBUG - Serviço específico já está em andamento:', { serviceId });
+      alert('Este serviço específico já está em andamento!');
+      return;
+    }
+    
+    // ✅ ADICIONADO: Log adicional para debug do ticket.id
+    console.log('🔍 DEBUG - Ticket antes da chamada:', {
+      ticketId: ticket.id,
+      ticketIdType: typeof ticket.id,
+      ticketIdValue: ticket.id,
+      ticketKeys: Object.keys(ticket),
+      ticketComplete: ticket
+    });
+    
+    // ✅ CORREÇÃO: Verificar se é o primeiro serviço do ticket
+    const services = ticket.services || [ticket.service];
+    console.log('🔍 DEBUG - Verificando primeiro serviço:', {
+      ticketId: ticket.id,
+      services: services.map(s => ({ id: s.id, name: s.name })),
+      serviceId,
+      firstServiceId: services[0]?.id
+    });
+    const isFirstService = services[0]?.id === serviceId;
+    
+    try {
+      // ✅ CORREÇÃO CRÍTICA: Marcar o serviço específico como chamado ANTES da chamada
+      ticketLastCallTime.current.set(serviceCallKey, Date.now());
       
-      // ✅ ADICIONADO: Verificação de segurança para ticket.id
-      if (!ticket.id) {
-        console.error('❌ ERRO: ticket.id está undefined!', ticket);
-        alert('Erro: ID do ticket não encontrado!');
-        return;
-      }
-      
-      // ✅ ADICIONADO: Verificação de segurança para selectedEquipment
-      if (!selectedEquipment) {
-        console.error('❌ ERRO: selectedEquipment está undefined!', { selectedEquipment });
-        alert('Erro: Equipamento não selecionado!');
-        return;
-      }
-      
-      // ✅ ADICIONADO: Verificação de segurança para serviceId
-      if (!serviceId) {
-        console.error('❌ ERRO: serviceId está undefined!', { serviceId });
-        alert('Erro: ID do serviço não encontrado!');
-        return;
-      }
-      
-      // ✅ CORREÇÃO: Proteção contra chamadas duplicadas
-      const callKey = `${ticket.id}-${serviceId}`;
-      if (callLoading) {
-        console.log('🔍 DEBUG - Já existe uma chamada em andamento, aguardando...');
-        return;
-      }
-      
-      // ✅ NOVO: Verificar se este serviço específico já foi chamado
-      const serviceCallKey = `${ticket.id}-${serviceId}`;
-      const lastServiceCallTime = ticketLastCallTime.current.get(serviceCallKey) || 0;
-      const timeSinceLastServiceCall = Date.now() - lastServiceCallTime;
-      
-      if (timeSinceLastServiceCall < 3000) { // 3 segundos de proteção por serviço
-        console.log('🔍 DEBUG - Serviço específico chamado recentemente, aguardando...', {
-          ticketId: ticket.id,
-          serviceId,
-          timeSinceLastServiceCall,
-          lastServiceCallTime: new Date(lastServiceCallTime)
-        });
-        alert('Este serviço foi chamado recentemente. Aguarde alguns segundos antes de tentar novamente.');
-        return;
-      }
-      
-      // Verificar se o ticket já foi chamado
-      if (ticket.status === 'called') {
-        console.log('🔍 DEBUG - Ticket já foi chamado, pulando...');
-        alert('Este ticket já foi chamado!');
-        return;
-      }
-      
-      // ✅ CORREÇÃO: Verificar se o ticket está disponível para chamada
-      if (!['in_queue', 'called', 'in_progress'].includes(ticket.status)) {
-        console.log('🔍 DEBUG - Ticket não está disponível para chamada, status:', ticket.status);
-        alert(`Este ticket não está disponível para chamada! Status atual: ${ticket.status}`);
-        return;
-      }
-      
-      // ✅ CORREÇÃO: Se o ticket já está em andamento, não permitir nova chamada
-      if (ticket.status === 'in_progress') {
-        console.log('🔍 DEBUG - Ticket já está em andamento, mas permitindo chamada de serviço específico');
-        // Não bloquear mais - permitir chamada de serviço específico mesmo para tickets em andamento
-      }
-      
-      // ✅ ADICIONADO: Log adicional para debug do ticket.id
-      console.log('🔍 DEBUG - Ticket antes da chamada:', {
+      // ✅ CORREÇÃO CRÍTICA: SEMPRE chamar apenas o serviço específico
+      const callServiceParams = { ticketId: ticket.id, serviceId: serviceId, equipmentId: selectedEquipment };
+      console.log('🔍 DEBUG - Chamando serviço específico:', {
         ticketId: ticket.id,
+        serviceId: serviceId,
+        equipment: selectedEquipment,
         ticketIdType: typeof ticket.id,
         ticketIdValue: ticket.id,
-        ticketKeys: Object.keys(ticket),
-        ticketComplete: ticket
+        isFirstService,
+        callServiceParams
       });
       
-      // ✅ CORREÇÃO: Verificar se é o primeiro serviço do ticket
-      const services = ticket.services || [ticket.service];
-      console.log('🔍 DEBUG - Verificando primeiro serviço:', {
-        ticketId: ticket.id,
-        services: services.map(s => ({ id: s.id, name: s.name })),
+      await callService(callServiceParams);
+      
+      // ✅ CORREÇÃO: Mostrar feedback visual
+      const serviceName = services.find(s => s.id === serviceId)?.name || 'Serviço';
+      console.log('🔍 DEBUG - Nome do serviço encontrado:', {
         serviceId,
-        firstServiceId: services[0]?.id
+        serviceName,
+        foundService: services.find(s => s.id === serviceId)
       });
-      const isFirstService = services[0]?.id === serviceId;
+      const message = `Ticket #${ticket.number} chamado para ${serviceName} (serviço específico)`;
       
-      try {
-        // ✅ CORREÇÃO: Marcar o serviço específico como chamado
-        ticketLastCallTime.current.set(serviceCallKey, Date.now());
-        
-        // ✅ CORREÇÃO: SEMPRE chamar apenas o serviço específico, nunca o ticket completo
-        // Isso evita que o ticket seja processado em múltiplas filas simultaneamente
-        const callServiceParams = { ticketId: ticket.id, serviceId: serviceId, equipmentId: selectedEquipment };
-        console.log('🔍 DEBUG - Chamando serviço específico:', {
-          ticketId: ticket.id,
-          serviceId: serviceId,
-          equipment: selectedEquipment,
-          ticketIdType: typeof ticket.id,
-          ticketIdValue: ticket.id,
-          isFirstService,
-          callServiceParams
-        });
-        
-        await callService(callServiceParams);
-        
-        // ✅ CORREÇÃO: Mostrar feedback visual
-        const serviceName = services.find(s => s.id === serviceId)?.name || 'Serviço';
-        console.log('🔍 DEBUG - Nome do serviço encontrado:', {
-          serviceId,
-          serviceName,
-          foundService: services.find(s => s.id === serviceId)
-        });
-        const message = `Ticket #${ticket.number} chamado para ${serviceName} (serviço específico)`;
-        
-        // TODO: Implementar notificação toast
-        console.log('✅', message);
-        
-      } catch (error) {
-        console.error('❌ ERRO ao chamar ticket:', error);
-        alert('Erro ao chamar ticket! Verifique se o equipamento está selecionado.');
-      }
-    };
+      // TODO: Implementar notificação toast
+      console.log('✅', message);
+      
+    } catch (error) {
+      console.error('❌ ERRO ao chamar ticket:', error);
+      // ✅ CORREÇÃO: Remover marcação de tempo em caso de erro
+      ticketLastCallTime.current.delete(serviceCallKey);
+      alert('Erro ao chamar ticket! Verifique se o equipamento está selecionado.');
+    }
+  };
 
     // CORRIGIDO: Efeito para organizar filas quando tickets ou serviços mudam
     // Problema: Dependências estavam causando loops infinitos

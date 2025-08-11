@@ -73,22 +73,33 @@ export function useOperatorActions() {
     onSuccess: async (data, variables) => {
       console.log('✅ Pagamento confirmado, invalidando queries...');
       
-      // Invalidar todas as queries relacionadas a tickets
-      await queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
-      await queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
-      await queryClient.invalidateQueries({ queryKey: ['tickets', 'pending-payment'] });
-      
-      // Invalidar queries específicas por ticket
-      await queryClient.invalidateQueries({ 
-        queryKey: ['tickets'], 
-        predicate: (query) => query.queryKey.includes(variables.ticketId)
-      });
-      
-      // Forçar refetch das queries principais
-      await queryClient.refetchQueries({ queryKey: ['tickets', 'queue'] });
-      await queryClient.refetchQueries({ queryKey: ['tickets', 'pending-payment'] });
-      
-      console.log('✅ Queries invalidadas com sucesso');
+      try {
+        // ✅ CORREÇÃO CRÍTICA: Invalidar todas as queries relacionadas a tickets
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] }),
+          queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] }),
+          queryClient.invalidateQueries({ queryKey: ['tickets', 'pending-payment'] }),
+          queryClient.invalidateQueries({ queryKey: ['tickets', 'completed'] }),
+          queryClient.invalidateQueries({ queryKey: ['tickets', 'cancelled'] })
+        ]);
+        
+        // ✅ CORREÇÃO CRÍTICA: Invalidar queries específicas por ticket
+        await queryClient.invalidateQueries({ 
+          queryKey: ['tickets'], 
+          predicate: (query) => query.queryKey.includes(variables.ticketId)
+        });
+        
+        // ✅ CORREÇÃO CRÍTICA: Forçar refetch das queries principais
+        await Promise.all([
+          queryClient.refetchQueries({ queryKey: ['tickets', 'queue'] }),
+          queryClient.refetchQueries({ queryKey: ['tickets', 'pending-payment'] }),
+          queryClient.refetchQueries({ queryKey: ['tickets', 'my-tickets'] })
+        ]);
+        
+        console.log('✅ Queries invalidadas e refetchadas com sucesso');
+      } catch (error) {
+        console.error('❌ Erro ao invalidar queries:', error);
+      }
     },
     onError: (error) => {
       console.error('❌ Erro ao confirmar pagamento:', error);
