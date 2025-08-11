@@ -53,6 +53,11 @@ export function useTicketQueue() {
   const myTicketsQuery = useQuery({
     queryKey: ['tickets', 'my-tickets'],
     queryFn: async () => {
+      console.log('🔍 DEBUG - myTicketsQuery - Iniciando query...');
+      console.log('🔍 DEBUG - myTicketsQuery - enabled:', isAuthenticated && !!user?.id);
+      console.log('🔍 DEBUG - myTicketsQuery - user:', user);
+      console.log('🔍 DEBUG - myTicketsQuery - isAuthenticated:', isAuthenticated);
+      console.log('🔍 DEBUG - myTicketsQuery - user?.id:', user?.id);
       try {
         console.log('🔍 DEBUG - Chamando getMyTickets...');
         const result = await ticketService.getMyTickets();
@@ -68,8 +73,8 @@ export function useTicketQueue() {
           })) || []
         });
         
-        // ✅ TEMPORÁRIO: Remover filtro para debug
-        console.log('🔍 DEBUG - getMyTickets - SEM FILTRO:', {
+        // ✅ CORREÇÃO: Verificar filtro
+        console.log('🔍 DEBUG - getMyTickets - ANTES DO FILTRO:', {
           total: result?.length || 0,
           tickets: result?.map((t: any) => ({
             id: t.id,
@@ -81,7 +86,7 @@ export function useTicketQueue() {
         
         // Filtrar apenas tickets da operação ativa
         const filtered = result.filter((ticket: any) => ticket.status !== 'completed' && ticket.status !== 'cancelled');
-        console.log('🔍 DEBUG - getMyTickets filtered:', {
+        console.log('🔍 DEBUG - getMyTickets - APÓS FILTRO:', {
           total: filtered?.length || 0,
           tickets: filtered?.map((t: any) => ({
             id: t.id,
@@ -90,13 +95,22 @@ export function useTicketQueue() {
           })) || []
         });
         
-        return result; // ✅ TEMPORÁRIO: Retornar todos os tickets para debug
+        return filtered; // ✅ CORREÇÃO: Retornar tickets filtrados
       } catch (error) {
         console.error('❌ ERRO em getMyTickets:', error);
         throw error;
       }
     },
     enabled: isAuthenticated && !!user?.id,
+    onSuccess: (data) => {
+      console.log('🔍 DEBUG - myTicketsQuery - onSuccess:', {
+        dataLength: data?.length || 0,
+        data: data
+      });
+    },
+    onError: (error) => {
+      console.error('🔍 DEBUG - myTicketsQuery - onError:', error);
+    },
     staleTime: 30_000, // 30 segundos
     cacheTime: 60_000, // 1 minuto
     refetchInterval: 30_000, // Refetch a cada 30 segundos

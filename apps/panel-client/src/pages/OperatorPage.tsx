@@ -718,7 +718,15 @@ const OperatorPage: React.FC = () => {
   } = useTicketQueue();
 
   // ✅ CORREÇÃO: Memoizar arrays para evitar loops infinitos
-  const safeMyTickets = useMemo(() => myTickets || [], [myTickets]);
+  const safeMyTickets = useMemo(() => {
+    console.log('🔍 DEBUG - safeMyTickets useMemo:', {
+      myTickets: myTickets,
+      myTicketsLength: myTickets?.length || 0,
+      result: myTickets || [],
+      resultLength: (myTickets || []).length
+    });
+    return myTickets || [];
+  }, [myTickets]);
   const safeTickets = useMemo(() => tickets || [], [tickets]);
   const safeEquipment = useMemo(() => equipment || [], [equipment]);
   const safePendingPaymentTickets = useMemo(() => pendingPaymentTickets || [], [pendingPaymentTickets]);
@@ -2551,15 +2559,27 @@ const OperatorPage: React.FC = () => {
               </div>
             </div>
             {(() => {
-              console.log('🔍 DEBUG - Meus tickets:', {
+              console.log('🔍 DEBUG - Meus tickets - RENDERIZAÇÃO:', {
                 safeMyTicketsLength: safeMyTickets.length,
-                safeMyTickets: safeMyTickets,
+                safeMyTickets: safeMyTickets?.map((t: any) => ({
+                  id: t.id,
+                  ticket_number: t.ticket_number,
+                  status: t.status,
+                  assigned_operator_id: t.assigned_operator_id
+                })),
                 myTicketsLength: myTickets?.length,
-                myTickets: myTickets
+                myTickets: myTickets?.map((t: any) => ({
+                  id: t.id,
+                  ticket_number: t.ticket_number,
+                  status: t.status,
+                  assigned_operator_id: t.assigned_operator_id
+                }))
               });
               
               return safeMyTickets.length === 0 ? (
-                <div className="text-gray-400 text-center py-8">Nenhum ticket em atendimento</div>
+                <div className="text-gray-400 text-center py-8">
+                  Nenhum ticket em atendimento (Total: {safeMyTickets.length})
+                </div>
               ) : (
               safeMyTickets.map(ticket => {
                 console.log('Ticket em andamento:', ticket);
