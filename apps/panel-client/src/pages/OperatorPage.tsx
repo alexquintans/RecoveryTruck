@@ -2017,8 +2017,13 @@ const OperatorPage: React.FC = () => {
 
     // CORRIGIDO: Função de chamada inteligente - MELHORADA conforme NewTickets.md
     const handleCallTicket = async (ticket: Ticket, serviceId: string) => {
-      console.log('🔍 DEBUG - Chamando ticket:', ticket.id, 'com equipamento:', selectedEquipment);
-      console.log('🔍 DEBUG - Status do ticket:', ticket.status);
+      console.log('🔍 DEBUG - Chamando ticket:', {
+        ticketId: ticket.id,
+        ticketNumber: ticket.number,
+        status: ticket.status,
+        equipment: selectedEquipment,
+        serviceId: serviceId
+      });
       
       // Verificar se o ticket já foi chamado
       if (ticket.status === 'called') {
@@ -2027,10 +2032,17 @@ const OperatorPage: React.FC = () => {
         return;
       }
       
-      // Verificar se o ticket está na fila (apenas in_queue, não pending_payment)
-      if (ticket.status !== 'in_queue') {
-        console.log('🔍 DEBUG - Ticket não está na fila, pulando...');
-        alert('Este ticket não está na fila!');
+      // ✅ CORREÇÃO: Verificar se o ticket está disponível para chamada
+      if (!['in_queue', 'called', 'in_progress'].includes(ticket.status)) {
+        console.log('🔍 DEBUG - Ticket não está disponível para chamada, status:', ticket.status);
+        alert(`Este ticket não está disponível para chamada! Status atual: ${ticket.status}`);
+        return;
+      }
+      
+      // ✅ CORREÇÃO: Se o ticket já está em andamento, não permitir nova chamada
+      if (ticket.status === 'in_progress') {
+        console.log('🔍 DEBUG - Ticket já está em andamento, pulando...');
+        alert('Este ticket já está em andamento!');
         return;
       }
       
