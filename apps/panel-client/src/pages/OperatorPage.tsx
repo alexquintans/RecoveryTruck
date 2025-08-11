@@ -293,7 +293,13 @@ const TicketCard = ({
   const priority = getTicketPriority(ticket, currentService);
   // ✅ CORREÇÃO: Usar service_details em vez de services
   const ticketServices = ticket.service_details || ticket.services || (ticket.service ? [ticket.service] : []);
-  const currentServiceData = ticketServices.find(s => s && (s.id === currentService || s.service === currentService || s.service_id === currentService));
+  const currentServiceData = ticketServices.find(s => s && (
+    s.id === currentService || 
+    s.service === currentService || 
+    s.service_id === currentService ||
+    (s.service && s.service.id === currentService) ||
+    (typeof s.service === 'object' && s.service && s.service.id === currentService)
+  ));
   
   // ✅ ADICIONADO: Log para debug da estrutura dos dados
   console.log('🔍 DEBUG - TicketCard - Estrutura dos dados:', {
@@ -302,7 +308,16 @@ const TicketCard = ({
     currentService,
     ticketServices,
     currentServiceData,
-    serviceDetails: ticket.service_details
+    serviceDetails: ticket.service_details,
+    // ✅ ADICIONADO: Log detalhado da busca
+    searchDetails: ticketServices.map(s => ({
+      hasService: !!s.service,
+      serviceId: s.service?.id,
+      serviceName: s.service?.name,
+      matchesCurrentService: s.service?.id === currentService,
+      sId: s.id,
+      sServiceId: s.service_id
+    }))
   });
   
   // Calcular tempo de espera
@@ -2065,7 +2080,13 @@ const OperatorPage: React.FC = () => {
           await callTicket(ticket.id, selectedEquipment);
         } else {
           // Chamar apenas o serviço específico (não é o primeiro)
-          console.log('🔍 DEBUG - Chamando serviço específico:', serviceId);
+          console.log('🔍 DEBUG - Chamando serviço específico:', {
+            ticketId: ticket.id,
+            serviceId: serviceId,
+            equipment: selectedEquipment,
+            ticketIdType: typeof ticket.id,
+            ticketIdValue: ticket.id
+          });
           await callService(ticket.id, serviceId, selectedEquipment);
         }
         
