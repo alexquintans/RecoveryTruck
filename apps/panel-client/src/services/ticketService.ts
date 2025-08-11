@@ -33,6 +33,16 @@ export const ticketService = {
   },
 
   async callService(ticketId: string, serviceId: string, equipmentId: string) {
+    // ✅ ADICIONADO: Log para debug da chamada da API
+    console.log('🔍 DEBUG - ticketService.callService:', {
+      ticketId,
+      serviceId,
+      equipmentId,
+      ticketIdType: typeof ticketId,
+      url: `/tickets/${ticketId}/call-service`,
+      body: { service_id: serviceId, equipment_id: equipmentId }
+    });
+    
     const response = await api.post(`/tickets/${ticketId}/call-service`, { 
       service_id: serviceId, 
       equipment_id: equipmentId 

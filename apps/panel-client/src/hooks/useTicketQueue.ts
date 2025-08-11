@@ -350,6 +350,13 @@ export function useTicketQueue() {
     // ✅ ADICIONADO: Verificação de segurança
     if (!normalized.id) {
       console.error('❌ ERRO: Ticket sem ID após normalização:', { original: t, normalized });
+    } else {
+      console.log('✅ DEBUG - Ticket normalizado com sucesso:', {
+        originalId: t.id,
+        normalizedId: normalized.id,
+        ticketNumber: normalized.number,
+        status: normalized.status
+      });
     }
     
     return normalized;

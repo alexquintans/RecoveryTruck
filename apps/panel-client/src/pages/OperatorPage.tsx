@@ -290,6 +290,14 @@ const TicketCard = ({
   selectedEquipment: string;
   callLoading: boolean;
 }) => {
+  // ✅ ADICIONADO: Log para verificar se o ticket.id está chegando corretamente
+  console.log('🔍 DEBUG - TicketCard recebido:', {
+    ticketId: ticket.id,
+    ticketIdType: typeof ticket.id,
+    ticketNumber: ticket.number,
+    status: ticket.status,
+    hasId: !!ticket.id
+  });
   const priority = getTicketPriority(ticket, currentService);
   // ✅ CORREÇÃO: Usar service_details em vez de services
   const ticketServices = ticket.service_details || ticket.services || (ticket.service ? [ticket.service] : []);
@@ -2068,6 +2076,15 @@ const OperatorPage: React.FC = () => {
         alert('Este ticket já está em andamento!');
         return;
       }
+      
+      // ✅ ADICIONADO: Log adicional para debug do ticket.id
+      console.log('🔍 DEBUG - Ticket antes da chamada:', {
+        ticketId: ticket.id,
+        ticketIdType: typeof ticket.id,
+        ticketIdValue: ticket.id,
+        ticketKeys: Object.keys(ticket),
+        ticketComplete: ticket
+      });
       
       // Verificar se é o primeiro serviço do ticket
       const services = ticket.services || [ticket.service];
