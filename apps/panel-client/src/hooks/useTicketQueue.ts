@@ -326,7 +326,15 @@ export function useTicketQueue() {
       ticketNumber: t.ticket_number || t.number,
       status: t.status,
       hasServices: !!t.services,
-      servicesCount: t.services?.length || 0
+      servicesCount: t.services?.length || 0,
+      // ✅ NOVO: Log detalhado da estrutura dos serviços
+      servicesStructure: t.services?.map((s: any) => ({
+        hasService: !!s.service,
+        serviceId: s.service?.id,
+        serviceName: s.service?.name,
+        price: s.price,
+        originalStructure: s
+      })) || []
     });
     
     const normalized = {
@@ -340,10 +348,30 @@ export function useTicketQueue() {
       calledAt: t.called_at || t.calledAt,
       status: t.status,
       payment_confirmed: t.payment_confirmed,
-      // Suporte para múltiplos serviços e extras
-      services: t.services || [],
-      extras: t.extras || [],
-      service: t.service || (t.services && t.services.length > 0 ? t.services[0] : { name: '--' }),
+      // ✅ CORREÇÃO: Mapear corretamente a estrutura de serviços do backend
+      services: (t.services || []).map((ts: any) => ({
+        id: ts.service?.id || ts.id,
+        name: ts.service?.name || ts.name,
+        price: ts.price || ts.service?.price,
+        duration: ts.service?.duration_minutes || ts.duration,
+        // Preservar a estrutura original para compatibilidade
+        service: ts.service,
+        ticketService: ts
+      })),
+      extras: (t.extras || []).map((te: any) => ({
+        id: te.extra?.id || te.id,
+        name: te.extra?.name || te.name,
+        quantity: te.quantity,
+        price: te.price || te.extra?.price,
+        // Preservar a estrutura original para compatibilidade
+        extra: te.extra,
+        ticketExtra: te
+      })),
+      service: t.service || (t.services && t.services.length > 0 ? {
+        id: t.services[0].service?.id || t.services[0].id,
+        name: t.services[0].service?.name || t.services[0].name,
+        price: t.services[0].price || t.services[0].service?.price
+      } : { name: '--' }),
       customer: t.customer || { name: '--' },
     };
     
@@ -355,7 +383,14 @@ export function useTicketQueue() {
         originalId: t.id,
         normalizedId: normalized.id,
         ticketNumber: normalized.number,
-        status: normalized.status
+        status: normalized.status,
+        // ✅ NOVO: Log dos serviços normalizados
+        normalizedServices: normalized.services?.map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          price: s.price,
+          hasOriginalService: !!s.service
+        })) || []
       });
     }
     

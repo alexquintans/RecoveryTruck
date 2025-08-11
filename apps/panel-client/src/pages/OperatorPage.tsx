@@ -2126,8 +2126,14 @@ const OperatorPage: React.FC = () => {
         ticketComplete: ticket
       });
       
-      // Verificar se é o primeiro serviço do ticket
+      // ✅ CORREÇÃO: Verificar se é o primeiro serviço do ticket
       const services = ticket.services || [ticket.service];
+      console.log('🔍 DEBUG - Verificando primeiro serviço:', {
+        ticketId: ticket.id,
+        services: services.map(s => ({ id: s.id, name: s.name })),
+        serviceId,
+        firstServiceId: services[0]?.id
+      });
       const isFirstService = services[0]?.id === serviceId;
       
       try {
@@ -2137,18 +2143,25 @@ const OperatorPage: React.FC = () => {
           await callTicket(ticket.id, selectedEquipment);
         } else {
           // Chamar apenas o serviço específico (não é o primeiro)
+          const callServiceParams = { ticketId: ticket.id, serviceId: serviceId, equipmentId: selectedEquipment };
           console.log('🔍 DEBUG - Chamando serviço específico:', {
             ticketId: ticket.id,
             serviceId: serviceId,
             equipment: selectedEquipment,
             ticketIdType: typeof ticket.id,
-            ticketIdValue: ticket.id
+            ticketIdValue: ticket.id,
+            callServiceParams
           });
-          await callService(ticket.id, serviceId, selectedEquipment);
+          await callService(callServiceParams);
         }
         
-        // Mostrar feedback visual
+        // ✅ CORREÇÃO: Mostrar feedback visual
         const serviceName = services.find(s => s.id === serviceId)?.name || 'Serviço';
+        console.log('🔍 DEBUG - Nome do serviço encontrado:', {
+          serviceId,
+          serviceName,
+          foundService: services.find(s => s.id === serviceId)
+        });
         const message = isFirstService 
           ? `Ticket #${ticket.number} chamado para ${serviceName} (primeiro serviço)`
           : `Ticket #${ticket.number} chamado para ${serviceName}`;
