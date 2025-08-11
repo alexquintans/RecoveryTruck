@@ -320,8 +320,19 @@ export function useTicketQueue() {
 
   // ✅ CORREÇÃO: Memoizar função para evitar React Error #310
   const normalizeTicket = useCallback((t: any) => {
+    // ✅ ADICIONADO: Log para debug da normalização
+    console.log('🔍 DEBUG - Normalizando ticket:', {
+      originalId: t.id,
+      ticketNumber: t.ticket_number || t.number,
+      status: t.status,
+      hasServices: !!t.services,
+      servicesCount: t.services?.length || 0
+    });
+    
     const normalized = {
       ...t,
+      // ✅ CORREÇÃO: Garantir que o ID seja preservado
+      id: t.id,
       operatorId: t.assigned_operator_id || t.operator_id || t.operatorId,
       equipmentId: t.equipment_id || t.equipmentId,
       number: t.ticket_number || t.number,
@@ -335,6 +346,11 @@ export function useTicketQueue() {
       service: t.service || (t.services && t.services.length > 0 ? t.services[0] : { name: '--' }),
       customer: t.customer || { name: '--' },
     };
+    
+    // ✅ ADICIONADO: Verificação de segurança
+    if (!normalized.id) {
+      console.error('❌ ERRO: Ticket sem ID após normalização:', { original: t, normalized });
+    }
     
     return normalized;
   }, []); // Sem dependências pois é uma função pura

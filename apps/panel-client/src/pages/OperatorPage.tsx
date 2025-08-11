@@ -2022,8 +2022,16 @@ const OperatorPage: React.FC = () => {
         ticketNumber: ticket.number,
         status: ticket.status,
         equipment: selectedEquipment,
-        serviceId: serviceId
+        serviceId: serviceId,
+        ticketComplete: ticket
       });
+      
+      // ✅ ADICIONADO: Verificação de segurança para ticket.id
+      if (!ticket.id) {
+        console.error('❌ ERRO: ticket.id está undefined!', ticket);
+        alert('Erro: ID do ticket não encontrado!');
+        return;
+      }
       
       // Verificar se o ticket já foi chamado
       if (ticket.status === 'called') {
