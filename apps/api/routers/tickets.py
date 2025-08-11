@@ -843,6 +843,14 @@ async def call_ticket(
     
     # Verificar se o ticket já foi chamado
     if ticket.status == TicketStatus.CALLED.value:
+        # ✅ NOVO: Verificar se foi chamado recentemente (proteção contra duplicação)
+        if ticket.called_at and (datetime.now(timezone.utc) - ticket.called_at).total_seconds() < 10:
+            logger.warning(f"🔍 DEBUG - Tentativa de chamar ticket recentemente chamado: {ticket_id}")
+            raise HTTPException(
+                status_code=400, 
+                detail="Este ticket foi chamado recentemente. Aguarde alguns segundos antes de tentar novamente."
+            )
+        
         raise HTTPException(
             status_code=400, 
             detail=f"Ticket #{ticket.ticket_number} já foi chamado. Status atual: {ticket.status}"
@@ -983,10 +991,19 @@ async def call_ticket_service(
     
     # Verificar se o serviço já foi iniciado
     if progress.status == "in_progress":
+        logger.warning(f"🔍 DEBUG - Tentativa de chamar serviço já em andamento: ticket {ticket_id}, serviço {request.service_id}")
         raise HTTPException(status_code=400, detail="Este serviço já está em andamento.")
     
     if progress.status == "completed":
+        logger.warning(f"🔍 DEBUG - Tentativa de chamar serviço já concluído: ticket {ticket_id}, serviço {request.service_id}")
         raise HTTPException(status_code=400, detail="Este serviço já foi concluído.")
+    
+    # ✅ NOVO: Verificar se o ticket já foi chamado recentemente (proteção contra duplicação)
+    if ticket.status == TicketStatus.CALLED.value:
+        # Verificar se foi chamado nos últimos 10 segundos
+        if ticket.called_at and (datetime.now(timezone.utc) - ticket.called_at).total_seconds() < 10:
+            logger.warning(f"🔍 DEBUG - Tentativa de chamar ticket recentemente chamado: {ticket_id}")
+            raise HTTPException(status_code=400, detail="Este ticket foi chamado recentemente. Aguarde alguns segundos antes de tentar novamente.")
     
     # Se o ticket não foi chamado ainda, chamá-lo primeiro
     if ticket.status == TicketStatus.IN_QUEUE.value:

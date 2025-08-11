@@ -1978,12 +1978,28 @@ const OperatorPage: React.FC = () => {
           return { serviceId: '', serviceName: '', tickets: [] };
         }
         
+        // ✅ NOVO: Filtrar tickets que pertencem a este serviço
         const serviceTickets = queueTickets.filter(ticket => {
           if (!ticket) return false;
           
           // Verificar se o ticket tem serviços
           // ✅ CORREÇÃO: Usar service_details em vez de services
-        const ticketServices = ticket.service_details || ticket.services || (ticket.service ? [ticket.service] : []);
+          const ticketServices = ticket.service_details || ticket.services || (ticket.service ? [ticket.service] : []);
+          
+          // ✅ NOVO: Verificar se o ticket já foi processado por outro serviço
+          // Para evitar duplicação, só mostrar o ticket na fila do primeiro serviço
+          const isFirstServiceForTicket = ticketServices.length > 0 && ticketServices[0]?.id === service.id;
+          
+          // ✅ NOVO: Log para debug da lógica de filtro
+          console.log(`🔍 DEBUG - Ticket ${ticket.number} - Filtro para serviço ${service.name}:`, {
+            ticketServices: ticketServices.map(s => ({ id: s?.id, name: s?.name })),
+            firstServiceId: ticketServices[0]?.id,
+            currentServiceId: service.id,
+            isFirstServiceForTicket,
+            willShow: isFirstServiceForTicket
+          });
+          
+          return isFirstServiceForTicket;
           
           // ✅ CORREÇÃO: Log detalhado para debug dos serviços do ticket
           console.log(`🔍 DEBUG - Ticket ${ticket.number || ticket.ticket_number} - Serviços:`, {
@@ -2097,6 +2113,13 @@ const OperatorPage: React.FC = () => {
         return;
       }
       
+      // ✅ NOVO: Proteção contra chamadas duplicadas
+      const callKey = `${ticket.id}-${serviceId}`;
+      if (callLoading) {
+        console.log('🔍 DEBUG - Já existe uma chamada em andamento, aguardando...');
+        return;
+      }
+      
       // Verificar se o ticket já foi chamado
       if (ticket.status === 'called') {
         console.log('🔍 DEBUG - Ticket já foi chamado, pulando...');
@@ -2137,6 +2160,25 @@ const OperatorPage: React.FC = () => {
       const isFirstService = services[0]?.id === serviceId;
       
       try {
+        // ✅ NOVO: Verificar se o ticket já foi chamado recentemente
+        const now = Date.now();
+        const lastCallTime = ticketLastCallTime.current.get(ticket.id) || 0;
+        const timeSinceLastCall = now - lastCallTime;
+        
+        if (timeSinceLastCall < 5000) { // 5 segundos de proteção
+          console.log('🔍 DEBUG - Ticket chamado recentemente, aguardando...', {
+            ticketId: ticket.id,
+            timeSinceLastCall,
+            lastCallTime: new Date(lastCallTime),
+            now: new Date(now)
+          });
+          alert('Este ticket foi chamado recentemente. Aguarde alguns segundos antes de tentar novamente.');
+          return;
+        }
+        
+        // ✅ NOVO: Marcar o ticket como chamado
+        ticketLastCallTime.current.set(ticket.id, now);
+        
         if (isFirstService) {
           // Chamar o ticket completo (primeiro serviço)
           const callTicketParams = { ticketId: ticket.id, equipmentId: selectedEquipment };
@@ -2952,6 +2994,8 @@ const OperatorPage: React.FC = () => {
   // ✅ CORREÇÃO: Usar useRef para rastrear mudanças de estado
   const previousOperatingState = useRef<boolean | null>(null);
   const isInitialized = useRef<boolean>(false);
+  // ✅ NOVO: Ref para controlar chamadas duplicadas de tickets
+  const ticketLastCallTime = useRef(new Map<string, number>());
   
   useEffect(() => {
     try {
