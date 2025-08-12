@@ -2502,48 +2502,57 @@ const OperatorPage: React.FC = () => {
                 </button>
               </div>
             </div>
-            {(() => {
-              // ✅ CORREÇÃO CRÍTICA: Usar dados diretos do hook em vez de safeMyTickets
-              const ticketsToRender = myTickets || [];
-              
-              // ✅ NOVO: Log imediato para verificar se a função está sendo executada
-              console.log('🔍 DEBUG - SEÇÃO MEUS TICKETS - FUNÇÃO EXECUTADA');
-              console.log('🔍 DEBUG - myTickets recebido:', myTickets);
-              console.log('🔍 DEBUG - ticketsToRender:', ticketsToRender);
-              
-              // ✅ NOVO: Log inicial para verificar se a seção está sendo renderizada
-              console.log('🔍 DEBUG - SEÇÃO MEUS TICKETS - INICIANDO RENDERIZAÇÃO:', {
-                myTickets: myTickets,
-                myTicketsLength: myTickets?.length || 0,
-                ticketsToRender: ticketsToRender,
-                ticketsToRenderLength: ticketsToRender.length,
-                isArray: Array.isArray(ticketsToRender),
-                hasData: ticketsToRender.length > 0
-              });
-              
-              // ✅ NOVO: Teste de debug mais detalhado
-              console.log('🔍 DEBUG - Meus tickets - RENDERIZAÇÃO CORRIGIDA:', {
-                ticketsToRenderLength: ticketsToRender.length,
-                ticketsToRender: ticketsToRender?.map((t: any) => ({
-                  id: t.id,
-                  ticket_number: t.ticket_number || t.number,
-                  status: t.status,
-                  assigned_operator_id: t.assigned_operator_id || t.operatorId,
-                  customer_name: t.customer_name || t.customer?.name
-                })),
-                myTicketsLength: myTickets?.length,
-                safeMyTicketsLength: safeMyTickets.length,
-                // ✅ NOVO: Verificar se há diferença entre os arrays
-                arraysEqual: JSON.stringify(ticketsToRender) === JSON.stringify(myTickets),
-                ticketsToRenderType: typeof ticketsToRender,
-                myTicketsType: typeof myTickets,
-                // ✅ NOVO: Verificar estrutura do primeiro item
-                firstItemStructure: ticketsToRender[0] ? {
-                  id: ticketsToRender[0].id,
-                  number: ticketsToRender[0].number || ticketsToRender[0].ticket_number,
-                  status: ticketsToRender[0].status,
-                  hasServices: !!ticketsToRender[0].services,
-                  servicesCount: ticketsToRender[0].services?.length || 0
+            {myTickets && myTickets.length > 0 ? (
+              <div className="space-y-4">
+                {myTickets.map(ticket => (
+                  <div
+                    key={ticket.id}
+                    className={`flex flex-col md:flex-row md:items-center justify-between rounded-2xl p-4 md:p-5 shadow-md hover:shadow-xl transition-transform hover:-translate-y-1 group focus-within:ring-2 focus-within:ring-yellow-400
+                      ${ticket.status === 'called'
+                        ? 'bg-white border border-yellow-200'
+                        : ticket.status === 'in_progress'
+                          ? 'bg-green-50 border-2 border-green-400'
+                          : 'bg-white border border-gray-200 opacity-60'
+                      }
+                    `}
+                    tabIndex={0}
+                    aria-label={`Ticket ${ticket.number || ticket.ticket_number}`}
+                  >
+                    <div className="flex flex-row md:flex-col items-center gap-4 md:gap-2 w-full md:w-auto mb-2 md:mb-0">
+                      <div className="flex flex-col items-center">
+                        <span className={`text-xl md:text-2xl font-bold flex items-center gap-1
+                          ${ticket.status === 'in_progress' ? 'text-green-700' : 'text-yellow-600'}`}
+                        >
+                          <MdConfirmationNumber className="inline text-2xl md:text-3xl" />
+                          {ticket.number || ticket.ticket_number || 'N/A'}
+                        </span>
+                        <span className={`text-xs font-bold px-2 py-1 rounded-full mt-1
+                          ${ticket.status === 'in_progress' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}
+                        >
+                          {ticket.status === 'in_progress' ? 'Em andamento' : 'Aguardando'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex-1 flex flex-col gap-1 md:gap-2 w-full">
+                      <div className="font-semibold text-base md:text-lg text-gray-800 break-words">
+                        {ticket.customer_name || ticket.customer?.name || 'Cliente não identificado'}
+                      </div>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {ticket.services?.map((s, idx) => (
+                          <span key={s?.id || idx} className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                            {s?.service?.name || s?.name || 'Serviço'}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-gray-400 text-center py-8">
+                Nenhum ticket em atendimento
+              </div>
+            )}
                 } : null
               });
               
