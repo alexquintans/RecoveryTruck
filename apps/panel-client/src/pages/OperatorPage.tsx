@@ -2456,10 +2456,6 @@ const OperatorPage: React.FC = () => {
 
           {/* Meus Tickets */}
           <section className="bg-white p-6 rounded-xl shadow flex flex-col gap-4">
-            {(() => {
-              console.log('🔍 DEBUG - SEÇÃO MEUS TICKETS - ESTRUTURA INICIADA');
-              return null;
-            })()}
             <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold mb-2">Meus Tickets</h2>
               <div className="flex gap-2">
