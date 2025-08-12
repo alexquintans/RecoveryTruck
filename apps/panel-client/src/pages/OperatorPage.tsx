@@ -2510,6 +2510,11 @@ const OperatorPage: React.FC = () => {
               // ✅ CORREÇÃO CRÍTICA: Usar dados diretos do hook em vez de safeMyTickets
               const ticketsToRender = myTickets || [];
               
+              // ✅ NOVO: Log imediato para verificar se a função está sendo executada
+              console.log('🔍 DEBUG - SEÇÃO MEUS TICKETS - FUNÇÃO EXECUTADA');
+              console.log('🔍 DEBUG - myTickets recebido:', myTickets);
+              console.log('🔍 DEBUG - ticketsToRender:', ticketsToRender);
+              
               // ✅ NOVO: Log inicial para verificar se a seção está sendo renderizada
               console.log('🔍 DEBUG - SEÇÃO MEUS TICKETS - INICIANDO RENDERIZAÇÃO:', {
                 myTickets: myTickets,
@@ -2646,6 +2651,8 @@ const OperatorPage: React.FC = () => {
               });
               
               // ✅ CORREÇÃO: Renderizar sempre, mesmo que não haja tickets válidos
+              console.log('🔍 DEBUG - ANTES DA RENDERIZAÇÃO - validTickets.length:', validTickets.length);
+              
               if (validTickets.length === 0) {
                 console.log('🔍 DEBUG - RENDERIZANDO MENSAGEM VAZIA');
                 return (
