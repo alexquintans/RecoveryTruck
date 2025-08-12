@@ -2554,25 +2554,35 @@ const OperatorPage: React.FC = () => {
                 willShowTickets: ticketsToRender.length > 0
               });
               
+              // ✅ NOVO: Teste simples antes da renderização forçada
+              console.log('🔍 DEBUG - TESTE SIMPLES - Vai renderizar tickets?', ticketsToRender.length > 0);
+              
               // ✅ NOVO: Teste de renderização forçada
               if (ticketsToRender.length > 0) {
                 console.log('🔍 DEBUG - RENDERIZANDO TICKETS - Quantidade:', ticketsToRender.length);
+                console.log('🔍 DEBUG - FORÇANDO RENDERIZAÇÃO - Primeiro ticket:', ticketsToRender[0]);
+                
+                // ✅ CORREÇÃO CRÍTICA: Renderização forçada com alerta visual
                 return (
                   <div className="space-y-4">
-                    <div className="text-green-600 font-bold text-center py-2 bg-green-100 rounded">
-                      ✅ DEBUG: {ticketsToRender.length} tickets encontrados!
+                    <div className="text-green-600 font-bold text-center py-4 bg-green-100 rounded-lg border-2 border-green-400">
+                      🎉 DEBUG: {ticketsToRender.length} tickets encontrados!
                     </div>
-                    {ticketsToRender.map(ticket => {
-                      console.log('🔍 DEBUG - RENDERIZANDO TICKET:', ticket);
+                    <div className="text-blue-600 text-center py-2 bg-blue-100 rounded">
+                      Status: {ticketsToRender.map(t => t.status).join(', ')}
+                    </div>
+                    {ticketsToRender.map((ticket, index) => {
+                      console.log(`🔍 DEBUG - RENDERIZANDO TICKET ${index + 1}:`, ticket);
                       return (
                         <div
                           key={ticket.id}
-                          className="bg-blue-100 p-4 rounded border border-blue-300"
+                          className="bg-blue-100 p-4 rounded-lg border-2 border-blue-400 shadow-lg"
                         >
-                          <div className="font-bold">Ticket {ticket.number || ticket.ticket_number}</div>
-                          <div>Status: {ticket.status}</div>
-                          <div>Cliente: {ticket.customer_name || ticket.customer?.name}</div>
-                          <div>ID: {ticket.id}</div>
+                          <div className="font-bold text-lg">🎫 Ticket {ticket.number || ticket.ticket_number}</div>
+                          <div className="text-sm">Status: <span className="font-bold">{ticket.status}</span></div>
+                          <div className="text-sm">Cliente: <span className="font-bold">{ticket.customer_name || ticket.customer?.name}</span></div>
+                          <div className="text-xs text-gray-600">ID: {ticket.id}</div>
+                          <div className="text-xs text-gray-600">Serviços: {ticket.services?.length || 0}</div>
                         </div>
                       );
                     })}
