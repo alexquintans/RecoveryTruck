@@ -707,6 +707,19 @@ const OperatorPage: React.FC = () => {
     ...ticketQueueRest
   } = useTicketQueue();
 
+  // ✅ DEBUG CRÍTICO: Verificar se myTickets está chegando no componente
+  console.log('🔍 DEBUG CRÍTICO - OperatorPage - myTickets recebido:', {
+    myTickets,
+    myTicketsLength: myTickets?.length || 0,
+    myTicketsType: typeof myTickets,
+    isArray: Array.isArray(myTickets),
+    firstTicket: myTickets?.[0],
+    firstTicketStatus: myTickets?.[0]?.status,
+    firstTicketNumber: myTickets?.[0]?.number || myTickets?.[0]?.ticket_number,
+    condition: myTickets && myTickets.length > 0,
+    willRender: myTickets && myTickets.length > 0 ? 'SIM' : 'NÃO'
+  });
+
   // ✅ CORREÇÃO CRÍTICA: Memoizar arrays para evitar loops infinitos
   const safeMyTickets = useMemo(() => {
     console.log('🔍 DEBUG - safeMyTickets useMemo CORRIGIDO:', {
@@ -2502,7 +2515,26 @@ const OperatorPage: React.FC = () => {
                 </button>
               </div>
             </div>
-            {myTickets && myTickets.length > 0 ? (
+            {(() => {
+              // ✅ DEBUG: Log detalhado para verificar por que não renderiza
+              console.log('🔍 DEBUG - SEÇÃO MEUS TICKETS - VERIFICAÇÃO COMPLETA:', {
+                myTickets: myTickets,
+                myTicketsLength: myTickets?.length || 0,
+                myTicketsStatuses: myTickets?.map((t: any) => t.status) || [],
+                myTicketsNumbers: myTickets?.map((t: any) => t.number || t.ticket_number) || [],
+                condition: myTickets && myTickets.length > 0,
+                willRender: myTickets && myTickets.length > 0,
+                // ✅ NOVO: Verificar se myTickets é um array válido
+                isArray: Array.isArray(myTickets),
+                isNull: myTickets === null,
+                isUndefined: myTickets === undefined,
+                // ✅ NOVO: Verificar estrutura do primeiro ticket
+                firstTicket: myTickets?.[0],
+                firstTicketStatus: myTickets?.[0]?.status,
+                firstTicketNumber: myTickets?.[0]?.number || myTickets?.[0]?.ticket_number
+              });
+              
+              return myTickets && myTickets.length > 0 ? (
               <div className="space-y-4">
                 {myTickets.map(ticket => (
                   <div
@@ -2552,7 +2584,8 @@ const OperatorPage: React.FC = () => {
               <div className="text-gray-400 text-center py-8">
                 Nenhum ticket em atendimento
               </div>
-            )}
+            );
+            })()}
           </section>
                           const overallStatus = getTicketOverallStatus(ticket.id);
                           

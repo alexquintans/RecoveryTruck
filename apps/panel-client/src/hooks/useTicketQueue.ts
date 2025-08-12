@@ -476,27 +476,28 @@ export function useTicketQueue() {
   );
 
   const myTickets = useMemo(() => {
-          console.log('🔍 DEBUG - myTickets useMemo - DADOS BRUTOS:', {
-        myTicketsQueryData: myTicketsQuery.data,
-        myTicketsQueryDataLength: myTicketsQuery.data?.length || 0,
-        myTicketsQueryDataType: typeof myTicketsQuery.data,
-        isArray: Array.isArray(myTicketsQuery.data),
-        // ✅ NOVO: Log detalhado da estrutura dos dados
-        firstItem: myTicketsQuery.data?.[0],
-        firstItemKeys: myTicketsQuery.data?.[0] ? Object.keys(myTicketsQuery.data[0]) : [],
-        // ✅ NOVO: Log detalhado de cada ticket
-        allTickets: myTicketsQuery.data?.map((t: any) => ({
-          id: t.id,
-          ticket_number: t.ticket_number,
-          status: t.status,
-          hasServices: !!t.services,
-          servicesCount: t.services?.length || 0,
-          hasCustomer: !!t.customer,
-          customerName: t.customer?.name || t.customer_name,
-          hasCustomerName: !!t.customer_name,
-          allKeys: Object.keys(t)
-        })) || []
-      });
+    // ✅ DEBUG CRÍTICO: Verificar se os dados estão chegando
+    console.log('🔍 DEBUG CRÍTICO - myTickets useMemo - VERIFICAÇÃO INICIAL:', {
+      myTicketsQueryData: myTicketsQuery.data,
+      myTicketsQueryDataLength: myTicketsQuery.data?.length || 0,
+      myTicketsQueryDataType: typeof myTicketsQuery.data,
+      isArray: Array.isArray(myTicketsQuery.data),
+      // ✅ NOVO: Log detalhado da estrutura dos dados
+      firstItem: myTicketsQuery.data?.[0],
+      firstItemKeys: myTicketsQuery.data?.[0] ? Object.keys(myTicketsQuery.data[0]) : [],
+      // ✅ NOVO: Log detalhado de cada ticket
+      allTickets: myTicketsQuery.data?.map((t: any) => ({
+        id: t.id,
+        ticket_number: t.ticket_number,
+        status: t.status,
+        hasServices: !!t.services,
+        servicesCount: t.services?.length || 0,
+        hasCustomer: !!t.customer,
+        customerName: t.customer?.name || t.customer_name,
+        hasCustomerName: !!t.customer_name,
+        allKeys: Object.keys(t)
+      })) || []
+    });
     
     const rawData = (myTicketsQuery.data as any[]) ?? [];
     console.log('🔍 DEBUG - myTickets useMemo - DADOS APÓS FALLBACK:', {
@@ -537,6 +538,15 @@ export function useTicketQueue() {
           hasServices: !!normalized[0].services,
           servicesCount: normalized[0].services?.length || 0
         } : null
+      });
+      
+      // ✅ DEBUG CRÍTICO: Verificar o que está sendo retornado
+      console.log('🔍 DEBUG CRÍTICO - myTickets FINAL:', {
+        returnValue: normalized,
+        returnValueLength: normalized.length,
+        returnValueType: typeof normalized,
+        isArray: Array.isArray(normalized),
+        willBeReturned: normalized.length > 0 ? 'SIM - Dados serão retornados' : 'NÃO - Array vazio'
       });
       
       return normalized;
