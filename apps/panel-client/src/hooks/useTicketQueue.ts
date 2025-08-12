@@ -444,6 +444,7 @@ export function useTicketQueue() {
         price: t.services[0].price || t.services[0].service?.price
       } : { name: '--' }),
       customer: t.customer || { name: '--' },
+      customer_name: t.customer_name || t.customer?.name || '--',
     };
     
     // ✅ ADICIONADO: Verificação de segurança

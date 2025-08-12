@@ -2557,38 +2557,8 @@ const OperatorPage: React.FC = () => {
               // ✅ NOVO: Teste simples antes da renderização forçada
               console.log('🔍 DEBUG - TESTE SIMPLES - Vai renderizar tickets?', ticketsToRender.length > 0);
               
-              // ✅ NOVO: Teste de renderização forçada
-              if (ticketsToRender.length > 0) {
-                console.log('🔍 DEBUG - RENDERIZANDO TICKETS - Quantidade:', ticketsToRender.length);
-                console.log('🔍 DEBUG - FORÇANDO RENDERIZAÇÃO - Primeiro ticket:', ticketsToRender[0]);
-                
-                // ✅ CORREÇÃO CRÍTICA: Renderização forçada com alerta visual
-                return (
-                  <div className="space-y-4">
-                    <div className="text-green-600 font-bold text-center py-4 bg-green-100 rounded-lg border-2 border-green-400">
-                      🎉 DEBUG: {ticketsToRender.length} tickets encontrados!
-                    </div>
-                    <div className="text-blue-600 text-center py-2 bg-blue-100 rounded">
-                      Status: {ticketsToRender.map(t => t.status).join(', ')}
-                    </div>
-                    {ticketsToRender.map((ticket, index) => {
-                      console.log(`🔍 DEBUG - RENDERIZANDO TICKET ${index + 1}:`, ticket);
-                      return (
-                        <div
-                          key={ticket.id}
-                          className="bg-blue-100 p-4 rounded-lg border-2 border-blue-400 shadow-lg"
-                        >
-                          <div className="font-bold text-lg">🎫 Ticket {ticket.number || ticket.ticket_number}</div>
-                          <div className="text-sm">Status: <span className="font-bold">{ticket.status}</span></div>
-                          <div className="text-sm">Cliente: <span className="font-bold">{ticket.customer_name || ticket.customer?.name}</span></div>
-                          <div className="text-xs text-gray-600">ID: {ticket.id}</div>
-                          <div className="text-xs text-gray-600">Serviços: {ticket.services?.length || 0}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              }
+              // ✅ CORREÇÃO: Remover renderização forçada de debug e deixar apenas a renderização normal
+              console.log('🔍 DEBUG - RENDERIZANDO TICKETS NORMALMENTE - Quantidade:', ticketsToRender.length);
               
               return ticketsToRender.length === 0 ? (
                 <div className="text-gray-400 text-center py-8">
@@ -2596,7 +2566,19 @@ const OperatorPage: React.FC = () => {
                 </div>
               ) : (
               ticketsToRender.map(ticket => {
-                console.log('Ticket em andamento:', ticket);
+                console.log('🔍 DEBUG - RENDERIZANDO TICKET NORMAL:', {
+                  ticketId: ticket.id,
+                  ticketNumber: ticket.number || ticket.ticket_number,
+                  status: ticket.status,
+                  customerName: ticket.customer_name || ticket.customer?.name,
+                  hasServices: !!ticket.services,
+                  servicesCount: ticket.services?.length || 0,
+                  services: ticket.services?.map((s: any) => ({
+                    id: s.id,
+                    name: s.name,
+                    serviceName: s.service?.name
+                  })) || []
+                });
                 return (
                   <div
                     key={ticket.id}
