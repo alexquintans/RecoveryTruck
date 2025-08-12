@@ -24,7 +24,21 @@ export const ticketService = {
       console.log('🔍 DEBUG - ticketService.getMyTickets - Response:', {
         status: response.status,
         dataLength: response.data?.length || 0,
-        data: response.data
+        data: response.data,
+        // ✅ NOVO: Log detalhado da estrutura de cada ticket
+        ticketsStructure: response.data?.map((t: any) => ({
+          id: t.id,
+          ticket_number: t.ticket_number,
+          status: t.status,
+          hasServices: !!t.services,
+          servicesCount: t.services?.length || 0,
+          hasCustomer: !!t.customer,
+          customerName: t.customer?.name || t.customer_name,
+          hasCustomerName: !!t.customer_name,
+          allKeys: Object.keys(t),
+          // ✅ NOVO: Log completo do primeiro ticket para debug
+          fullTicket: response.data?.[0] === t ? t : null
+        })) || []
       });
       return response.data;
     } catch (error) {

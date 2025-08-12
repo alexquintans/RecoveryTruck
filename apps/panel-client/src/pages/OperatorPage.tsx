@@ -2560,12 +2560,55 @@ const OperatorPage: React.FC = () => {
               // ✅ CORREÇÃO: Remover renderização forçada de debug e deixar apenas a renderização normal
               console.log('🔍 DEBUG - RENDERIZANDO TICKETS NORMALMENTE - Quantidade:', ticketsToRender.length);
               
-              return ticketsToRender.length === 0 ? (
+              // ✅ NOVO: Log detalhado de cada ticket antes da renderização
+              ticketsToRender.forEach((ticket, index) => {
+                console.log(`🔍 DEBUG - TICKET ${index + 1} ANTES DA RENDERIZAÇÃO:`, {
+                  id: ticket.id,
+                  number: ticket.number || ticket.ticket_number,
+                  status: ticket.status,
+                  customerName: ticket.customer_name || ticket.customer?.name,
+                  hasServices: !!ticket.services,
+                  servicesCount: ticket.services?.length || 0,
+                  services: ticket.services?.map((s: any) => ({
+                    id: s.id,
+                    name: s.name,
+                    serviceName: s.service?.name
+                  })) || [],
+                  allKeys: Object.keys(ticket)
+                });
+              });
+              
+              // ✅ NOVO: Filtrar tickets que têm informações mínimas necessárias
+              const validTickets = ticketsToRender.filter(ticket => {
+                const hasValidId = !!ticket.id;
+                const hasValidNumber = !!(ticket.number || ticket.ticket_number);
+                const hasValidStatus = !!ticket.status;
+                
+                console.log('🔍 DEBUG - VALIDANDO TICKET:', {
+                  id: ticket.id,
+                  number: ticket.number || ticket.ticket_number,
+                  status: ticket.status,
+                  hasValidId,
+                  hasValidNumber,
+                  hasValidStatus,
+                  isValid: hasValidId && hasValidNumber && hasValidStatus
+                });
+                
+                return hasValidId && hasValidNumber && hasValidStatus;
+              });
+              
+              console.log('🔍 DEBUG - TICKETS VÁLIDOS:', {
+                total: ticketsToRender.length,
+                valid: validTickets.length,
+                invalid: ticketsToRender.length - validTickets.length
+              });
+              
+              return validTickets.length === 0 ? (
                 <div className="text-gray-400 text-center py-8">
-                  Nenhum ticket em atendimento (Total: {ticketsToRender.length})
+                  Nenhum ticket em atendimento (Total: {ticketsToRender.length}, Válidos: {validTickets.length})
                 </div>
               ) : (
-              ticketsToRender.map(ticket => {
+              validTickets.map(ticket => {
                 console.log('🔍 DEBUG - RENDERIZANDO TICKET NORMAL:', {
                   ticketId: ticket.id,
                   ticketNumber: ticket.number || ticket.ticket_number,
