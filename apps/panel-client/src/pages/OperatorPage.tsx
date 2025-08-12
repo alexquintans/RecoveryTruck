@@ -2546,6 +2546,40 @@ const OperatorPage: React.FC = () => {
                 console.log('🔍 DEBUG - FORÇANDO RENDERIZAÇÃO - Primeiro ticket:', ticketsToRender[0]);
               }
               
+              // ✅ NOVO: Log da decisão de renderização
+              console.log('🔍 DEBUG - DECISÃO DE RENDERIZAÇÃO:', {
+                ticketsToRenderLength: ticketsToRender.length,
+                condition: ticketsToRender.length === 0,
+                willShowEmpty: ticketsToRender.length === 0,
+                willShowTickets: ticketsToRender.length > 0
+              });
+              
+              // ✅ NOVO: Teste de renderização forçada
+              if (ticketsToRender.length > 0) {
+                console.log('🔍 DEBUG - RENDERIZANDO TICKETS - Quantidade:', ticketsToRender.length);
+                return (
+                  <div className="space-y-4">
+                    <div className="text-green-600 font-bold text-center py-2 bg-green-100 rounded">
+                      ✅ DEBUG: {ticketsToRender.length} tickets encontrados!
+                    </div>
+                    {ticketsToRender.map(ticket => {
+                      console.log('🔍 DEBUG - RENDERIZANDO TICKET:', ticket);
+                      return (
+                        <div
+                          key={ticket.id}
+                          className="bg-blue-100 p-4 rounded border border-blue-300"
+                        >
+                          <div className="font-bold">Ticket {ticket.number || ticket.ticket_number}</div>
+                          <div>Status: {ticket.status}</div>
+                          <div>Cliente: {ticket.customer_name || ticket.customer?.name}</div>
+                          <div>ID: {ticket.id}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              }
+              
               return ticketsToRender.length === 0 ? (
                 <div className="text-gray-400 text-center py-8">
                   Nenhum ticket em atendimento (Total: {ticketsToRender.length})
