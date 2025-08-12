@@ -2506,6 +2506,16 @@ const OperatorPage: React.FC = () => {
               // ✅ CORREÇÃO CRÍTICA: Usar dados diretos do hook em vez de safeMyTickets
               const ticketsToRender = myTickets || [];
               
+              // ✅ NOVO: Log inicial para verificar se a seção está sendo renderizada
+              console.log('🔍 DEBUG - SEÇÃO MEUS TICKETS - INICIANDO RENDERIZAÇÃO:', {
+                myTickets: myTickets,
+                myTicketsLength: myTickets?.length || 0,
+                ticketsToRender: ticketsToRender,
+                ticketsToRenderLength: ticketsToRender.length,
+                isArray: Array.isArray(ticketsToRender),
+                hasData: ticketsToRender.length > 0
+              });
+              
               // ✅ NOVO: Teste de debug mais detalhado
               console.log('🔍 DEBUG - Meus tickets - RENDERIZAÇÃO CORRIGIDA:', {
                 ticketsToRenderLength: ticketsToRender.length,
@@ -2603,13 +2613,21 @@ const OperatorPage: React.FC = () => {
                 invalid: ticketsToRender.length - validTickets.length
               });
               
+              // ✅ NOVO: Log antes da renderização condicional
+              console.log('🔍 DEBUG - SEÇÃO MEUS TICKETS - ANTES DA RENDERIZAÇÃO CONDICIONAL:', {
+                validTicketsLength: validTickets.length,
+                ticketsToRenderLength: ticketsToRender.length,
+                willShowEmpty: validTickets.length === 0,
+                willShowTickets: validTickets.length > 0
+              });
+              
               return validTickets.length === 0 ? (
                 <div className="text-gray-400 text-center py-8">
                   Nenhum ticket em atendimento (Total: {ticketsToRender.length}, Válidos: {validTickets.length})
                 </div>
               ) : (
               validTickets.map(ticket => {
-                console.log('🔍 DEBUG - RENDERIZANDO TICKET NORMAL:', {
+                console.log('🔍 DEBUG - SEÇÃO MEUS TICKETS - RENDERIZANDO TICKET:', {
                   ticketId: ticket.id,
                   ticketNumber: ticket.number || ticket.ticket_number,
                   status: ticket.status,
