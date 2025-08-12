@@ -479,24 +479,59 @@ export function useTicketQueue() {
       myTicketsQueryData: myTicketsQuery.data,
       myTicketsQueryDataLength: myTicketsQuery.data?.length || 0,
       myTicketsQueryDataType: typeof myTicketsQuery.data,
-      isArray: Array.isArray(myTicketsQuery.data)
+      isArray: Array.isArray(myTicketsQuery.data),
+      // ✅ NOVO: Log detalhado da estrutura dos dados
+      firstItem: myTicketsQuery.data?.[0],
+      firstItemKeys: myTicketsQuery.data?.[0] ? Object.keys(myTicketsQuery.data[0]) : []
     });
     
     const rawData = (myTicketsQuery.data as any[]) ?? [];
     console.log('🔍 DEBUG - myTickets useMemo - DADOS APÓS FALLBACK:', {
       rawData,
       rawDataLength: rawData.length,
-      rawDataType: typeof rawData
+      rawDataType: typeof rawData,
+      // ✅ NOVO: Verificar se há dados válidos
+      hasValidData: rawData.length > 0,
+      firstRawItem: rawData[0],
+      firstRawItemStructure: rawData[0] ? {
+        id: rawData[0].id,
+        ticket_number: rawData[0].ticket_number,
+        status: rawData[0].status,
+        hasServices: !!rawData[0].services,
+        servicesCount: rawData[0].services?.length || 0
+      } : null
     });
     
-    const normalized = rawData.map(normalizeTicket);
-    console.log('🔍 DEBUG - myTickets useMemo - DADOS NORMALIZADOS:', {
-      normalized,
-      normalizedLength: normalized.length,
-      normalizedIds: normalized.map((t: any) => t.id)
-    });
+    // ✅ CORREÇÃO CRÍTICA: Verificar se há dados antes de normalizar
+    if (!rawData || rawData.length === 0) {
+      console.warn('🔍 DEBUG - myTickets: Nenhum dado para normalizar');
+      return [];
+    }
     
-    return normalized;
+    try {
+      const normalized = rawData.map(normalizeTicket);
+      console.log('🔍 DEBUG - myTickets useMemo - DADOS NORMALIZADOS:', {
+        normalized,
+        normalizedLength: normalized.length,
+        normalizedIds: normalized.map((t: any) => t.id),
+        // ✅ NOVO: Verificar se normalização foi bem-sucedida
+        hasNormalizedData: normalized.length > 0,
+        firstNormalizedItem: normalized[0],
+        firstNormalizedItemStructure: normalized[0] ? {
+          id: normalized[0].id,
+          number: normalized[0].number,
+          status: normalized[0].status,
+          hasServices: !!normalized[0].services,
+          servicesCount: normalized[0].services?.length || 0
+        } : null
+      });
+      
+      return normalized;
+    } catch (error) {
+      console.error('❌ ERRO na normalização de myTickets:', error);
+      console.error('❌ Dados que causaram erro:', rawData);
+      return [];
+    }
   }, [myTicketsQuery.data, normalizeTicket]);
 
   const completedTickets = useMemo(() => 

@@ -2473,7 +2473,24 @@ const OperatorPage: React.FC = () => {
                       console.log('🧪 TESTE - Chamando getMyTickets diretamente...');
                       const result = await ticketService.getMyTickets();
                       console.log('🧪 TESTE - Resultado direto:', result);
-                      alert(`Tickets encontrados: ${result?.length || 0}`);
+                      
+                      // ✅ NOVO: Teste detalhado da estrutura dos dados
+                      console.log('🧪 TESTE - Estrutura detalhada:', {
+                        resultType: typeof result,
+                        isArray: Array.isArray(result),
+                        length: result?.length || 0,
+                        firstItem: result?.[0],
+                        firstItemKeys: result?.[0] ? Object.keys(result[0]) : [],
+                        allItems: result?.map((t: any) => ({
+                          id: t.id,
+                          ticket_number: t.ticket_number,
+                          status: t.status,
+                          hasServices: !!t.services,
+                          servicesCount: t.services?.length || 0
+                        }))
+                      });
+                      
+                      alert(`Tickets encontrados: ${result?.length || 0}\nEstrutura: ${JSON.stringify(result?.[0] ? Object.keys(result[0]) : [], null, 2)}`);
                     } catch (error) {
                       console.error('🧪 TESTE - Erro:', error);
                       alert(`Erro: ${error}`);
@@ -2489,6 +2506,7 @@ const OperatorPage: React.FC = () => {
               // ✅ CORREÇÃO CRÍTICA: Usar dados diretos do hook em vez de safeMyTickets
               const ticketsToRender = myTickets || [];
               
+              // ✅ NOVO: Teste de debug mais detalhado
               console.log('🔍 DEBUG - Meus tickets - RENDERIZAÇÃO CORRIGIDA:', {
                 ticketsToRenderLength: ticketsToRender.length,
                 ticketsToRender: ticketsToRender?.map((t: any) => ({
@@ -2503,15 +2521,30 @@ const OperatorPage: React.FC = () => {
                 // ✅ NOVO: Verificar se há diferença entre os arrays
                 arraysEqual: JSON.stringify(ticketsToRender) === JSON.stringify(myTickets),
                 ticketsToRenderType: typeof ticketsToRender,
-                myTicketsType: typeof myTickets
+                myTicketsType: typeof myTickets,
+                // ✅ NOVO: Verificar estrutura do primeiro item
+                firstItemStructure: ticketsToRender[0] ? {
+                  id: ticketsToRender[0].id,
+                  number: ticketsToRender[0].number || ticketsToRender[0].ticket_number,
+                  status: ticketsToRender[0].status,
+                  hasServices: !!ticketsToRender[0].services,
+                  servicesCount: ticketsToRender[0].services?.length || 0
+                } : null
               });
               
               console.log('🔍 DEBUG - Meus tickets - CONDIÇÃO DE RENDERIZAÇÃO CORRIGIDA:', {
                 ticketsToRenderLength: ticketsToRender.length,
                 shouldShowEmpty: ticketsToRender.length === 0,
                 ticketsToRenderIsArray: Array.isArray(ticketsToRender),
-                ticketsToRenderFirstItem: ticketsToRender[0]
+                ticketsToRenderFirstItem: ticketsToRender[0],
+                // ✅ NOVO: Verificar se o array tem conteúdo válido
+                hasValidContent: ticketsToRender.length > 0 && ticketsToRender.every(t => t && t.id)
               });
+              
+              // ✅ NOVO: Teste de renderização forçada para debug
+              if (ticketsToRender.length > 0) {
+                console.log('🔍 DEBUG - FORÇANDO RENDERIZAÇÃO - Primeiro ticket:', ticketsToRender[0]);
+              }
               
               return ticketsToRender.length === 0 ? (
                 <div className="text-gray-400 text-center py-8">
