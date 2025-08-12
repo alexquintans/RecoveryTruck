@@ -2611,6 +2611,18 @@ const OperatorPage: React.FC = () => {
                 return hasValidId && hasValidNumber && hasValidStatus;
               });
               
+              // ✅ NOVO: Log detalhado da validação
+              console.log('🔍 DEBUG - RESULTADO DA VALIDAÇÃO:', {
+                totalTickets: ticketsToRender.length,
+                validTickets: validTickets.length,
+                invalidTickets: ticketsToRender.length - validTickets.length,
+                validTicketsDetails: validTickets.map(t => ({
+                  id: t.id,
+                  number: t.number || t.ticket_number,
+                  status: t.status
+                }))
+              });
+              
               console.log('🔍 DEBUG - TICKETS VÁLIDOS:', {
                 total: ticketsToRender.length,
                 valid: validTickets.length,
@@ -2625,11 +2637,26 @@ const OperatorPage: React.FC = () => {
                 willShowTickets: validTickets.length > 0
               });
               
-              return validTickets.length === 0 ? (
-                <div className="text-gray-400 text-center py-8">
-                  Nenhum ticket em atendimento (Total: {ticketsToRender.length}, Válidos: {validTickets.length})
-                </div>
-              ) : (
+              // ✅ NOVO: Log antes da renderização condicional
+              console.log('🔍 DEBUG - SEÇÃO MEUS TICKETS - ANTES DA RENDERIZAÇÃO CONDICIONAL:', {
+                validTicketsLength: validTickets.length,
+                ticketsToRenderLength: ticketsToRender.length,
+                willShowEmpty: validTickets.length === 0,
+                willShowTickets: validTickets.length > 0
+              });
+              
+              // ✅ CORREÇÃO: Renderizar sempre, mesmo que não haja tickets válidos
+              if (validTickets.length === 0) {
+                console.log('🔍 DEBUG - RENDERIZANDO MENSAGEM VAZIA');
+                return (
+                  <div className="text-gray-400 text-center py-8">
+                    Nenhum ticket em atendimento (Total: {ticketsToRender.length}, Válidos: {validTickets.length})
+                  </div>
+                );
+              }
+              
+              console.log('🔍 DEBUG - RENDERIZANDO TICKETS - Quantidade:', validTickets.length);
+              return (
               validTickets.map(ticket => {
                 console.log('🔍 DEBUG - SEÇÃO MEUS TICKETS - RENDERIZANDO TICKET:', {
                   ticketId: ticket.id,
@@ -2644,6 +2671,13 @@ const OperatorPage: React.FC = () => {
                     serviceName: s.service?.name
                   })) || []
                 });
+                console.log('🔍 DEBUG - RENDERIZANDO TICKET INDIVIDUAL:', {
+                  ticketId: ticket.id,
+                  ticketNumber: ticket.number || ticket.ticket_number,
+                  status: ticket.status,
+                  customerName: ticket.customer_name || ticket.customer?.name
+                });
+                
                 return (
                   <div
                     key={ticket.id}
@@ -2656,23 +2690,23 @@ const OperatorPage: React.FC = () => {
                       }
                     `}
                     tabIndex={0}
-                    aria-label={`Ticket ${ticket.number}`}
+                    aria-label={`Ticket ${ticket.number || ticket.ticket_number}`}
                   >
-                    <div className="flex flex-row md:flex-col items-center gap-4 md:gap-2 w-full md:w-auto mb-2 md:mb-0">
-                      <div className="flex flex-col items-center">
-                        <span className={`text-xl md:text-2xl font-bold flex items-center gap-1
-                          ${ticket.status === 'in_progress' ? 'text-green-700' : 'text-yellow-600'}`}
-                        >
-                          <MdConfirmationNumber className="inline text-2xl md:text-3xl" />
-                          {ticket.number}
-                        </span>
-                        <span className={`text-xs font-bold px-2 py-1 rounded-full mt-1
-                          ${ticket.status === 'in_progress' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}
-                        >
-                          {ticket.status === 'in_progress' ? 'Em andamento' : 'Aguardando'}
-                        </span>
+                                          <div className="flex flex-row md:flex-col items-center gap-4 md:gap-2 w-full md:w-auto mb-2 md:mb-0">
+                        <div className="flex flex-col items-center">
+                          <span className={`text-xl md:text-2xl font-bold flex items-center gap-1
+                            ${ticket.status === 'in_progress' ? 'text-green-700' : 'text-yellow-600'}`}
+                          >
+                            <MdConfirmationNumber className="inline text-2xl md:text-3xl" />
+                            {ticket.number || ticket.ticket_number || 'N/A'}
+                          </span>
+                          <span className={`text-xs font-bold px-2 py-1 rounded-full mt-1
+                            ${ticket.status === 'in_progress' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}
+                          >
+                            {ticket.status === 'in_progress' ? 'Em andamento' : 'Aguardando'}
+                          </span>
+                        </div>
                       </div>
-                    </div>
                     <div className="flex-1 flex flex-col gap-1 md:gap-2 w-full">
                       <div className="font-semibold text-base md:text-lg text-gray-800 break-words">{ticket.customer_name}</div>
                       <div className="flex flex-wrap gap-1 mt-1">
@@ -3047,7 +3081,9 @@ const OperatorPage: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex-1 flex flex-col gap-1 md:gap-2 w-full">
-                        <div className="font-semibold text-base md:text-lg text-gray-800 break-words">{ticket.customer_name}</div>
+                        <div className="font-semibold text-base md:text-lg text-gray-800 break-words">
+                          {ticket.customer_name || ticket.customer?.name || 'Cliente não identificado'}
+                        </div>
                         <div className="flex flex-wrap gap-1 mt-1">
                           {ticket.services?.map((s, idx) => (
                             <span key={s.id || idx} className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-xs font-medium">
