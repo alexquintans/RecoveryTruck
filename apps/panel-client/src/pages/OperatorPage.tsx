@@ -2465,136 +2465,299 @@ callLoading={callLoading}
   
   {myTickets && myTickets.length > 0 ? (
     <div className="space-y-4">
-      {myTickets.map(ticket => (
-        <div
-          key={ticket.id}
-          className={`flex flex-col md:flex-row md:items-center justify-between rounded-2xl p-4 md:p-5 shadow-md hover:shadow-xl transition-transform hover:-translate-y-1 group focus-within:ring-2 focus-within:ring-yellow-400
-            ${ticket.status === 'called'
-              ? 'bg-white border border-yellow-200'
-              : ticket.status === 'in_progress'
-                ? 'bg-green-50 border-2 border-green-400'
-                : 'bg-white border border-gray-200 opacity-60'
-            }
-          `}
-          tabIndex={0}
-          aria-label={`Ticket ${ticket.number || ticket.ticket_number}`}
-        >
-          <div className="flex flex-row md:flex-col items-center gap-4 md:gap-2 w-full md:w-auto mb-2 md:mb-0">
-            <div className="flex flex-col items-center">
-              <span className={`text-xl md:text-2xl font-bold flex items-center gap-1
-                ${ticket.status === 'in_progress' ? 'text-green-700' : 'text-yellow-600'}`}
-              >
-                <MdConfirmationNumber className="inline text-2xl md:text-3xl" />
-                {ticket.number || ticket.ticket_number || 'N/A'}
-              </span>
-              <span className={`text-xs font-bold px-2 py-1 rounded-full mt-1
-                ${ticket.status === 'in_progress' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}
-              >
-                {ticket.status === 'in_progress' ? 'Em andamento' : 'Aguardando'}
-              </span>
-            </div>
-          </div>
-          
-          <div className="flex-1 flex flex-col gap-1 md:gap-2 w-full">
-            <div className="font-semibold text-base md:text-lg text-gray-800 break-words">
-              {ticket.customer_name || ticket.customer?.name || 'Cliente não identificado'}
-            </div>
-            
-            <div className="flex flex-wrap gap-1 mt-1">
-              {ticket.services?.map((s, idx) => (
-                <span key={s?.id || idx} className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium">
-                  {s?.service?.name || s?.name || 'Serviço'}
-                </span>
-              ))}
-            </div>
-            
-            {/* Chips de extras */}
-            {ticket.extras && ticket.extras.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1">
-                {ticket.extras.map((extra, idx) => (
-                  <span key={extra.id || idx} className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">
-                    {extra.extra?.name || extra.name || 'Extra'} {extra.quantity > 1 && `(${extra.quantity}x)`}
-                  </span>
+      {/* ✅ NOVO: Agrupar tickets por cliente */}
+      {(() => {
+        // Agrupar tickets por cliente
+        const ticketsByCustomer = myTickets.reduce((acc, ticket) => {
+          const customerName = ticket.customer_name || ticket.customer?.name || 'Cliente não identificado';
+          if (!acc[customerName]) {
+            acc[customerName] = [];
+          }
+          acc[customerName].push(ticket);
+          return acc;
+        }, {} as Record<string, any[]>);
+
+        console.log('🔍 DEBUG - Tickets agrupados por cliente:', ticketsByCustomer);
+
+        return Object.entries(ticketsByCustomer).map(([customerName, customerTickets]) => {
+          // Ordenar tickets por número
+          const sortedTickets = customerTickets.sort((a, b) => 
+            (a.number || a.ticket_number || 0) - (b.number || b.ticket_number || 0)
+          );
+
+          // Determinar status geral do cliente
+          const hasInProgress = sortedTickets.some(t => t.status === 'in_progress');
+          const hasCalled = sortedTickets.some(t => t.status === 'called');
+          const overallStatus = hasInProgress ? 'in_progress' : hasCalled ? 'called' : 'waiting';
+
+          return (
+            <div
+              key={customerName}
+              className={`rounded-2xl p-4 md:p-5 shadow-md hover:shadow-xl transition-transform hover:-translate-y-1 group focus-within:ring-2 focus-within:ring-yellow-400
+                ${overallStatus === 'called'
+                  ? 'bg-white border border-yellow-200'
+                  : overallStatus === 'in_progress'
+                    ? 'bg-green-50 border-2 border-green-400'
+                    : 'bg-white border border-gray-200 opacity-60'
+                }
+              `}
+            >
+              {/* Cabeçalho do Cliente */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
+                <div className="flex flex-col">
+                  <h3 className="font-semibold text-lg md:text-xl text-gray-800 break-words">
+                    {customerName}
+                  </h3>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    <span className={`text-xs font-bold px-2 py-1 rounded-full
+                      ${overallStatus === 'in_progress' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}
+                    >
+                      {overallStatus === 'in_progress' ? 'Em andamento' : 'Aguardando'}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {sortedTickets.length} ticket{sortedTickets.length > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Botões de ação principais */}
+                <div className="flex flex-col gap-2 mt-4 md:mt-0">
+                  {overallStatus === 'in_progress' && (
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <button
+                        className="w-full sm:w-auto px-5 py-2 bg-green-600 text-white rounded-lg font-bold shadow hover:bg-green-700 focus:ring-2 focus:ring-green-400 focus:outline-none transition-all disabled:bg-gray-300 disabled:text-gray-500"
+                        aria-label={`Concluir atendimento do cliente ${customerName}`}
+                        disabled={completeLoading}
+                        onClick={async () => {
+                          try {
+                            console.log('🔄 Concluindo todos os tickets do cliente:', customerName);
+                            // Concluir todos os tickets do cliente
+                            await Promise.all(
+                              sortedTickets
+                                .filter(t => t.status === 'in_progress')
+                                .map(t => completeService({ ticketId: t.id }))
+                            );
+                            await refetch();
+                            console.log('✅ Tickets concluídos com sucesso');
+                          } catch (error) {
+                            console.error('❌ Erro ao concluir tickets:', error);
+                            alert('Erro ao concluir tickets. Tente novamente.');
+                          }
+                        }}
+                      >
+                        {completeLoading ? 'Concluindo...' : 'Concluir Todos'}
+                      </button>
+                      
+                      <button
+                        className="w-full sm:w-auto px-5 py-2 bg-red-500 text-white rounded-lg font-bold shadow hover:bg-red-600 focus:ring-2 focus:ring-red-400 focus:outline-none transition-all disabled:bg-gray-300 disabled:text-gray-500"
+                        aria-label={`Cancelar atendimento do cliente ${customerName}`}
+                        disabled={cancelLoading}
+                        onClick={async () => {
+                          try {
+                            const reason = prompt('Motivo do cancelamento:');
+                            if (!reason) {
+                              alert('É necessário informar um motivo para cancelar os tickets.');
+                              return;
+                            }
+                            console.log('🔄 Cancelando todos os tickets do cliente:', { customerName, reason });
+                            await Promise.all(
+                              sortedTickets
+                                .filter(t => t.status === 'in_progress')
+                                .map(t => cancelTicket({ ticketId: t.id, reason }))
+                            );
+                            await refetch();
+                            console.log('✅ Tickets cancelados com sucesso');
+                          } catch (error) {
+                            console.error('❌ Erro ao cancelar tickets:', error);
+                            alert('Erro ao cancelar tickets. Tente novamente.');
+                          }
+                        }}
+                      >
+                        {cancelLoading ? 'Cancelando...' : 'Cancelar Todos'}
+                      </button>
+                    </div>
+                  )}
+                  
+                  {overallStatus === 'called' && (
+                    <button
+                      className="w-full md:w-auto px-7 py-3 bg-yellow-500 text-white rounded-xl font-bold shadow-lg hover:bg-yellow-600 focus:ring-2 focus:ring-yellow-400 focus:outline-none transition-all scale-100 group-hover:scale-105 disabled:bg-gray-300 disabled:text-gray-500"
+                      aria-label={`Iniciar atendimento do cliente ${customerName}`}
+                      onClick={async () => {
+                        try {
+                          console.log('🔄 Iniciando todos os tickets do cliente:', customerName);
+                          await Promise.all(
+                            sortedTickets
+                              .filter(t => t.status === 'called')
+                              .map(t => startService({ ticketId: t.id }))
+                          );
+                          await refetch();
+                          console.log('✅ Tickets iniciados com sucesso');
+                        } catch (error) {
+                          console.error('❌ Erro ao iniciar tickets:', error);
+                          alert('Erro ao iniciar tickets. Tente novamente.');
+                        }
+                      }}
+                    >
+                      Iniciar Todos
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Lista de Tickets do Cliente */}
+              <div className="space-y-3">
+                {sortedTickets.map((ticket, index) => (
+                  <div
+                    key={ticket.id}
+                    className={`p-3 rounded-lg border-l-4 ${
+                      ticket.status === 'in_progress' 
+                        ? 'bg-green-50 border-green-400' 
+                        : ticket.status === 'called'
+                        ? 'bg-yellow-50 border-yellow-400'
+                        : 'bg-gray-50 border-gray-300'
+                    }`}
+                  >
+                    {/* Cabeçalho do Ticket */}
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-lg font-bold flex items-center gap-1
+                          ${ticket.status === 'in_progress' ? 'text-green-700' : 'text-yellow-600'}`}
+                        >
+                          <MdConfirmationNumber className="inline text-xl" />
+                          {ticket.number || ticket.ticket_number || 'N/A'}
+                        </span>
+                        <span className={`text-xs font-bold px-2 py-1 rounded-full
+                          ${ticket.status === 'in_progress' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}
+                        >
+                          {ticket.status === 'in_progress' ? 'Em andamento' : 'Aguardando'}
+                        </span>
+                        {index === 0 && (
+                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                            Principal
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="text-xs text-gray-400">
+                        {ticket.called_at ? formatDistanceToNow(new Date(ticket.called_at), { addSuffix: true, locale: ptBR }) : ""}
+                      </div>
+                    </div>
+
+                    {/* Serviços do Ticket */}
+                    <div className="space-y-2">
+                      {/* ✅ NOVO: Serviço Atual (se estiver em andamento) */}
+                      {ticket.status === 'in_progress' && ticket.services && ticket.services.length > 0 && (
+                        <div>
+                          <div className="text-xs font-semibold text-gray-600 mb-1">SERVIÇO ATUAL:</div>
+                          <div className="flex flex-wrap gap-1">
+                            {ticket.services.map((s, idx) => (
+                              <span key={s?.id || idx} className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">
+                                {s?.service?.name || s?.name || 'Serviço'}
+                                {s?.price && ` R$ ${s.price.toFixed(2).replace('.', ',')}`}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ✅ NOVO: Serviços Aguardando */}
+                      {ticket.status === 'called' && ticket.services && ticket.services.length > 0 && (
+                        <div>
+                          <div className="text-xs font-semibold text-gray-600 mb-1">TAMBÉM AGUARDA:</div>
+                          <div className="flex flex-wrap gap-1">
+                            {ticket.services.map((s, idx) => (
+                              <span key={s?.id || idx} className="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs font-medium">
+                                {s?.service?.name || s?.name || 'Serviço'}
+                                {s?.price && ` R$ ${s.price.toFixed(2).replace('.', ',')}`}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Extras */}
+                      {ticket.extras && ticket.extras.length > 0 && (
+                        <div>
+                          <div className="text-xs font-semibold text-gray-600 mb-1">EXTRAS:</div>
+                          <div className="flex flex-wrap gap-1">
+                            {ticket.extras.map((extra, idx) => (
+                              <span key={extra.id || idx} className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium">
+                                {extra.extra?.name || extra.name || 'Extra'} 
+                                {extra.quantity > 1 && ` (${extra.quantity}x)`}
+                                {extra.price && ` R$ ${extra.price.toFixed(2).replace('.', ',')}`}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ✅ NOVO: Botões individuais para cada ticket */}
+                    <div className="flex gap-2 mt-3 pt-2 border-t border-gray-200">
+                      {ticket.status === 'in_progress' && (
+                        <>
+                          <button
+                            className="flex-1 px-3 py-1 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700 focus:ring-2 focus:ring-green-400 focus:outline-none transition-all"
+                            onClick={async () => {
+                              try {
+                                console.log('🔄 Concluindo ticket individual:', ticket.id);
+                                await completeService({ ticketId: ticket.id });
+                                await refetch();
+                              } catch (error) {
+                                console.error('❌ Erro ao concluir ticket:', error);
+                                alert('Erro ao concluir ticket. Tente novamente.');
+                              }
+                            }}
+                          >
+                            Concluir
+                          </button>
+                          <button
+                            className="flex-1 px-3 py-1 bg-red-500 text-white rounded text-xs font-medium hover:bg-red-600 focus:ring-2 focus:ring-red-400 focus:outline-none transition-all"
+                            onClick={async () => {
+                              try {
+                                const reason = prompt('Motivo do cancelamento:');
+                                if (!reason) {
+                                  alert('É necessário informar um motivo para cancelar o ticket.');
+                                  return;
+                                }
+                                await cancelTicket({ ticketId: ticket.id, reason });
+                                await refetch();
+                              } catch (error) {
+                                console.error('❌ Erro ao cancelar ticket:', error);
+                                alert('Erro ao cancelar ticket. Tente novamente.');
+                              }
+                            }}
+                          >
+                            Cancelar
+                          </button>
+                        </>
+                      )}
+                      
+                      {ticket.status === 'called' && (
+                        <button
+                          className="flex-1 px-3 py-1 bg-yellow-500 text-white rounded text-xs font-medium hover:bg-yellow-600 focus:ring-2 focus:ring-yellow-400 focus:outline-none transition-all"
+                          onClick={async () => {
+                            try {
+                              console.log('🔄 Iniciando ticket individual:', ticket.id);
+                              await startService({ ticketId: ticket.id });
+                              await refetch();
+                            } catch (error) {
+                              console.error('❌ Erro ao iniciar ticket:', error);
+                              alert('Erro ao iniciar ticket. Tente novamente.');
+                            }
+                          }}
+                        >
+                          Iniciar
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 ))}
               </div>
-            )}
-            
-            <div className="text-xs text-gray-400 mt-1">
-              {ticket.called_at ? formatDistanceToNow(new Date(ticket.called_at), { addSuffix: true, locale: ptBR }) : ""}
             </div>
-          </div>
-          
-          {/* Botões de ação */}
-          <div className="flex flex-col gap-2 mt-4 md:mt-0">
-            {ticket.status === 'in_progress' && (
-              <div className="flex flex-col sm:flex-row gap-2">
-                <button
-                  className="w-full sm:w-auto px-5 py-2 bg-green-600 text-white rounded-lg font-bold shadow hover:bg-green-700 focus:ring-2 focus:ring-green-400 focus:outline-none transition-all disabled:bg-gray-300 disabled:text-gray-500"
-                  aria-label={`Concluir atendimento do ticket ${ticket.number || ticket.ticket_number}`}
-                  disabled={completeLoading}
-                  onClick={async () => {
-                    try {
-                      console.log('🔄 Concluindo ticket:', ticket.id);
-                      await completeService({ ticketId: ticket.id });
-                      await refetch();
-                      console.log('✅ Ticket concluído com sucesso');
-                    } catch (error) {
-                      console.error('❌ Erro ao concluir ticket:', error);
-                      alert('Erro ao concluir ticket. Tente novamente.');
-                    }
-                  }}
-                >
-                  {completeLoading ? 'Concluindo...' : 'Concluir'}
-                </button>
-                
-                <button
-                  className="w-full sm:w-auto px-5 py-2 bg-red-500 text-white rounded-lg font-bold shadow hover:bg-red-600 focus:ring-2 focus:ring-red-400 focus:outline-none transition-all disabled:bg-gray-300 disabled:text-gray-500"
-                  aria-label={`Cancelar atendimento do ticket ${ticket.number || ticket.ticket_number}`}
-                  disabled={cancelLoading}
-                  onClick={async () => {
-                    try {
-                      const reason = prompt('Motivo do cancelamento:');
-                      if (!reason) {
-                        alert('É necessário informar um motivo para cancelar o ticket.');
-                        return;
-                      }
-                      console.log('🔄 Cancelando ticket:', { ticketId: ticket.id, reason });
-                      await cancelTicket({ ticketId: ticket.id, reason });
-                      await refetch();
-                      console.log('✅ Ticket cancelado com sucesso');
-                    } catch (error) {
-                      console.error('❌ Erro ao cancelar ticket:', error);
-                      alert('Erro ao cancelar ticket. Tente novamente.');
-                    }
-                  }}
-                >
-                  {cancelLoading ? 'Cancelando...' : 'Cancelar'}
-                </button>
-              </div>
-            )}
-            
-            {ticket.status === 'called' && (
-              <button
-                className="mt-4 md:mt-0 w-full md:w-auto px-7 py-3 bg-yellow-500 text-white rounded-xl font-bold shadow-lg hover:bg-yellow-600 focus:ring-2 focus:ring-yellow-400 focus:outline-none transition-all scale-100 group-hover:scale-105 disabled:bg-gray-300 disabled:text-gray-500"
-                aria-label={`Iniciar atendimento do ticket ${ticket.number || ticket.ticket_number}`}
-                onClick={async () => {
-                  try {
-                    console.log('🔄 Iniciando ticket:', { ticketId: ticket.id });
-                    await startService({ ticketId: ticket.id });
-                    await refetch();
-                    console.log('✅ Ticket iniciado com sucesso');
-                  } catch (error) {
-                    console.error('❌ Erro ao iniciar ticket:', error);
-                    alert('Erro ao iniciar ticket. Tente novamente.');
-                  }
-                }}
-              >
-                Iniciar
-              </button>
-            )}
-          </div>
-        </div>
-      ))}
+          );
+        });
+      })()}
     </div>
   ) : (
     <div className="text-gray-400 text-center py-8">
