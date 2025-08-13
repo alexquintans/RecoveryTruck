@@ -129,9 +129,19 @@ api.interceptors.request.use(
       config.headers['Content-Type'] = 'application/json';
     }
     
+    // ✅ NOVO: Logs detalhados para debug
+    console.log('🔍 DEBUG - Axios Request Interceptor:', {
+      url: config.url,
+      method: config.method,
+      headers: config.headers,
+      params: config.params,
+      data: config.data
+    });
+    
     return config;
   },
   (error) => {
+    console.error('❌ ERRO - Axios Request Interceptor Error:', error);
     return Promise.reject(error);
   }
 );
@@ -139,9 +149,28 @@ api.interceptors.request.use(
 // Interceptor para tratamento de erros de autenticação
 api.interceptors.response.use(
   (response) => {
+    // ✅ NOVO: Logs detalhados para debug
+    console.log('🔍 DEBUG - Axios Response Interceptor:', {
+      url: response.config.url,
+      method: response.config.method,
+      status: response.status,
+      statusText: response.statusText,
+      data: response.data
+    });
+    
     return response;
   },
   (error) => {
+    // ✅ NOVO: Logs detalhados para debug
+    console.error('❌ ERRO - Axios Response Interceptor Error:', {
+      url: error.config?.url,
+      method: error.config?.method,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message
+    });
+    
     // Logout automático se token inválido/expirado
     if (error.response?.status === 401) {
       logout();

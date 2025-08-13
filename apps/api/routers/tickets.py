@@ -1244,16 +1244,20 @@ async def get_equipment_status(
 ):
     """Verifica o status de todos os equipamentos"""
     try:
+        logger.info(f"🔍 DEBUG - Verificando status dos equipamentos para tenant {current_operator.tenant_id}")
+        
         # Verificar e corrigir estado dos equipamentos primeiro
-        verify_equipment_state(db)
+        verify_equipment_state(db, current_operator.tenant_id)
         
         # Limpar equipamentos presos
-        cleanup_stuck_equipment(db)
+        cleanup_stuck_equipment(db, current_operator.tenant_id)
         
-        # Buscar todos os equipamentos
+        # Buscar todos os equipamentos do tenant
         equipments = db.query(Equipment).filter(
             Equipment.tenant_id == current_operator.tenant_id
         ).all()
+        
+        logger.info(f"🔍 DEBUG - Encontrados {len(equipments)} equipamentos para o tenant {current_operator.tenant_id}")
         
         equipment_status = []
         for equipment in equipments:
@@ -1271,6 +1275,8 @@ async def get_equipment_status(
                 "assigned_operator_id": str(equipment.assigned_operator_id) if equipment.assigned_operator_id else None
             })
         
+        logger.info(f"🔍 DEBUG - Status dos equipamentos retornado: {len(equipment_status)} equipamentos")
+        
         return {
             "equipments": equipment_status,
             "total": len(equipment_status)
@@ -1286,19 +1292,19 @@ async def force_equipment_cleanup(
 ):
     """Força a limpeza e verificação dos equipamentos"""
     try:
-        logger.info(f"🔧 DEBUG - Iniciando limpeza forçada dos equipamentos...")
+        logger.info(f"🔧 DEBUG - Iniciando limpeza forçada dos equipamentos para tenant {current_operator.tenant_id}...")
         
         # Verificar e corrigir estado dos equipamentos
-        verify_equipment_state(db)
+        verify_equipment_state(db, current_operator.tenant_id)
         
         # Limpar equipamentos presos
-        cleanup_stuck_equipment(db)
+        cleanup_stuck_equipment(db, current_operator.tenant_id)
         
-        logger.info(f"🔧 DEBUG - Limpeza forçada dos equipamentos concluída")
+        logger.info(f"🔧 DEBUG - Limpeza forçada dos equipamentos concluída para tenant {current_operator.tenant_id}")
         
         return {
             "success": True,
-            "message": "Limpeza dos equipamentos concluída com sucesso"
+            "message": f"Limpeza dos equipamentos concluída com sucesso para tenant {current_operator.tenant_id}"
         }
     except Exception as e:
         logger.error(f"❌ ERRO ao forçar limpeza dos equipamentos: {e}")
@@ -2110,28 +2116,40 @@ async def get_pending_payment_tickets(
     return tickets 
 
 # ✅ NOVA FUNÇÃO: Liberar equipamentos "presos" (serviços concluídos mas equipamento ainda marcado como usado)
-def cleanup_stuck_equipment(db: Session):
+def cleanup_stuck_equipment(db: Session, tenant_id: str = None):
     """Libera equipamentos que estão marcados como usados mas os serviços já foram concluídos"""
     try:
+        logger.info(f"🔧 DEBUG - Iniciando limpeza de equipamentos presos...")
+        
         # Buscar equipamentos que estão sendo usados por serviços já concluídos
         stuck_equipment = db.query(TicketServiceProgress).filter(
             TicketServiceProgress.equipment_id.isnot(None),
             TicketServiceProgress.status.in_(["completed", "cancelled"])
         ).all()
         
+        liberated_count = 0
         for stuck_progress in stuck_equipment:
             if stuck_progress.equipment_id:
                 equipment = db.query(Equipment).filter(Equipment.id == stuck_progress.equipment_id).first()
-                if equipment and equipment.status == EquipmentStatus.offline:
-                    logger.info(f"🔧 DEBUG - Liberando equipamento preso: {equipment.identifier}")
-                    equipment.status = EquipmentStatus.online
-                    equipment.assigned_operator_id = None
-                    stuck_progress.equipment_id = None
+                # ✅ NOVO: Verificar se o equipamento pertence ao tenant (se especificado)
+                if equipment and (not tenant_id or equipment.tenant_id == tenant_id):
+                    if equipment.status == EquipmentStatus.offline:
+                        logger.info(f"🔧 DEBUG - Liberando equipamento preso: {equipment.identifier}")
+                        equipment.status = EquipmentStatus.online
+                        equipment.assigned_operator_id = None
+                        stuck_progress.equipment_id = None
+                        liberated_count += 1
         
         # ✅ NOVO: Verificar equipamentos offline que não estão sendo usados
-        offline_equipment = db.query(Equipment).filter(
-            Equipment.status == EquipmentStatus.offline
-        ).all()
+        if tenant_id:
+            offline_equipment = db.query(Equipment).filter(
+                Equipment.status == EquipmentStatus.offline,
+                Equipment.tenant_id == tenant_id
+            ).all()
+        else:
+            offline_equipment = db.query(Equipment).filter(
+                Equipment.status == EquipmentStatus.offline
+            ).all()
         
         for equipment in offline_equipment:
             # Verificar se o equipamento está realmente sendo usado
@@ -2144,22 +2162,31 @@ def cleanup_stuck_equipment(db: Session):
                 logger.info(f"🔧 DEBUG - Equipamento offline não está sendo usado, liberando: {equipment.identifier}")
                 equipment.status = EquipmentStatus.online
                 equipment.assigned_operator_id = None
+                liberated_count += 1
         
         db.commit()
-        logger.info(f"🔧 DEBUG - Limpeza de equipamentos presos concluída")
+        logger.info(f"🔧 DEBUG - Limpeza de equipamentos presos concluída. {liberated_count} equipamentos liberados.")
     except Exception as e:
         logger.error(f"❌ ERRO ao limpar equipamentos presos: {e}")
         db.rollback()
 
 # ✅ NOVA FUNÇÃO: Verificar e corrigir estado dos equipamentos
-def verify_equipment_state(db: Session):
+def verify_equipment_state(db: Session, tenant_id: str = None):
     """Verifica e corrige o estado dos equipamentos"""
     try:
         logger.info(f"🔍 DEBUG - Verificando estado dos equipamentos...")
         
-        # Buscar todos os equipamentos
-        equipments = db.query(Equipment).all()
+        # Buscar equipamentos do tenant específico ou todos se não especificado
+        if tenant_id:
+            equipments = db.query(Equipment).filter(Equipment.tenant_id == tenant_id).all()
+            logger.info(f"🔍 DEBUG - Verificando equipamentos do tenant {tenant_id}")
+        else:
+            equipments = db.query(Equipment).all()
+            logger.info(f"🔍 DEBUG - Verificando todos os equipamentos")
         
+        logger.info(f"🔍 DEBUG - Total de equipamentos encontrados: {len(equipments)}")
+        
+        corrected_count = 0
         for equipment in equipments:
             # Verificar se está sendo usado
             in_use = db.query(TicketServiceProgress).filter(
@@ -2176,13 +2203,15 @@ def verify_equipment_state(db: Session):
             if in_use and equipment.status == EquipmentStatus.online:
                 logger.warning(f"🔧 DEBUG - Corrigindo equipamento em uso mas com status online: {equipment.identifier}")
                 equipment.status = EquipmentStatus.offline
+                corrected_count += 1
             elif not in_use and equipment.status == EquipmentStatus.offline:
                 logger.warning(f"🔧 DEBUG - Corrigindo equipamento offline mas não em uso: {equipment.identifier}")
                 equipment.status = EquipmentStatus.online
                 equipment.assigned_operator_id = None
+                corrected_count += 1
         
         db.commit()
-        logger.info(f"🔍 DEBUG - Verificação de estado dos equipamentos concluída")
+        logger.info(f"🔍 DEBUG - Verificação de estado dos equipamentos concluída. {corrected_count} equipamentos corrigidos.")
     except Exception as e:
         logger.error(f"❌ ERRO ao verificar estado dos equipamentos: {e}")
         db.rollback()

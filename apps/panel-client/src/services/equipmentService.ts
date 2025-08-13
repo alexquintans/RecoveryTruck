@@ -16,12 +16,39 @@ export const equipmentService = {
   },
   // ✅ NOVO: Buscar status real dos equipamentos
   async getEquipmentStatus() {
-    const response = await api.get('/tickets/equipment/status', { params: withTenant() });
-    return response.data;
+    console.log('🔍 DEBUG - equipmentService.getEquipmentStatus - Iniciando requisição...');
+    console.log('🔍 DEBUG - equipmentService.getEquipmentStatus - URL:', '/tickets/equipment/status');
+    console.log('🔍 DEBUG - equipmentService.getEquipmentStatus - Params:', withTenant());
+    
+    try {
+      const response = await api.get('/tickets/equipment/status', { params: withTenant() });
+      console.log('🔍 DEBUG - equipmentService.getEquipmentStatus - Response:', {
+        status: response.status,
+        data: response.data,
+        equipmentsCount: response.data?.equipments?.length || 0
+      });
+      return response.data;
+    } catch (error) {
+      console.error('❌ ERRO - equipmentService.getEquipmentStatus:', error);
+      throw error;
+    }
   },
   // ✅ NOVO: Forçar limpeza dos equipamentos
   async forceCleanup() {
-    const response = await api.post('/tickets/equipment/cleanup', {}, { params: withTenant() });
-    return response.data;
+    console.log('🔍 DEBUG - equipmentService.forceCleanup - Iniciando requisição...');
+    console.log('🔍 DEBUG - equipmentService.forceCleanup - URL:', '/tickets/equipment/cleanup');
+    console.log('🔍 DEBUG - equipmentService.forceCleanup - Params:', withTenant());
+    
+    try {
+      const response = await api.post('/tickets/equipment/cleanup', {}, { params: withTenant() });
+      console.log('🔍 DEBUG - equipmentService.forceCleanup - Response:', {
+        status: response.status,
+        data: response.data
+      });
+      return response.data;
+    } catch (error) {
+      console.error('❌ ERRO - equipmentService.forceCleanup:', error);
+      throw error;
+    }
   },
 }; 
