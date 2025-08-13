@@ -3,6 +3,9 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 from uuid import UUID
 from datetime import datetime, timezone
+import logging
+
+logger = logging.getLogger(__name__)
 
 from apps.api.database import get_db
 from apps.api.models import TicketServiceProgress, TicketService, Service, Equipment, Ticket
@@ -178,12 +181,16 @@ async def complete_service_progress(
     if progress.status != "in_progress":
         raise HTTPException(status_code=400, detail="Serviço não está em progresso")
     
-    # Liberar equipamento se houver
+    # ✅ NOVO: Liberar equipamento se houver
     if progress.equipment_id:
         equipment = db.query(Equipment).filter(Equipment.id == progress.equipment_id).first()
         if equipment:
+            logger.info(f"🔧 DEBUG - Liberando equipamento {equipment.identifier} do serviço {progress_id}")
             equipment.status = "online"
+            equipment.assigned_operator_id = None
+            progress.equipment_id = None
             db.commit()
+            logger.info(f"🔧 DEBUG - Equipamento {equipment.identifier} liberado com sucesso")
     
     # Atualizar progresso
     progress.status = "completed"
@@ -222,12 +229,16 @@ async def cancel_service_progress(
     if not ticket or ticket.tenant_id != current_operator.tenant_id:
         raise HTTPException(status_code=403, detail="Acesso negado")
     
-    # Liberar equipamento se houver
+    # ✅ NOVO: Liberar equipamento se houver
     if progress.equipment_id:
         equipment = db.query(Equipment).filter(Equipment.id == progress.equipment_id).first()
         if equipment:
+            logger.info(f"🔧 DEBUG - Liberando equipamento {equipment.identifier} do serviço cancelado {progress_id}")
             equipment.status = "online"
+            equipment.assigned_operator_id = None
+            progress.equipment_id = None
             db.commit()
+            logger.info(f"🔧 DEBUG - Equipamento {equipment.identifier} liberado com sucesso")
     
     # Atualizar progresso
     progress.status = "cancelled"

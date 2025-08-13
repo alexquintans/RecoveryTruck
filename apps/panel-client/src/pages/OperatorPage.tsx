@@ -2168,9 +2168,9 @@ const availableEquipments = (equipments || [])
   const realStatus = equipmentStatus.find(status => status.id === eq.id);
   
   return {
-    id: eq.id,
-    name: eq.name,
-    type: eq.type,
+id: eq.id,
+name: eq.name,
+type: eq.type,
     status: 'available', // Status padrão para compatibilidade
     realStatus: realStatus ? {
       status: realStatus.status,
@@ -2312,7 +2312,7 @@ console.log('🔍 DEBUG - Verificando equipamento:', {
 if (!equipment) {
   console.error('❌ ERRO: Equipamento não encontrado!', { selectedEquipment, availableEquipment: safeEquipment });
   showConflictAlert('Erro: Equipamento não encontrado!', 'error');
-  return;
+return;
 }
 
 // ✅ CORREÇÃO: Permitir equipamentos com status diferente de 'available'
@@ -2336,11 +2336,11 @@ const lastServiceCallTime = ticketLastCallTime.current.get(serviceCallKey) || 0;
 const timeSinceLastServiceCall = Date.now() - lastServiceCallTime;
 
 console.log('🔍 DEBUG - Verificação de proteção contra chamadas duplicadas:', {
-  ticketId: ticket.id,
-  serviceId,
+ticketId: ticket.id,
+serviceId,
   serviceCallKey,
   lastServiceCallTime,
-  timeSinceLastServiceCall,
+timeSinceLastServiceCall,
   isProtected: timeSinceLastServiceCall < 5000 // Aumentado para 5 segundos
 });
 
@@ -2352,7 +2352,7 @@ if (timeSinceLastServiceCall < 5000) { // 5 segundos de proteção (aumentado)
     remainingTime: 5000 - timeSinceLastServiceCall
   });
   showConflictAlert('Este serviço foi chamado recentemente. Aguarde alguns segundos.', 'warning');
-  return;
+return;
 }
 
 // ✅ NOVA PROTEÇÃO: Verificar se já existe uma chamada em andamento para este serviço específico
@@ -2364,7 +2364,7 @@ if (callIntelligentLoading || checkConflictsLoading) {
     checkConflictsLoading
   });
   showConflictAlert('Já existe uma verificação em andamento. Aguarde a conclusão.', 'warning');
-  return;
+return;
 }
 
 try {

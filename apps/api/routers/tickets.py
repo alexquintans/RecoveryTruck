@@ -1327,21 +1327,61 @@ async def complete_ticket(
     current_operator = Depends(get_current_operator)
 ):
     """Completa um ticket (in_progress → completed)"""
-    # Buscar ticket e equipamento
+    logger.info(f"🔍 DEBUG - Iniciando conclusão do ticket {ticket_id}")
+    
+    # Buscar ticket
     ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
-    equipment = db.query(Equipment).filter(Equipment.id == ticket.equipment_id).first() if ticket and ticket.equipment_id else None
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket não encontrado")
+    
+    # ✅ NOVO: Buscar todos os serviços do ticket
+    ticket_services = db.query(TicketService).filter(TicketService.ticket_id == ticket_id).all()
+    logger.info(f"🔍 DEBUG - Ticket {ticket_id} tem {len(ticket_services)} serviços")
+    
+    # ✅ NOVO: Buscar todos os progressos dos serviços
+    service_progresses = []
+    for ticket_service in ticket_services:
+        progress = db.query(TicketServiceProgress).filter(
+            TicketServiceProgress.ticket_service_id == ticket_service.id
+        ).first()
+        if progress:
+            service_progresses.append(progress)
+    
+    logger.info(f"🔍 DEBUG - Encontrados {len(service_progresses)} progressos de serviços")
+    
+    # ✅ NOVO: Liberar todos os equipamentos associados aos serviços
+    liberated_equipments = []
+    for progress in service_progresses:
+        if progress.equipment_id:
+            equipment = db.query(Equipment).filter(Equipment.id == progress.equipment_id).first()
+            if equipment:
+                logger.info(f"🔧 DEBUG - Liberando equipamento {equipment.identifier} do serviço {progress.id}")
+                equipment.status = EquipmentStatus.online
+                equipment.assigned_operator_id = None
+                progress.equipment_id = None
+                liberated_equipments.append(equipment)
+    
+    # ✅ NOVO: Marcar todos os serviços como concluídos
+    for progress in service_progresses:
+        if progress.status == "in_progress":
+            logger.info(f"🔧 DEBUG - Marcando serviço {progress.id} como concluído")
+            progress.status = "completed"
+            progress.completed_at = datetime.now(timezone.utc)
+            if operator_notes:
+                progress.operator_notes = operator_notes
+    
+    # Atualizar status do ticket
     status_update = TicketStatusUpdate(
         status=TicketStatus.COMPLETED,
         operator_notes=operator_notes or f"Atendimento concluído por {current_operator.name}"
     )
     result = await update_ticket_status(ticket_id, status_update, db, current_operator)
-    # Liberar equipamento
-    if equipment:
-        equipment.status = EquipmentStatus.online
-        db.commit()
-        db.refresh(equipment)
+    
+    # ✅ NOVO: Commit das alterações
+    db.commit()
         
-        # Broadcast de atualização do equipamento
+    # ✅ NOVO: Broadcast de atualização para todos os equipamentos liberados
+    for equipment in liberated_equipments:
         equipment_update_data = {
             "id": str(equipment.id),
             "identifier": equipment.identifier,
@@ -1350,6 +1390,9 @@ async def complete_ticket(
             "updated_at": datetime.now(timezone.utc).isoformat()
         }
         await websocket_manager.broadcast_equipment_update(str(current_operator.tenant_id), equipment_update_data)
+    
+    logger.info(f"🔍 DEBUG - Ticket {ticket_id} concluído, {len(liberated_equipments)} equipamentos liberados")
+    
     return result
 
 @router.post("/{ticket_id}/cancel")
@@ -1360,15 +1403,46 @@ async def cancel_ticket(
     current_operator = Depends(get_current_operator)
 ):
     """Cancela um ticket"""
-    # Buscar ticket e equipamento
+    logger.info(f"🔍 DEBUG - Iniciando cancelamento do ticket {ticket_id}")
+    
+    # Buscar ticket
     ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
-    equipment = db.query(Equipment).filter(Equipment.id == ticket.equipment_id).first() if ticket and ticket.equipment_id else None
-    status_update = TicketStatusUpdate(
-        status=TicketStatus.CANCELLED,
-        cancellation_reason=cancellation_reason,
-        operator_notes=f"Cancelado por {current_operator.name}"
-    )
-    result = await update_ticket_status(ticket_id, status_update, db, current_operator)
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket não encontrado")
+    
+    # ✅ NOVO: Buscar todos os serviços do ticket
+    ticket_services = db.query(TicketService).filter(TicketService.ticket_id == ticket_id).all()
+    logger.info(f"🔍 DEBUG - Ticket {ticket_id} tem {len(ticket_services)} serviços para cancelar")
+    
+    # ✅ NOVO: Buscar todos os progressos dos serviços
+    service_progresses = []
+    for ticket_service in ticket_services:
+        progress = db.query(TicketServiceProgress).filter(
+            TicketServiceProgress.ticket_service_id == ticket_service.id
+        ).first()
+        if progress:
+            service_progresses.append(progress)
+    
+    logger.info(f"🔍 DEBUG - Encontrados {len(service_progresses)} progressos de serviços para cancelar")
+    
+    # ✅ NOVO: Marcar todos os serviços como cancelados
+    for progress in service_progresses:
+        if progress.status in ["pending", "in_progress"]:
+            logger.info(f"🔧 DEBUG - Marcando serviço {progress.id} como cancelado")
+            progress.status = "cancelled"
+            progress.operator_notes = f"Cancelado por {current_operator.name}: {cancellation_reason}"
+    
+    # ✅ NOVO: Liberar todos os equipamentos associados aos serviços
+    liberated_equipments = []
+    for progress in service_progresses:
+        if progress.equipment_id:
+            equipment = db.query(Equipment).filter(Equipment.id == progress.equipment_id).first()
+            if equipment:
+                logger.info(f"🔧 DEBUG - Liberando equipamento {equipment.identifier} do serviço cancelado {progress.id}")
+                equipment.status = EquipmentStatus.online
+                equipment.assigned_operator_id = None
+                progress.equipment_id = None
+                liberated_equipments.append(equipment)
     
     # Restaurar estoque dos extras se o ticket foi cancelado
     if ticket and ticket.extras:
@@ -1386,16 +1460,20 @@ async def cancel_ticket(
             if operation_config_extra:
                 operation_config_extra.stock += ticket_extra.quantity
                 logger.info(f"🔍 DEBUG - Restaurando estoque na config do extra {ticket_extra.extra_id}: {operation_config_extra.stock - ticket_extra.quantity} -> {operation_config_extra.stock}")
-        
-        db.commit()
     
-    # Liberar equipamento
-    if equipment:
-        equipment.status = EquipmentStatus.online
-        db.commit()
-        db.refresh(equipment)
-        
-        # Broadcast de atualização do equipamento
+    # Atualizar status do ticket
+    status_update = TicketStatusUpdate(
+        status=TicketStatus.CANCELLED,
+        cancellation_reason=cancellation_reason,
+        operator_notes=f"Cancelado por {current_operator.name}"
+    )
+    result = await update_ticket_status(ticket_id, status_update, db, current_operator)
+    
+    # ✅ NOVO: Commit das alterações
+    db.commit()
+    
+    # ✅ NOVO: Broadcast de atualização para todos os equipamentos liberados
+    for equipment in liberated_equipments:
         equipment_update_data = {
             "id": str(equipment.id),
             "identifier": equipment.identifier,
@@ -1404,6 +1482,9 @@ async def cancel_ticket(
             "updated_at": datetime.now(timezone.utc).isoformat()
         }
         await websocket_manager.broadcast_equipment_update(str(current_operator.tenant_id), equipment_update_data)
+    
+    logger.info(f"🔍 DEBUG - Ticket {ticket_id} cancelado, {len(liberated_equipments)} equipamentos liberados")
+    
     return result
 
 @router.post("/{ticket_id}/reprint")
