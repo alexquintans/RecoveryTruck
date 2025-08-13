@@ -20,10 +20,18 @@ app = FastAPI(
 # Configurar CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Permitir todas as origens para desenvolvimento
+    allow_origins=[
+        "https://recovery-truck-panel-client.vercel.app",
+        "https://recovery-truck-totem-client.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:4173",
+        "*"  # Permitir todas as origens para desenvolvimento
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 # Configurar logging estruturado

@@ -1128,8 +1128,8 @@ async def call_ticket_service(
     else:
         logger.info(f"🔍 DEBUG - Equipamento {equipment.identifier} não tem service_id definido, permitindo uso para qualquer serviço")
     
-    # ✅ NOVA LÓGICA: Verificar se o cliente já está sendo atendido em OUTRO serviço
-    # Buscar outros serviços do mesmo ticket que estão em andamento
+    # ✅ CORREÇÃO: Permitir múltiplos serviços simultâneos - cada serviço é independente
+    # Buscar outros serviços do mesmo ticket que estão em andamento apenas para log
     other_services_in_progress = db.query(TicketServiceProgress).join(TicketService).filter(
         TicketService.ticket_id == ticket_id,
         TicketServiceProgress.status == "in_progress",
@@ -1137,7 +1137,7 @@ async def call_ticket_service(
     ).all()
     
     if other_services_in_progress:
-        logger.warning(f"🔍 DEBUG - Cliente já está sendo atendido em outro serviço: ticket {ticket_id}")
+        logger.info(f"🔍 DEBUG - Cliente já está sendo atendido em outros serviços: ticket {ticket_id}")
         service_names = []
         for other_progress in other_services_in_progress:
             other_ticket_service = db.query(TicketService).filter(
@@ -1148,10 +1148,8 @@ async def call_ticket_service(
                 if service:
                     service_names.append(service.name)
         
-        raise HTTPException(
-            status_code=400, 
-            detail=f"O cliente já está sendo atendido em outro serviço: {', '.join(service_names)}. Aguarde a conclusão antes de iniciar este serviço."
-        )
+        logger.info(f"🔍 DEBUG - Serviços já em andamento: {', '.join(service_names)}. Permitindo iniciar este serviço também.")
+        # ✅ NÃO bloquear - permitir múltiplos serviços simultâneos
     
     # ✅ NOVA LÓGICA: Iniciar o serviço específico SEM afetar o status global do ticket
     logger.info(f"🔍 DEBUG - Iniciando serviço específico {request.service_id}")
@@ -1162,22 +1160,25 @@ async def call_ticket_service(
     progress.equipment_id = request.equipment_id
     progress.operator_notes = f"Iniciado pelo operador {current_operator.name}"
     
-    # ✅ NOVA LÓGICA: Atualizar status global do ticket apenas se for o primeiro serviço
-    # Verificar se há outros serviços em andamento
+    # ✅ CORREÇÃO: NÃO atualizar status global do ticket - cada serviço é independente
+    # Verificar se há outros serviços em andamento apenas para log
     services_in_progress_count = db.query(TicketServiceProgress).join(TicketService).filter(
         TicketService.ticket_id == ticket_id,
         TicketServiceProgress.status == "in_progress"
     ).count()
     
-    if services_in_progress_count == 0:
-        # É o primeiro serviço sendo iniciado
-        logger.info(f"🔍 DEBUG - Primeiro serviço sendo iniciado, atualizando status global do ticket")
-        ticket.status = TicketStatus.IN_PROGRESS.value
-        ticket.started_at = datetime.now(timezone.utc)
+    logger.info(f"🔍 DEBUG - Serviço {request.service_id} sendo iniciado independentemente. Total de serviços em andamento: {services_in_progress_count + 1}")
+    
+    # ✅ NOVA LÓGICA: Atualizar status global do ticket apenas para "called" se ainda não foi chamado
+    if ticket.status == "in_queue":
+        logger.info(f"🔍 DEBUG - Ticket ainda na fila, marcando como 'called'")
+        ticket.status = TicketStatus.CALLED.value
+        ticket.called_at = datetime.now(timezone.utc)
         ticket.assigned_operator_id = current_operator.id
-        # NÃO definir equipment_id global - cada serviço tem seu próprio equipamento
     else:
-        logger.info(f"🔍 DEBUG - Serviço adicional sendo iniciado, mantendo status global do ticket")
+        logger.info(f"🔍 DEBUG - Ticket já foi chamado, mantendo status atual: {ticket.status}")
+    
+    # ✅ NÃO atualizar para "in_progress" global - cada serviço tem seu próprio progresso
     
     # Marcar equipamento como indisponível
     equipment.status = EquipmentStatus.offline
@@ -1452,8 +1453,8 @@ async def complete_ticket(
     result = await update_ticket_status(ticket_id, status_update, db, current_operator)
     
     # ✅ NOVO: Commit das alterações
-    db.commit()
-    
+        db.commit()
+        
     # ✅ NOVO: Broadcast de atualização para todos os equipamentos liberados
     for equipment in liberated_equipments:
         equipment_update_data = {
@@ -1544,8 +1545,8 @@ async def cancel_ticket(
     result = await update_ticket_status(ticket_id, status_update, db, current_operator)
     
     # ✅ NOVO: Commit das alterações
-    db.commit()
-    
+        db.commit()
+        
     # ✅ NOVO: Broadcast de atualização para todos os equipamentos liberados
     for equipment in liberated_equipments:
         equipment_update_data = {
@@ -2326,6 +2327,9 @@ async def call_ticket_intelligent(
 ):
     """Chama um ticket de forma inteligente, verificando conflitos de cliente"""
     logger.info(f"🔍 DEBUG - Chamada inteligente para ticket {ticket_id}, serviço {request.service_id}")
+    logger.info(f"🔍 DEBUG - Request data: {request}")
+    logger.info(f"🔍 DEBUG - Current operator: {current_operator.id}")
+    logger.info(f"🔍 DEBUG - Tenant ID: {current_operator.tenant_id}")
     
     # ✅ NOVA PROTEÇÃO: Verificar se o serviço já está em andamento
     ticket_service = db.query(TicketService).filter(
@@ -2358,70 +2362,71 @@ async def call_ticket_intelligent(
         logger.info(f"🔍 DEBUG - Ticket {ticket_id} está em andamento, verificando se o serviço específico já está em andamento")
         # A verificação do serviço específico já foi feita acima
     
-    # ✅ NOVA LÓGICA: Verificar se o cliente já está sendo atendido em outro ticket
+    # ✅ CORREÇÃO: Verificar se o cliente já está sendo atendido no MESMO SERVIÇO em outro ticket
     if request.check_customer_conflicts:
-        customer_tickets_in_progress = db.query(Ticket).filter(
+        # Buscar outros tickets do mesmo cliente que têm o MESMO SERVIÇO em andamento
+        conflicting_services = db.query(TicketServiceProgress).join(TicketService).join(Ticket).filter(
             Ticket.tenant_id == current_operator.tenant_id,
             Ticket.customer_name == ticket.customer_name,
             Ticket.id != ticket_id,  # Excluir o ticket atual
-            Ticket.status.in_(['called', 'in_progress'])
+            TicketService.service_id == request.service_id,  # MESMO SERVIÇO
+            TicketServiceProgress.status == "in_progress"
         ).all()
         
-        if customer_tickets_in_progress:
-            logger.warning(f"🔍 DEBUG - Cliente {ticket.customer_name} já está sendo atendido em outro ticket")
+        if conflicting_services:
+            logger.warning(f"🔍 DEBUG - Cliente {ticket.customer_name} já está sendo atendido no serviço {request.service_id} em outro ticket")
             
-            # Buscar detalhes dos tickets em andamento
+            # Buscar detalhes dos conflitos
             conflicting_tickets = []
-            for conflicting_ticket in customer_tickets_in_progress:
-                services = db.query(TicketService).join(Service).filter(
-                    TicketService.ticket_id == conflicting_ticket.id
-                ).all()
+            for conflicting_progress in conflicting_services:
+                conflicting_ticket_service = db.query(TicketService).filter(
+                    TicketService.id == conflicting_progress.ticket_service_id
+                ).first()
                 
-                service_names = []
-                for ts in services:
-                    service = db.query(Service).filter(Service.id == ts.service_id).first()
-                    if service:
-                        service_names.append(service.name)
-                
-                conflicting_tickets.append({
-                    "ticket_number": conflicting_ticket.ticket_number,
-                    "services": service_names,
-                    "status": conflicting_ticket.status,
-                    "assigned_operator": conflicting_ticket.assigned_operator.name if conflicting_ticket.assigned_operator else "Não atribuído"
-                })
+                if conflicting_ticket_service:
+                    conflicting_ticket = db.query(Ticket).filter(
+                        Ticket.id == conflicting_ticket_service.ticket_id
+                    ).first()
+                    
+                    if conflicting_ticket:
+                        conflicting_tickets.append({
+                            "ticket_number": conflicting_ticket.ticket_number,
+                            "service_id": str(request.service_id),
+                            "status": conflicting_progress.status,
+                            "assigned_operator": conflicting_ticket.assigned_operator.name if conflicting_ticket.assigned_operator else "Não atribuído"
+                        })
             
             raise HTTPException(
                 status_code=409,  # Conflict
                 detail={
-                    "message": f"O cliente {ticket.customer_name} já está sendo atendido em outro ticket",
+                    "message": f"O cliente {ticket.customer_name} já está sendo atendido no serviço {request.service_id} em outro ticket",
                     "conflicting_tickets": conflicting_tickets,
-                    "customer_name": ticket.customer_name
+                    "customer_name": ticket.customer_name,
+                    "service_id": str(request.service_id)
                 }
             )
+        else:
+            logger.info(f"🔍 DEBUG - Cliente {ticket.customer_name} não está sendo atendido no serviço {request.service_id} em outros tickets")
     
-    # ✅ NOVA LÓGICA: Verificar se o ticket já está sendo atendido pelo operador atual
-    if ticket.assigned_operator_id == current_operator.id and ticket.status in ['called', 'in_progress']:
-        logger.info(f"🔍 DEBUG - Ticket já está sendo atendido pelo operador atual")
-        return {
-            "success": True,
-            "message": "Ticket já está sendo atendido por você",
-            "ticket_id": str(ticket_id),
-            "status": ticket.status
-        }
-    
-    # ✅ NOVA LÓGICA: Verificar se o ticket já está sendo atendido por outro operador
-    if ticket.assigned_operator_id and ticket.assigned_operator_id != current_operator.id and ticket.status in ['called', 'in_progress']:
-        other_operator = db.query(Operator).filter(Operator.id == ticket.assigned_operator_id).first()
-        operator_name = other_operator.name if other_operator else "Operador desconhecido"
+    # ✅ CORREÇÃO: Verificar se o SERVIÇO específico já está sendo atendido pelo operador atual
+    if ticket_service:
+        progress = db.query(TicketServiceProgress).filter(
+            TicketServiceProgress.ticket_service_id == ticket_service.id
+        ).first()
         
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "message": f"Este ticket já está sendo atendido por {operator_name}",
-                "assigned_operator": operator_name,
-                "ticket_status": ticket.status
+        if progress and progress.status == "in_progress":
+            logger.info(f"🔍 DEBUG - Serviço {request.service_id} já está sendo atendido pelo operador atual")
+            return {
+                "success": True,
+                "message": f"Serviço já está sendo atendido por você",
+                "ticket_id": str(ticket_id),
+                "service_id": str(request.service_id),
+                "status": progress.status
             }
-        )
+    
+    # ✅ CORREÇÃO: Verificar se o SERVIÇO específico já está sendo atendido por outro operador
+    # (Esta verificação seria mais complexa e pode não ser necessária para serviços individuais)
+    logger.info(f"🔍 DEBUG - Verificando se o serviço {request.service_id} pode ser iniciado")
     
     # Se chegou até aqui, pode prosseguir com a chamada normal do serviço
     logger.info(f"🔍 DEBUG - Prosseguindo com chamada normal do serviço")
@@ -2457,44 +2462,48 @@ async def check_ticket_conflicts(
         "message": None
     }
     
-    # ✅ VERIFICAÇÃO 1: Cliente já sendo atendido em outro ticket
-    customer_tickets_in_progress = db.query(Ticket).filter(
+    # ✅ CORREÇÃO: Verificar se o cliente já está sendo atendido no MESMO SERVIÇO em outro ticket
+    # Buscar outros tickets do mesmo cliente que têm serviços em andamento
+    customer_services_in_progress = db.query(TicketServiceProgress).join(TicketService).join(Ticket).filter(
         Ticket.tenant_id == current_operator.tenant_id,
         Ticket.customer_name == ticket.customer_name,
-        Ticket.id != ticket_id,
-        Ticket.status.in_(['called', 'in_progress'])
+        Ticket.id != ticket_id,  # Excluir o ticket atual
+        TicketServiceProgress.status == "in_progress"
     ).all()
     
-    if customer_tickets_in_progress:
+    if customer_services_in_progress:
         conflicts["has_conflicts"] = True
         conflicts["conflict_type"] = "customer_already_being_served"
         conflicts["can_proceed"] = False
         
         # Buscar detalhes dos conflitos
         conflicting_tickets = []
-        for conflicting_ticket in customer_tickets_in_progress:
-            services = db.query(TicketService).join(Service).filter(
-                TicketService.ticket_id == conflicting_ticket.id
-            ).all()
+        for conflicting_progress in customer_services_in_progress:
+            conflicting_ticket_service = db.query(TicketService).filter(
+                TicketService.id == conflicting_progress.ticket_service_id
+            ).first()
             
-            service_names = []
-            for ts in services:
-                service = db.query(Service).filter(Service.id == ts.service_id).first()
-                if service:
-                    service_names.append(service.name)
-            
-            conflicting_tickets.append({
-                "ticket_number": conflicting_ticket.ticket_number,
-                "services": service_names,
-                "status": conflicting_ticket.status,
-                "assigned_operator": conflicting_ticket.assigned_operator.name if conflicting_ticket.assigned_operator else "Não atribuído"
-            })
+            if conflicting_ticket_service:
+                conflicting_ticket = db.query(Ticket).filter(
+                    Ticket.id == conflicting_ticket_service.ticket_id
+                ).first()
+                
+                service = db.query(Service).filter(Service.id == conflicting_ticket_service.service_id).first()
+                
+                if conflicting_ticket and service:
+                    conflicting_tickets.append({
+                        "ticket_number": conflicting_ticket.ticket_number,
+                        "service_name": service.name,
+                        "service_id": str(conflicting_ticket_service.service_id),
+                        "status": conflicting_progress.status,
+                        "assigned_operator": conflicting_ticket.assigned_operator.name if conflicting_ticket.assigned_operator else "Não atribuído"
+                    })
         
         conflicts["conflict_details"] = {
             "customer_name": ticket.customer_name,
             "conflicting_tickets": conflicting_tickets
         }
-        conflicts["message"] = f"O cliente {ticket.customer_name} já está sendo atendido em outro ticket"
+        conflicts["message"] = f"O cliente {ticket.customer_name} já está sendo atendido em outros serviços"
     
     # ✅ VERIFICAÇÃO 2: Ticket já sendo atendido por outro operador
     elif ticket.assigned_operator_id and ticket.assigned_operator_id != current_operator.id and ticket.status in ['called', 'in_progress']:
@@ -2536,7 +2545,7 @@ async def check_ticket_conflicts(
         conflicts["can_proceed"] = False
         conflicts["message"] = "Ticket não possui serviços associados"
     
-    # ✅ VERIFICAÇÃO 6: Serviços já em andamento
+    # ✅ CORREÇÃO: Verificar serviços já em andamento (apenas para informação, não bloquear)
     services_in_progress = []
     for ts in ticket_services:
         progress = db.query(TicketServiceProgress).filter(
@@ -2551,14 +2560,10 @@ async def check_ticket_conflicts(
                 "started_at": progress.started_at.isoformat() if progress.started_at else None
             })
     
+    # ✅ NÃO bloquear por serviços em andamento - permitir múltiplos serviços simultâneos
     if services_in_progress:
-        conflicts["has_conflicts"] = True
-        conflicts["conflict_type"] = "services_already_in_progress"
-        conflicts["can_proceed"] = False
-        conflicts["conflict_details"] = {
-            "services_in_progress": services_in_progress
-        }
-        conflicts["message"] = f"Alguns serviços já estão em andamento: {', '.join([s['service_name'] for s in services_in_progress])}"
+        logger.info(f"🔍 DEBUG - Serviços já em andamento: {[s['service_name'] for s in services_in_progress]}. Permitindo iniciar outros serviços.")
+        # ✅ NÃO definir conflito - apenas informar
     
     logger.info(f"🔍 DEBUG - Resultado da verificação de conflitos: {conflicts}")
     

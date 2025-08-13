@@ -2389,9 +2389,9 @@ details: conflictsResult.conflicts.conflict_details
 switch (conflictType) {
 case 'customer_already_being_served':
 const conflictingTickets = conflictsResult.conflicts.conflict_details?.conflicting_tickets || [];
-const ticketNumbers = conflictingTickets.map((t: any) => t.ticket_number).join(', ');
+const serviceNames = conflictingTickets.map((t: any) => t.service_name).join(', ');
 showConflictAlert(
-`O cliente ${conflictsResult.customer_name} já está sendo atendido nos tickets: ${ticketNumbers}`,
+`O cliente ${conflictsResult.customer_name} já está sendo atendido nos serviços: ${serviceNames}`,
 'warning'
 );
 break;
@@ -2404,14 +2404,7 @@ showConflictAlert(
 );
 break;
 
-case 'services_already_in_progress':
-const servicesInProgress = conflictsResult.conflicts.conflict_details?.services_in_progress || [];
-const serviceNames = servicesInProgress.map((s: any) => s.service_name).join(', ');
-showConflictAlert(
-`Alguns serviços já estão em andamento: ${serviceNames}`,
-'warning'
-);
-break;
+// ✅ REMOVIDO: services_already_in_progress - não bloqueamos mais múltiplos serviços simultâneos
 
 default:
 showConflictAlert(conflictMessage || 'Conflito detectado. Tente novamente.', 'warning');
