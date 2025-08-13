@@ -473,7 +473,7 @@ return (
 {/* Botão de chamada - MELHORADO */}
 <div className="flex gap-2 ml-6">
 <button
-disabled={callIntelligentLoading || checkConflictsLoading || !selectedEquipment || isCalledForThisService}
+disabled={callLoading || !selectedEquipment || isCalledForThisService}
 onClick={() => onCall(ticket, currentService)}
 className={`px-4 py-2 rounded-lg font-semibold transition-all ${
            priority.isFirstService 
@@ -483,7 +483,7 @@ className={`px-4 py-2 rounded-lg font-semibold transition-all ${
              : 'bg-blue-600 hover:bg-blue-700 text-white'
          } disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg`}
 >
-{callIntelligentLoading || checkConflictsLoading ? 'Verificando...' : 
+{callLoading ? 'Verificando...' : 
 isCalledForThisService ? 'Serviço em Andamento' : 'Chamar Serviço'}
 </button>
 </div>
@@ -834,6 +834,20 @@ const showConflictAlert = useCallback((message: string, type: 'warning' | 'error
     setConflictAlert(null);
   }, 5000);
 }, []);
+
+// ✅ NOVO: Função para verificar se ticket já foi chamado
+const isTicketAlreadyCalled = useCallback((ticketId: string) => {
+  // Verificar se o ticket já está em "Meus tickets" (já foi chamado)
+  return myTickets?.some(ticket => ticket.id === ticketId) || false;
+}, [myTickets]);
+
+// ✅ NOVO: Função para verificar se cliente já tem ticket em andamento
+const isCustomerAlreadyBeingServed = useCallback((customerName: string) => {
+  return myTickets?.some(ticket => {
+    const ticketCustomerName = ticket.customer_name || ticket.customer?.name;
+    return ticketCustomerName === customerName && ticket.status === 'in_progress';
+  }) || false;
+}, [myTickets]);
 
 // ✅ NOVO: Função para chamar ticket com validação completa
 const callTicketWithFullValidation = useCallback(async (ticketId: string, customerName?: string) => {
@@ -2455,20 +2469,6 @@ setServiceQueues([]);
 }
 }, [organizedQueues, currentStep, activeServiceTab, updatePreference]);
 
-// ✅ NOVO: Função para verificar se ticket já foi chamado
-const isTicketAlreadyCalled = useCallback((ticketId: string) => {
-  // Verificar se o ticket já está em "Meus tickets" (já foi chamado)
-  return myTickets?.some(ticket => ticket.id === ticketId) || false;
-}, [myTickets]);
-
-// ✅ NOVO: Função para verificar se cliente já tem ticket em andamento
-const isCustomerAlreadyBeingServed = useCallback((customerName: string) => {
-  return myTickets?.some(ticket => {
-    const ticketCustomerName = ticket.customer_name || ticket.customer?.name;
-    return ticketCustomerName === customerName && ticket.status === 'in_progress';
-  }) || false;
-}, [myTickets]);
-
 
 
 return (
@@ -2651,7 +2651,7 @@ ticket={ticket}
 currentService={activeServiceTab}
 onCall={handleCallTicket}
 selectedEquipment={selectedEquipment}
-callLoading={callLoading}
+callLoading={callIntelligentLoading || checkConflictsLoading}
 />
 ))}
 </div>
