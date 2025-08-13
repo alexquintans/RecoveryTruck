@@ -63,7 +63,7 @@ ACTIVE_CONNECTIONS = Gauge(
 # app.add_middleware(MetricsMiddleware)
 
 # Importar routers
-from routers import tickets, auth, customers, metrics, operator_config, payment_sessions, websocket, ticket_service_progress
+from routers import tickets, auth, customers, metrics, operator_config, payment_sessions, websocket, ticket_service_progress, operation
 from database import get_db
 
 # Incluir routers
@@ -75,6 +75,7 @@ app.include_router(operator_config.router, prefix="/operator", tags=["operator"]
 app.include_router(payment_sessions.router, prefix="/payment-sessions", tags=["payments"])
 app.include_router(websocket.router, prefix="", tags=["websocket"])  # Sem prefixo para evitar /ws/ws
 app.include_router(ticket_service_progress.router, prefix="/api", tags=["ticket-service-progress"])
+app.include_router(operation.router, prefix="/operation", tags=["operation"])
 
 # Endpoint WebSocket de teste
 from fastapi import WebSocket
