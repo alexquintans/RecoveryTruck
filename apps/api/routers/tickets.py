@@ -1904,10 +1904,36 @@ async def call_ticket_intelligent(
     """Chama um ticket de forma inteligente, verificando conflitos de cliente"""
     logger.info(f"🔍 DEBUG - Chamada inteligente para ticket {ticket_id}, serviço {request.service_id}")
     
+    # ✅ NOVA PROTEÇÃO: Verificar se o serviço já está em andamento
+    ticket_service = db.query(TicketService).filter(
+        TicketService.ticket_id == ticket_id,
+        TicketService.service_id == request.service_id
+    ).first()
+    
+    if ticket_service:
+        progress = db.query(TicketServiceProgress).filter(
+            TicketServiceProgress.ticket_service_id == ticket_service.id
+        ).first()
+        
+        if progress and progress.status == "in_progress":
+            logger.warning(f"🔍 DEBUG - Tentativa de chamar serviço já em andamento: ticket {ticket_id}, serviço {request.service_id}")
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Este serviço já está em andamento. Status: {progress.status}"
+            )
+    
     # Buscar ticket e verificar se existe
     ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket não encontrado")
+    
+    # ✅ NOVA PROTEÇÃO: Verificar se o ticket já está sendo processado
+    if ticket.status == "in_progress":
+        logger.warning(f"🔍 DEBUG - Tentativa de chamar ticket já em andamento: {ticket_id}")
+        raise HTTPException(
+            status_code=400, 
+            detail="Este ticket já está sendo atendido"
+        )
     
     # ✅ NOVA LÓGICA: Verificar se o cliente já está sendo atendido em outro ticket
     if request.check_customer_conflicts:

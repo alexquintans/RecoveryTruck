@@ -474,7 +474,27 @@ return (
 <div className="flex gap-2 ml-6">
 <button
 disabled={callLoading || !selectedEquipment || isCalledForThisService}
-onClick={() => onCall(ticket, currentService)}
+onClick={(e) => {
+  // ✅ NOVA PROTEÇÃO: Prevenir cliques múltiplos
+  e.preventDefault();
+  e.stopPropagation();
+  
+  console.log('🔍 DEBUG - Botão clicado:', {
+    ticketId: ticket.id,
+    serviceId: currentService,
+    callLoading,
+    selectedEquipment,
+    isCalledForThisService
+  });
+  
+  // ✅ VERIFICAÇÃO ADICIONAL: Se já está carregando, não fazer nada
+  if (callLoading) {
+    console.log('🔍 DEBUG - Botão clicado mas já está carregando, ignorando...');
+    return;
+  }
+  
+  onCall(ticket, currentService);
+}}
 className={`px-4 py-2 rounded-lg font-semibold transition-all ${
            priority.isFirstService 
              ? 'bg-green-600 hover:bg-green-700 text-white' 
@@ -2274,26 +2294,43 @@ showConflictAlert('Erro: Equipamento não está disponível para uso!', 'error')
 return;
 }
 
-// ✅ VERIFICAR SE JÁ EXISTE CHAMADA EM ANDAMENTO
-if (callIntelligentLoading || checkConflictsLoading) {
-console.log('🔍 DEBUG - Já existe uma verificação/chamada em andamento, aguardando...');
-showConflictAlert('Já existe uma verificação em andamento. Aguarde a conclusão.', 'warning');
-return;
-}
 
-// ✅ PROTEÇÃO CONTRA CHAMADAS DUPLICADAS
+
+// ✅ PROTEÇÃO CONTRA CHAMADAS DUPLICADAS - MELHORADA
 const serviceCallKey = `${ticket.id}-${serviceId}`;
 const lastServiceCallTime = ticketLastCallTime.current.get(serviceCallKey) || 0;
 const timeSinceLastServiceCall = Date.now() - lastServiceCallTime;
 
-if (timeSinceLastServiceCall < 3000) { // 3 segundos de proteção
-console.log('🔍 DEBUG - Serviço chamado recentemente, aguardando...', {
-ticketId: ticket.id,
-serviceId,
-timeSinceLastServiceCall
+console.log('🔍 DEBUG - Verificação de proteção contra chamadas duplicadas:', {
+  ticketId: ticket.id,
+  serviceId,
+  serviceCallKey,
+  lastServiceCallTime,
+  timeSinceLastServiceCall,
+  isProtected: timeSinceLastServiceCall < 5000 // Aumentado para 5 segundos
 });
-showConflictAlert('Este serviço foi chamado recentemente. Aguarde alguns segundos.', 'warning');
-return;
+
+if (timeSinceLastServiceCall < 5000) { // 5 segundos de proteção (aumentado)
+  console.log('🔍 DEBUG - Serviço chamado recentemente, aguardando...', {
+    ticketId: ticket.id,
+    serviceId,
+    timeSinceLastServiceCall,
+    remainingTime: 5000 - timeSinceLastServiceCall
+  });
+  showConflictAlert('Este serviço foi chamado recentemente. Aguarde alguns segundos.', 'warning');
+  return;
+}
+
+// ✅ NOVA PROTEÇÃO: Verificar se já existe uma chamada em andamento para este serviço específico
+if (callIntelligentLoading || checkConflictsLoading) {
+  console.log('🔍 DEBUG - Já existe uma verificação/chamada em andamento para este serviço:', {
+    ticketId: ticket.id,
+    serviceId,
+    callIntelligentLoading,
+    checkConflictsLoading
+  });
+  showConflictAlert('Já existe uma verificação em andamento. Aguarde a conclusão.', 'warning');
+  return;
 }
 
 try {
