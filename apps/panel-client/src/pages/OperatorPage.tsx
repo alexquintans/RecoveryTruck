@@ -817,6 +817,54 @@ const [activeModal, setActiveModal] = useState<string | null>(null);
 const [services, setServices] = useState<Service[]>(() => {
 return operatorConfig?.services || [];
 });
+
+// ✅ NOVO: Estado para alertas de conflito
+const [conflictAlert, setConflictAlert] = useState<{
+  show: boolean;
+  message: string;
+  type: 'warning' | 'error' | 'info';
+} | null>(null);
+
+// ✅ NOVO: Função para mostrar alerta
+const showConflictAlert = useCallback((message: string, type: 'warning' | 'error' | 'info' = 'warning') => {
+  setConflictAlert({ show: true, message, type });
+  
+  // Auto-hide após 5 segundos
+  setTimeout(() => {
+    setConflictAlert(null);
+  }, 5000);
+}, []);
+
+// ✅ NOVO: Função para chamar ticket com validação completa
+const callTicketWithFullValidation = useCallback(async (ticketId: string, customerName?: string) => {
+  try {
+    // Verificar se o ticket já foi chamado
+    if (isTicketAlreadyCalled(ticketId)) {
+      const message = 'Este ticket já foi chamado e está em atendimento.';
+      showConflictAlert(message, 'warning');
+      return { success: false, message };
+    }
+
+    // Verificar se o cliente já está sendo atendido
+    if (customerName && isCustomerAlreadyBeingServed(customerName)) {
+      const message = `O cliente ${customerName} já está sendo atendido em outro serviço.`;
+      showConflictAlert(message, 'warning');
+      return { success: false, message };
+    }
+
+    // Fazer a chamada do ticket
+    console.log('🔄 Chamando ticket:', ticketId);
+    // await callTicket({ ticketId });
+    
+    showConflictAlert('Ticket chamado com sucesso!', 'info');
+    return { success: true, message: 'Ticket chamado com sucesso' };
+  } catch (error) {
+    console.error('❌ Erro ao chamar ticket:', error);
+    const message = 'Erro ao chamar ticket. Tente novamente.';
+    showConflictAlert(message, 'error');
+    return { success: false, message };
+  }
+}, [isTicketAlreadyCalled, isCustomerAlreadyBeingServed, showConflictAlert]);
 const [extras, setExtras] = useState<Extra[]>(() => {
 return operatorConfig?.extras || [];
 });
@@ -2421,53 +2469,7 @@ const isCustomerAlreadyBeingServed = useCallback((customerName: string) => {
   }) || false;
 }, [myTickets]);
 
-// ✅ NOVO: Estado para alertas de conflito
-const [conflictAlert, setConflictAlert] = useState<{
-  show: boolean;
-  message: string;
-  type: 'warning' | 'error' | 'info';
-} | null>(null);
 
-// ✅ NOVO: Função para mostrar alerta
-const showConflictAlert = useCallback((message: string, type: 'warning' | 'error' | 'info' = 'warning') => {
-  setConflictAlert({ show: true, message, type });
-  
-  // Auto-hide após 5 segundos
-  setTimeout(() => {
-    setConflictAlert(null);
-  }, 5000);
-}, []);
-
-// ✅ NOVO: Função para chamar ticket com validação completa
-const callTicketWithFullValidation = useCallback(async (ticketId: string, customerName?: string) => {
-  try {
-    // Verificar se o ticket já foi chamado
-    if (isTicketAlreadyCalled(ticketId)) {
-      const message = 'Este ticket já foi chamado e está em atendimento.';
-      showConflictAlert(message, 'warning');
-      return { success: false, message };
-    }
-
-    // Verificar se o cliente já está sendo atendido
-    if (customerName && isCustomerAlreadyBeingServed(customerName)) {
-      const message = `O cliente ${customerName} já está sendo atendido em outro serviço.`;
-      showConflictAlert(message, 'warning');
-      return { success: false, message };
-    }
-
-    // Fazer a chamada do ticket
-    console.log('🔄 Chamando ticket:', ticketId);
-    // await callTicket({ ticketId });
-    
-    showConflictAlert('Ticket chamado com sucesso!', 'info');
-    return { success: true, message: 'Ticket chamado com sucesso' };
-  } catch (error) {
-    console.error('❌ Erro ao chamar ticket:', error);
-    const message = 'Erro ao chamar ticket. Tente novamente.';
-    showConflictAlert(message, 'error');
-    return { success: false, message };
-  }
-}, [isTicketAlreadyCalled, isCustomerAlreadyBeingServed, showConflictAlert]);
 
 return (
 <div className="p-4 space-y-8 max-w-6xl mx-auto">
