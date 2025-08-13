@@ -340,6 +340,7 @@ const TicketCard = ({
         <div className="flex items-center gap-3 mb-1">
           {/* Número do ticket */}
           <span className="flex items-center justify-center w-12 h-12 rounded-full bg-blue-50 text-blue-700 text-3xl font-extrabold border-2 border-blue-200 shadow-sm">
+            {ticket.number}
           </span>
           
           {/* Indicadores de múltiplos serviços - MELHORADO */}
@@ -2847,6 +2848,7 @@ const OperatorPage: React.FC = () => {
                         <div className="flex flex-col items-center">
                           <span className="text-xl md:text-2xl font-bold flex items-center gap-1 text-orange-700">
                             <MdConfirmationNumber className="inline text-2xl md:text-3xl" />
+                            {ticket.number}
                           </span>
                           <span className="text-xs font-bold px-2 py-1 rounded-full mt-1 bg-orange-200 text-orange-800">
                             Aguardando Pagamento
