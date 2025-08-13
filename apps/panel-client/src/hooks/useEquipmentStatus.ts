@@ -41,6 +41,21 @@ export const useEquipmentStatus = () => {
     }
   });
 
+  // ✅ NOVO: Forçar todos os equipamentos offline para online (emergência)
+  const forceOnlineMutation = useMutation({
+    mutationFn: equipmentService.forceOnline,
+    onSuccess: (data) => {
+      console.log('🚨 EMERGÊNCIA - useEquipmentStatus - Force online success:', data);
+      // Invalidar queries relacionadas
+      queryClient.invalidateQueries({ queryKey: ['equipment', 'status'] });
+      queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
+      queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+    },
+    onError: (error) => {
+      console.error('❌ ERRO - useEquipmentStatus - Force online error:', error);
+    }
+  });
+
   return {
     equipmentStatus: equipmentStatusQuery.data?.equipments || [],
     isLoading: equipmentStatusQuery.isLoading,
@@ -49,5 +64,7 @@ export const useEquipmentStatus = () => {
     refetch: equipmentStatusQuery.refetch,
     forceCleanup: forceCleanupMutation.mutate,
     isCleaningUp: forceCleanupMutation.isPending,
+    forceOnline: forceOnlineMutation.mutate,
+    isForcingOnline: forceOnlineMutation.isPending,
   };
 };

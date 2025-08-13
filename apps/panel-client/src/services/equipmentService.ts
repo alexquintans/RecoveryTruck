@@ -51,4 +51,22 @@ export const equipmentService = {
       throw error;
     }
   },
+  // ✅ NOVO: Forçar todos os equipamentos offline para online (emergência)
+  async forceOnline() {
+    console.log('🚨 EMERGÊNCIA - equipmentService.forceOnline - Iniciando requisição...');
+    console.log('🚨 EMERGÊNCIA - equipmentService.forceOnline - URL:', '/tickets/equipment/force-online');
+    console.log('🚨 EMERGÊNCIA - equipmentService.forceOnline - Params:', withTenant());
+    
+    try {
+      const response = await api.post('/tickets/equipment/force-online', {}, { params: withTenant() });
+      console.log('🚨 EMERGÊNCIA - equipmentService.forceOnline - Response:', {
+        status: response.status,
+        data: response.data
+      });
+      return response.data;
+    } catch (error) {
+      console.error('❌ ERRO - equipmentService.forceOnline:', error);
+      throw error;
+    }
+  },
 }; 
