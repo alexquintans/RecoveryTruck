@@ -1047,19 +1047,47 @@ async def call_ticket_service(
             detail=f"Este serviço já foi concluído. Status: {progress.status}"
         )
     
-    # ✅ NOVA LÓGICA: Verificar se o equipamento está disponível
-    if equipment.status != EquipmentStatus.online:
+    # ✅ NOVA LÓGICA: Verificar se o equipamento está disponível - MELHORADA
+    logger.info(f"🔍 DEBUG - Verificando disponibilidade do equipamento: {equipment.identifier}, status: {equipment.status.value}")
+    
+    # ✅ CORREÇÃO: Permitir equipamentos offline se não estiverem sendo usados
+    if equipment.status == EquipmentStatus.maintenance:
         raise HTTPException(
             status_code=400, 
-            detail=f"Equipamento {equipment.identifier} não está disponível. Status: {equipment.status.value}"
+            detail=f"Equipamento {equipment.identifier} está em manutenção. Status: {equipment.status.value}"
         )
     
-    # ✅ NOVA LÓGICA: Verificar compatibilidade do equipamento com o serviço
-    if equipment.service_id and str(equipment.service_id) != request.service_id:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Equipamento {equipment.identifier} não é compatível com o serviço {request.service_id}"
-        )
+    # ✅ CORREÇÃO: Se o equipamento está offline mas não está sendo usado, permitir uso
+    if equipment.status == EquipmentStatus.offline:
+        # Verificar se o equipamento está realmente sendo usado
+        equipment_in_use = db.query(TicketServiceProgress).filter(
+            TicketServiceProgress.equipment_id == request.equipment_id,
+            TicketServiceProgress.status == "in_progress"
+        ).first()
+        
+        if equipment_in_use:
+            logger.warning(f"🔍 DEBUG - Equipamento {equipment.identifier} está sendo usado por outro serviço")
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Equipamento {equipment.identifier} está sendo usado por outro serviço"
+            )
+        else:
+            logger.info(f"🔍 DEBUG - Equipamento {equipment.identifier} está offline mas não está sendo usado, permitindo uso")
+            # Não bloquear - permitir que o equipamento seja usado
+    
+    # ✅ NOVA LÓGICA: Verificar compatibilidade do equipamento com o serviço - MELHORADA
+    logger.info(f"🔍 DEBUG - Verificando compatibilidade do equipamento: {equipment.identifier}, service_id: {equipment.service_id}, requested_service: {request.service_id}")
+    
+    # ✅ CORREÇÃO: Só verificar compatibilidade se o equipamento tiver service_id definido
+    if equipment.service_id:
+        if str(equipment.service_id) != request.service_id:
+            logger.warning(f"🔍 DEBUG - Equipamento {equipment.identifier} não é compatível com o serviço {request.service_id}")
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Equipamento {equipment.identifier} não é compatível com o serviço {request.service_id}"
+            )
+    else:
+        logger.info(f"🔍 DEBUG - Equipamento {equipment.identifier} não tem service_id definido, permitindo uso para qualquer serviço")
     
     # ✅ NOVA LÓGICA: Verificar se o cliente já está sendo atendido em OUTRO serviço
     # Buscar outros serviços do mesmo ticket que estão em andamento
@@ -1927,13 +1955,13 @@ async def call_ticket_intelligent(
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket não encontrado")
     
-    # ✅ NOVA PROTEÇÃO: Verificar se o ticket já está sendo processado
+    # ✅ NOVA PROTEÇÃO: Verificar se o ticket já está sendo processado - MELHORADA
+    logger.info(f"🔍 DEBUG - Verificando status do ticket: {ticket_id}, status: {ticket.status}")
+    
+    # ✅ CORREÇÃO: Permitir chamar ticket mesmo se estiver em andamento, mas verificar se o serviço específico já está em andamento
     if ticket.status == "in_progress":
-        logger.warning(f"🔍 DEBUG - Tentativa de chamar ticket já em andamento: {ticket_id}")
-        raise HTTPException(
-            status_code=400, 
-            detail="Este ticket já está sendo atendido"
-        )
+        logger.info(f"🔍 DEBUG - Ticket {ticket_id} está em andamento, verificando se o serviço específico já está em andamento")
+        # A verificação do serviço específico já foi feita acima
     
     # ✅ NOVA LÓGICA: Verificar se o cliente já está sendo atendido em outro ticket
     if request.check_customer_conflicts:

@@ -2286,13 +2286,33 @@ showConflictAlert('Erro: ID do serviço não encontrado!', 'error');
 return;
 }
 
-// ✅ VERIFICAR SE EQUIPAMENTO ESTÁ DISPONÍVEL
+// ✅ VERIFICAR SE EQUIPAMENTO ESTÁ DISPONÍVEL - MELHORADA
 const equipment = safeEquipment.find(e => e.id === selectedEquipment);
-if (!equipment || equipment.status !== 'available') {
-console.error('❌ ERRO: Equipamento não está disponível!', { equipment, selectedEquipment });
-showConflictAlert('Erro: Equipamento não está disponível para uso!', 'error');
-return;
+console.log('🔍 DEBUG - Verificando equipamento:', {
+  selectedEquipment,
+  equipment,
+  equipmentStatus: equipment?.status,
+  allEquipment: safeEquipment.map(e => ({ id: e.id, name: e.name, status: e.status }))
+});
+
+if (!equipment) {
+  console.error('❌ ERRO: Equipamento não encontrado!', { selectedEquipment, availableEquipment: safeEquipment });
+  showConflictAlert('Erro: Equipamento não encontrado!', 'error');
+  return;
 }
+
+// ✅ CORREÇÃO: Permitir equipamentos com status diferente de 'available'
+if (equipment.status === 'maintenance') {
+  console.error('❌ ERRO: Equipamento em manutenção!', { equipment });
+  showConflictAlert('Erro: Equipamento está em manutenção!', 'error');
+  return;
+}
+
+console.log('🔍 DEBUG - Equipamento verificado com sucesso:', {
+  equipmentId: equipment.id,
+  equipmentName: equipment.name,
+  equipmentStatus: equipment.status
+});
 
 
 
