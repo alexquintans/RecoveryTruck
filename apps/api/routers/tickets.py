@@ -1336,24 +1336,23 @@ async def force_equipment_online(
         logger.info(f"🚨 EMERGÊNCIA - Encontrados {len(offline_equipment)} equipamentos offline para forçar online")
         
         forced_count = 0
-        cleaned_progress_count = 0
+        cleared_progress_count = 0
         
         for equipment in offline_equipment:
             logger.info(f"🚨 EMERGÊNCIA - Processando equipamento {equipment.identifier}")
             
-            # ✅ NOVO: Limpar registros de TicketServiceProgress que estão usando este equipamento
-            stuck_progress = db.query(TicketServiceProgress).filter(
+            # ✅ NOVO: Limpar registros de progresso que estão usando este equipamento
+            progress_records = db.query(TicketServiceProgress).filter(
                 TicketServiceProgress.equipment_id == equipment.id,
                 TicketServiceProgress.status == "in_progress"
             ).all()
             
-            if stuck_progress:
-                logger.warning(f"🚨 EMERGÊNCIA - Encontrados {len(stuck_progress)} registros de progresso em andamento para {equipment.identifier}")
-                for progress in stuck_progress:
-                    logger.warning(f"🚨 EMERGÊNCIA - Limpando progresso {progress.id} (ticket_service_id: {progress.ticket_service_id})")
+            if progress_records:
+                logger.info(f"🚨 EMERGÊNCIA - Encontrados {len(progress_records)} registros de progresso para limpar do equipamento {equipment.identifier}")
+                for progress in progress_records:
+                    logger.info(f"🚨 EMERGÊNCIA - Limpando progresso {progress.id} do equipamento {equipment.identifier}")
                     progress.equipment_id = None
-                    progress.status = "pending"  # Voltar para pendente
-                    cleaned_progress_count += 1
+                    cleared_progress_count += 1
             
             # Forçar equipamento para online
             logger.info(f"🚨 EMERGÊNCIA - Forçando equipamento {equipment.identifier} para online")
@@ -1363,14 +1362,14 @@ async def force_equipment_online(
         
         db.commit()
         
-        logger.info(f"🚨 EMERGÊNCIA - Forçou {forced_count} equipamentos para online e limpou {cleaned_progress_count} registros de progresso")
+        logger.info(f"🚨 EMERGÊNCIA - Forçou {forced_count} equipamentos para online e limpou {cleared_progress_count} registros de progresso")
         
         return {
             "success": True,
             "message": f"Forçou {forced_count} equipamentos offline para online no tenant {current_operator.tenant_id}",
             "details": {
                 "forced_count": forced_count,
-                "cleaned_progress_count": cleaned_progress_count,
+                "cleared_progress_count": cleared_progress_count,
                 "tenant_id": current_operator.tenant_id
             }
         }
@@ -1378,48 +1377,6 @@ async def force_equipment_online(
         logger.error(f"❌ ERRO ao forçar equipamentos online: {e}")
         db.rollback()
         raise HTTPException(status_code=500, detail="Erro ao forçar equipamentos online")
-
-@router.get("/equipment/status-raw")
-async def get_equipment_status_raw(
-    db: Session = Depends(get_db),
-    current_operator = Depends(get_current_operator)
-):
-    """Verifica o status de todos os equipamentos SEM verificação automática (para debug)"""
-    try:
-        logger.info(f"🔍 DEBUG - Verificando status RAW dos equipamentos para tenant {current_operator.tenant_id}")
-        
-        # Buscar todos os equipamentos do tenant SEM verificação automática
-        equipments = db.query(Equipment).filter(
-            Equipment.tenant_id == current_operator.tenant_id
-        ).all()
-        
-        logger.info(f"🔍 DEBUG - Encontrados {len(equipments)} equipamentos para o tenant {current_operator.tenant_id}")
-        
-        equipment_status = []
-        for equipment in equipments:
-            # Verificar se está sendo usado
-            in_use = db.query(TicketServiceProgress).filter(
-                TicketServiceProgress.equipment_id == equipment.id,
-                TicketServiceProgress.status == "in_progress"
-            ).first()
-            
-            equipment_status.append({
-                "id": str(equipment.id),
-                "identifier": equipment.identifier,
-                "status": equipment.status.value,
-                "in_use": in_use is not None,
-                "assigned_operator_id": str(equipment.assigned_operator_id) if equipment.assigned_operator_id else None
-            })
-        
-        logger.info(f"🔍 DEBUG - Status RAW dos equipamentos retornado: {len(equipment_status)} equipamentos")
-        
-        return {
-            "equipments": equipment_status,
-            "total": len(equipment_status)
-        }
-    except Exception as e:
-        logger.error(f"❌ ERRO ao verificar status RAW dos equipamentos: {e}")
-        raise HTTPException(status_code=500, detail="Erro ao verificar status RAW dos equipamentos")
 
 @router.post("/{ticket_id}/start")
 async def start_ticket(
@@ -2284,6 +2241,25 @@ def cleanup_stuck_equipment(db: Session, tenant_id: str = None):
                 liberated_count += 1
             else:
                 logger.info(f"🔧 DEBUG - Equipamento {equipment.identifier} está realmente em uso, mantendo offline")
+                
+        # ✅ NOVO: Limpeza adicional - forçar liberação de equipamentos com progresso "stuck"
+        stuck_progress = db.query(TicketServiceProgress).filter(
+            TicketServiceProgress.equipment_id.isnot(None),
+            TicketServiceProgress.status == "in_progress"
+        ).all()
+        
+        logger.info(f"🔧 DEBUG - Encontrados {len(stuck_progress)} registros de progresso com equipamento")
+        
+        for progress in stuck_progress:
+            if progress.equipment_id:
+                equipment = db.query(Equipment).filter(Equipment.id == progress.equipment_id).first()
+                if equipment and (not tenant_id or equipment.tenant_id == tenant_id):
+                    logger.info(f"🔧 DEBUG - Limpando progresso stuck do equipamento {equipment.identifier}")
+                    progress.equipment_id = None
+                    if equipment.status == EquipmentStatus.offline:
+                        equipment.status = EquipmentStatus.online
+                        equipment.assigned_operator_id = None
+                        liberated_count += 1
         
         db.commit()
         logger.info(f"🔧 DEBUG - Limpeza de equipamentos presos concluída. {liberated_count} equipamentos liberados.")

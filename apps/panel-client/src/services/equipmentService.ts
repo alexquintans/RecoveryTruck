@@ -69,23 +69,4 @@ export const equipmentService = {
       throw error;
     }
   },
-  // ✅ NOVO: Buscar status RAW dos equipamentos (sem verificação automática)
-  async getEquipmentStatusRaw() {
-    console.log('🔍 DEBUG - equipmentService.getEquipmentStatusRaw - Iniciando requisição...');
-    console.log('🔍 DEBUG - equipmentService.getEquipmentStatusRaw - URL:', '/tickets/equipment/status-raw');
-    console.log('🔍 DEBUG - equipmentService.getEquipmentStatusRaw - Params:', withTenant());
-    
-    try {
-      const response = await api.get('/tickets/equipment/status-raw', { params: withTenant() });
-      console.log('🔍 DEBUG - equipmentService.getEquipmentStatusRaw - Response:', {
-        status: response.status,
-        data: response.data,
-        equipmentsCount: response.data?.equipments?.length || 0
-      });
-      return response.data;
-    } catch (error) {
-      console.error('❌ ERRO - equipmentService.getEquipmentStatusRaw:', error);
-      throw error;
-    }
-  },
 }; 

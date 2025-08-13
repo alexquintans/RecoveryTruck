@@ -51,8 +51,8 @@ index-b6e70955.js:80 🔍 DEBUG - Axios Request Interceptor: {url: '/tickets', m
 index-b6e70955.js:80 🔍 DEBUG - Axios Request Interceptor: {url: '/tickets', method: 'get', headers: _m, params: {…}, data: undefined}
 index-b6e70955.js:80 🔍 DEBUG - Axios Request Interceptor: {url: '/tickets/status/pending-payment', method: 'get', headers: _m, params: {…}, data: undefined}
 index-b6e70955.js:80 🔍 DEBUG - Axios Request Interceptor: {url: '/tickets/equipment/status', method: 'get', headers: _m, params: {…}, data: undefined}
-index-b6e70955.js:291  GET https://recoverytruck-production.up.railway.app/operator/equipments?tenant_id=7f02a566-2406-436d-b10d-90ecddd3fe2d 404 (Not Found)
-l1 @ index-b6e70955.js:291
+index-b6e70955.js:291  GET https://recoverytruck-production.up.railway.app/operator/services?tenant_id=7f02a566-2406-436d-b10d-90ecddd3fe2d 404 (Not Found)
+Fw @ index-b6e70955.js:291
 (anonymous) @ index-b6e70955.js:297
 (anonymous) @ index-b6e70955.js:297
 rm @ index-b6e70955.js:40
@@ -60,8 +60,8 @@ Rc @ index-b6e70955.js:40
 (anonymous) @ index-b6e70955.js:40
 U @ index-b6e70955.js:25
 F @ index-b6e70955.js:25Understand this error
-index-b6e70955.js:291  GET https://recoverytruck-production.up.railway.app/operator/services?tenant_id=7f02a566-2406-436d-b10d-90ecddd3fe2d 404 (Not Found)
-Fw @ index-b6e70955.js:291
+index-b6e70955.js:291  GET https://recoverytruck-production.up.railway.app/operator/equipments?tenant_id=7f02a566-2406-436d-b10d-90ecddd3fe2d 404 (Not Found)
+l1 @ index-b6e70955.js:291
 (anonymous) @ index-b6e70955.js:297
 (anonymous) @ index-b6e70955.js:297
 rm @ index-b6e70955.js:40
@@ -407,9 +407,80 @@ index-b6e70955.js:297 🔄 Carregando progresso do ticket: a67f02f0-b596-4a7a-8e
 index-b6e70955.js:297 ✅ Progresso carregado para ticket: a67f02f0-b596-4a7a-8e64-d0c9f53a5a5e
 index-b6e70955.js:80 🔍 DEBUG - Axios Response Interceptor: {url: '/tickets', method: 'get', status: 200, statusText: '', data: Array(11)}
 index-b6e70955.js:96 🔍 Resultado tickets cancelados: (11) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
-index-b6e70955.js:80 🔍 DEBUG - Axios Response Interceptor: {url: '/tickets/status/pending-payment', method: 'get', status: 200, statusText: '', data: Array(0)}
-index-b6e70955.js:96 🔍 DEBUG - pendingPaymentQuery - Resultado: {total: 0, tickets: Array(0)}
-index-b6e70955.js:80 🔍 DEBUG - Axios Response Interceptor: {url: '/tickets', method: 'get', status: 200, statusText: '', data: Array(17)}
+index-b6e70955.js:77  GET https://recoverytruck-production.up.railway.app/operation?tenant_id=7f02a566-2406-436d-b10d-90ecddd3fe2d 404 (Not Found)
+(anonymous) @ index-b6e70955.js:77
+xhr @ index-b6e70955.js:77
+tw @ index-b6e70955.js:79
+Promise.then
+_request @ index-b6e70955.js:80
+request @ index-b6e70955.js:79
+Up.<computed> @ index-b6e70955.js:80
+(anonymous) @ index-b6e70955.js:75
+getOperation @ index-b6e70955.js:96
+queryFn @ index-b6e70955.js:96
+s @ index-b6e70955.js:67
+b @ index-b6e70955.js:67
+start @ index-b6e70955.js:67
+fetch @ index-b6e70955.js:67
+fd @ index-b6e70955.js:67
+onSubscribe @ index-b6e70955.js:67
+subscribe @ index-b6e70955.js:67
+(anonymous) @ index-b6e70955.js:67
+N4 @ index-b6e70955.js:38
+rm @ index-b6e70955.js:40
+Rc @ index-b6e70955.js:40
+(anonymous) @ index-b6e70955.js:40
+U @ index-b6e70955.js:25
+F @ index-b6e70955.js:25Understand this error
+index-b6e70955.js:303 🔍 DEBUG - Tickets agrupados por cliente: {Gustavo Fugulin Soares da Silva: Array(9), Alec: Array(1), "Alex Quintans ": Array(131), Teste PWA: Array(1), EverGreen MKT: Array(3), …}
+index-b6e70955.js:80 ❌ ERRO - Axios Response Interceptor Error: {url: '/operation', method: 'get', status: 404, statusText: '', data: {…}, …}
+(anonymous) @ index-b6e70955.js:80
+Promise.then
+_request @ index-b6e70955.js:80
+request @ index-b6e70955.js:79
+Up.<computed> @ index-b6e70955.js:80
+(anonymous) @ index-b6e70955.js:75
+getOperation @ index-b6e70955.js:96
+queryFn @ index-b6e70955.js:96
+s @ index-b6e70955.js:67
+b @ index-b6e70955.js:67
+start @ index-b6e70955.js:67
+fetch @ index-b6e70955.js:67
+fd @ index-b6e70955.js:67
+onSubscribe @ index-b6e70955.js:67
+subscribe @ index-b6e70955.js:67
+(anonymous) @ index-b6e70955.js:67
+N4 @ index-b6e70955.js:38
+rm @ index-b6e70955.js:40
+Rc @ index-b6e70955.js:40
+(anonymous) @ index-b6e70955.js:40
+U @ index-b6e70955.js:25
+F @ index-b6e70955.js:25Understand this error
+index-b6e70955.js:77  GET https://recoverytruck-production.up.railway.app/operation/equipment?tenant_id=7f02a566-2406-436d-b10d-90ecddd3fe2d 404 (Not Found)
+(anonymous) @ index-b6e70955.js:77
+xhr @ index-b6e70955.js:77
+tw @ index-b6e70955.js:79
+Promise.then
+_request @ index-b6e70955.js:80
+request @ index-b6e70955.js:79
+Up.<computed> @ index-b6e70955.js:80
+(anonymous) @ index-b6e70955.js:75
+list @ index-b6e70955.js:96
+queryFn @ index-b6e70955.js:96
+s @ index-b6e70955.js:67
+b @ index-b6e70955.js:67
+start @ index-b6e70955.js:67
+fetch @ index-b6e70955.js:67
+fd @ index-b6e70955.js:67
+onSubscribe @ index-b6e70955.js:67
+subscribe @ index-b6e70955.js:67
+(anonymous) @ index-b6e70955.js:67
+N4 @ index-b6e70955.js:38
+rm @ index-b6e70955.js:40
+Rc @ index-b6e70955.js:40
+(anonymous) @ index-b6e70955.js:40
+U @ index-b6e70955.js:25
+F @ index-b6e70955.js:25Understand this error
 index-b6e70955.js:77  GET https://recoverytruck-production.up.railway.app/tickets/equipment/status?tenant_id=7f02a566-2406-436d-b10d-90ecddd3fe2d 404 (Not Found)
 (anonymous) @ index-b6e70955.js:77
 xhr @ index-b6e70955.js:77
@@ -420,6 +491,29 @@ request @ index-b6e70955.js:79
 Up.<computed> @ index-b6e70955.js:80
 (anonymous) @ index-b6e70955.js:75
 getEquipmentStatus @ index-b6e70955.js:96
+s @ index-b6e70955.js:67
+b @ index-b6e70955.js:67
+start @ index-b6e70955.js:67
+fetch @ index-b6e70955.js:67
+fd @ index-b6e70955.js:67
+onSubscribe @ index-b6e70955.js:67
+subscribe @ index-b6e70955.js:67
+(anonymous) @ index-b6e70955.js:67
+N4 @ index-b6e70955.js:38
+rm @ index-b6e70955.js:40
+Rc @ index-b6e70955.js:40
+(anonymous) @ index-b6e70955.js:40
+U @ index-b6e70955.js:25
+F @ index-b6e70955.js:25Understand this error
+index-b6e70955.js:80 ❌ ERRO - Axios Response Interceptor Error: {url: '/operation/equipment', method: 'get', status: 404, statusText: '', data: {…}, …}
+(anonymous) @ index-b6e70955.js:80
+Promise.then
+_request @ index-b6e70955.js:80
+request @ index-b6e70955.js:79
+Up.<computed> @ index-b6e70955.js:80
+(anonymous) @ index-b6e70955.js:75
+list @ index-b6e70955.js:96
+queryFn @ index-b6e70955.js:96
 s @ index-b6e70955.js:67
 b @ index-b6e70955.js:67
 start @ index-b6e70955.js:67
@@ -473,56 +567,41 @@ Rc @ index-b6e70955.js:40
 (anonymous) @ index-b6e70955.js:40
 U @ index-b6e70955.js:25
 F @ index-b6e70955.js:25Understand this error
+index-b6e70955.js:80 🔍 DEBUG - Axios Response Interceptor: {url: '/tickets', method: 'get', status: 200, statusText: '', data: Array(17)}
+index-b6e70955.js:80 WebSocket connection to 'wss://recoverytruck-production.up.railway.app/ws?tenant_id=7f02a566-2406-436d-b10d-90ecddd3fe2d&client_type=operator&token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmNGU1ZGYxZi1kNTM4LTQ5ZWItOTE1ZS1lYzk5ZjA0OTZkYzIiLCJleHAiOjE3NTUxMjIzMjd9.1xcXC-Qy8cqlRj4_vGbAA_eK2hSIZLoqyceqWIGx14c' failed: 
+(anonymous) @ index-b6e70955.js:80
+(anonymous) @ index-b6e70955.js:80
+rm @ index-b6e70955.js:40
+Rc @ index-b6e70955.js:40
+(anonymous) @ index-b6e70955.js:40
+U @ index-b6e70955.js:25
+F @ index-b6e70955.js:25Understand this error
+index-b6e70955.js:80 🔍 DEBUG - Axios Response Interceptor: {url: '/tickets/status/pending-payment', method: 'get', status: 200, statusText: '', data: Array(0)}
+index-b6e70955.js:96 🔍 DEBUG - pendingPaymentQuery - Resultado: {total: 0, tickets: Array(0)}
 index-b6e70955.js:297 🔍 DEBUG - safePendingPaymentTickets useMemo: {pendingPaymentTickets: Array(0), pendingPaymentTicketsLength: 0, result: Array(0), resultLength: 0}
 index-b6e70955.js:303 🔍 DEBUG - Tickets agrupados por cliente: {Gustavo Fugulin Soares da Silva: Array(9), Alec: Array(1), "Alex Quintans ": Array(131), Teste PWA: Array(1), EverGreen MKT: Array(3), …}
-index-b6e70955.js:77  GET https://recoverytruck-production.up.railway.app/operation/equipment?tenant_id=7f02a566-2406-436d-b10d-90ecddd3fe2d 404 (Not Found)
-(anonymous) @ index-b6e70955.js:77
-xhr @ index-b6e70955.js:77
-tw @ index-b6e70955.js:79
-Promise.then
-_request @ index-b6e70955.js:80
-request @ index-b6e70955.js:79
-Up.<computed> @ index-b6e70955.js:80
-(anonymous) @ index-b6e70955.js:75
-list @ index-b6e70955.js:96
-queryFn @ index-b6e70955.js:96
-s @ index-b6e70955.js:67
-b @ index-b6e70955.js:67
-start @ index-b6e70955.js:67
-fetch @ index-b6e70955.js:67
-fd @ index-b6e70955.js:67
-onSubscribe @ index-b6e70955.js:67
-subscribe @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-N4 @ index-b6e70955.js:38
-rm @ index-b6e70955.js:40
-Rc @ index-b6e70955.js:40
-(anonymous) @ index-b6e70955.js:40
-U @ index-b6e70955.js:25
-F @ index-b6e70955.js:25Understand this error
-index-b6e70955.js:80 ❌ ERRO - Axios Response Interceptor Error: {url: '/operation/equipment', method: 'get', status: 404, statusText: '', data: {…}, …}
+index-b6e70955.js:80 ❌ WebSocket - Erro na conexão: Event {isTrusted: true, type: 'error', target: WebSocket, currentTarget: WebSocket, eventPhase: 2, …}
+G.onerror @ index-b6e70955.js:80Understand this error
+index-b6e70955.js:80 ❌ WebSocket error: Event {isTrusted: true, type: 'error', target: WebSocket, currentTarget: WebSocket, eventPhase: 2, …}
 (anonymous) @ index-b6e70955.js:80
-Promise.then
-_request @ index-b6e70955.js:80
-request @ index-b6e70955.js:79
-Up.<computed> @ index-b6e70955.js:80
-(anonymous) @ index-b6e70955.js:75
-list @ index-b6e70955.js:96
-queryFn @ index-b6e70955.js:96
-s @ index-b6e70955.js:67
-b @ index-b6e70955.js:67
-start @ index-b6e70955.js:67
-fetch @ index-b6e70955.js:67
-fd @ index-b6e70955.js:67
-onSubscribe @ index-b6e70955.js:67
-subscribe @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-N4 @ index-b6e70955.js:38
-rm @ index-b6e70955.js:40
-Rc @ index-b6e70955.js:40
-(anonymous) @ index-b6e70955.js:40
-U @ index-b6e70955.js:25
-F @ index-b6e70955.js:25Understand this error
+G.onerror @ index-b6e70955.js:80Understand this error
+index-b6e70955.js:96 🔌 WebSocket error: Event {isTrusted: true, type: 'error', target: WebSocket, currentTarget: WebSocket, eventPhase: 2, …}
+onError @ index-b6e70955.js:96
+(anonymous) @ index-b6e70955.js:80
+G.onerror @ index-b6e70955.js:80Understand this error
+index-b6e70955.js:80 🔌 WebSocket - Conexão fechada 1006 
+index-b6e70955.js:80 🔌 WebSocket fechado
+index-b6e70955.js:96 🔌 WebSocket fechado
+index-b6e70955.js:80 🔌 WebSocket - Tentativa de reconexão 1/5
+index-b6e70955.js:303 🔍 DEBUG - Tickets agrupados por cliente: {Gustavo Fugulin Soares da Silva: Array(9), Alec: Array(1), "Alex Quintans ": Array(131), Teste PWA: Array(1), EverGreen MKT: Array(3), …}
+index-b6e70955.js:303 🔍 DEBUG - Tickets agrupados por cliente: {Gustavo Fugulin Soares da Silva: Array(9), Alec: Array(1), "Alex Quintans ": Array(131), Teste PWA: Array(1), EverGreen MKT: Array(3), …}
+index-b6e70955.js:303 🔍 DEBUG - Tickets agrupados por cliente: {Gustavo Fugulin Soares da Silva: Array(9), Alec: Array(1), "Alex Quintans ": Array(131), Teste PWA: Array(1), EverGreen MKT: Array(3), …}
+index-b6e70955.js:80 🔍 DEBUG - Axios Request Interceptor: {url: '/operation', method: 'get', headers: _m, params: {…}, data: undefined}
+index-b6e70955.js:80 🔍 DEBUG - Axios Request Interceptor: {url: '/operation/equipment', method: 'get', headers: _m, params: {…}, data: undefined}
+index-b6e70955.js:96 🔍 DEBUG - equipmentService.getEquipmentStatus - Iniciando requisição...
+index-b6e70955.js:96 🔍 DEBUG - equipmentService.getEquipmentStatus - URL: /tickets/equipment/status
+index-b6e70955.js:96 🔍 DEBUG - equipmentService.getEquipmentStatus - Params: {tenant_id: '7f02a566-2406-436d-b10d-90ecddd3fe2d'}
+index-b6e70955.js:80 🔍 DEBUG - Axios Request Interceptor: {url: '/tickets/equipment/status', method: 'get', headers: _m, params: {…}, data: undefined}
 index-b6e70955.js:77  GET https://recoverytruck-production.up.railway.app/operation?tenant_id=7f02a566-2406-436d-b10d-90ecddd3fe2d 404 (Not Found)
 (anonymous) @ index-b6e70955.js:77
 xhr @ index-b6e70955.js:77
@@ -535,6 +614,11 @@ Up.<computed> @ index-b6e70955.js:80
 getOperation @ index-b6e70955.js:96
 queryFn @ index-b6e70955.js:96
 s @ index-b6e70955.js:67
+b @ index-b6e70955.js:67
+(anonymous) @ index-b6e70955.js:67
+Promise.then
+(anonymous) @ index-b6e70955.js:67
+Promise.catch
 b @ index-b6e70955.js:67
 start @ index-b6e70955.js:67
 fetch @ index-b6e70955.js:67
@@ -559,6 +643,11 @@ getOperation @ index-b6e70955.js:96
 queryFn @ index-b6e70955.js:96
 s @ index-b6e70955.js:67
 b @ index-b6e70955.js:67
+(anonymous) @ index-b6e70955.js:67
+Promise.then
+(anonymous) @ index-b6e70955.js:67
+Promise.catch
+b @ index-b6e70955.js:67
 start @ index-b6e70955.js:67
 fetch @ index-b6e70955.js:67
 fd @ index-b6e70955.js:67
@@ -571,37 +660,7 @@ Rc @ index-b6e70955.js:40
 (anonymous) @ index-b6e70955.js:40
 U @ index-b6e70955.js:25
 F @ index-b6e70955.js:25Understand this error
-index-b6e70955.js:80 WebSocket connection to 'wss://recoverytruck-production.up.railway.app/ws?tenant_id=7f02a566-2406-436d-b10d-90ecddd3fe2d&client_type=operator&token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmNGU1ZGYxZi1kNTM4LTQ5ZWItOTE1ZS1lYzk5ZjA0OTZkYzIiLCJleHAiOjE3NTUxMjIzMjd9.1xcXC-Qy8cqlRj4_vGbAA_eK2hSIZLoqyceqWIGx14c' failed: 
-(anonymous) @ index-b6e70955.js:80
-(anonymous) @ index-b6e70955.js:80
-rm @ index-b6e70955.js:40
-Rc @ index-b6e70955.js:40
-(anonymous) @ index-b6e70955.js:40
-U @ index-b6e70955.js:25
-F @ index-b6e70955.js:25Understand this error
-index-b6e70955.js:80 ❌ WebSocket - Erro na conexão: Event {isTrusted: true, type: 'error', target: WebSocket, currentTarget: WebSocket, eventPhase: 2, …}
-G.onerror @ index-b6e70955.js:80Understand this error
-index-b6e70955.js:80 ❌ WebSocket error: Event {isTrusted: true, type: 'error', target: WebSocket, currentTarget: WebSocket, eventPhase: 2, …}
-(anonymous) @ index-b6e70955.js:80
-G.onerror @ index-b6e70955.js:80Understand this error
-index-b6e70955.js:96 🔌 WebSocket error: Event {isTrusted: true, type: 'error', target: WebSocket, currentTarget: WebSocket, eventPhase: 2, …}
-onError @ index-b6e70955.js:96
-(anonymous) @ index-b6e70955.js:80
-G.onerror @ index-b6e70955.js:80Understand this error
-index-b6e70955.js:80 🔌 WebSocket - Conexão fechada 1006 
-index-b6e70955.js:80 🔌 WebSocket fechado
-index-b6e70955.js:96 🔌 WebSocket fechado
-index-b6e70955.js:80 🔌 WebSocket - Tentativa de reconexão 1/5
-index-b6e70955.js:303 🔍 DEBUG - Tickets agrupados por cliente: {Gustavo Fugulin Soares da Silva: Array(9), Alec: Array(1), "Alex Quintans ": Array(131), Teste PWA: Array(1), EverGreen MKT: Array(3), …}
-index-b6e70955.js:303 🔍 DEBUG - Tickets agrupados por cliente: {Gustavo Fugulin Soares da Silva: Array(9), Alec: Array(1), "Alex Quintans ": Array(131), Teste PWA: Array(1), EverGreen MKT: Array(3), …}
-index-b6e70955.js:303 🔍 DEBUG - Tickets agrupados por cliente: {Gustavo Fugulin Soares da Silva: Array(9), Alec: Array(1), "Alex Quintans ": Array(131), Teste PWA: Array(1), EverGreen MKT: Array(3), …}
-index-b6e70955.js:96 🔍 DEBUG - equipmentService.getEquipmentStatus - Iniciando requisição...
-index-b6e70955.js:96 🔍 DEBUG - equipmentService.getEquipmentStatus - URL: /tickets/equipment/status
-index-b6e70955.js:96 🔍 DEBUG - equipmentService.getEquipmentStatus - Params: {tenant_id: '7f02a566-2406-436d-b10d-90ecddd3fe2d'}
-index-b6e70955.js:80 🔍 DEBUG - Axios Request Interceptor: {url: '/tickets/equipment/status', method: 'get', headers: _m, params: {…}, data: undefined}
-index-b6e70955.js:80 🔍 DEBUG - Axios Request Interceptor: {url: '/operation/equipment', method: 'get', headers: _m, params: {…}, data: undefined}
-index-b6e70955.js:80 🔍 DEBUG - Axios Request Interceptor: {url: '/operation', method: 'get', headers: _m, params: {…}, data: undefined}
-index-b6e70955.js:77  GET https://recoverytruck-production.up.railway.app/operation?tenant_id=7f02a566-2406-436d-b10d-90ecddd3fe2d 404 (Not Found)
+index-b6e70955.js:77  GET https://recoverytruck-production.up.railway.app/operation/equipment?tenant_id=7f02a566-2406-436d-b10d-90ecddd3fe2d 404 (Not Found)
 (anonymous) @ index-b6e70955.js:77
 xhr @ index-b6e70955.js:77
 tw @ index-b6e70955.js:79
@@ -610,7 +669,35 @@ _request @ index-b6e70955.js:80
 request @ index-b6e70955.js:79
 Up.<computed> @ index-b6e70955.js:80
 (anonymous) @ index-b6e70955.js:75
-getOperation @ index-b6e70955.js:96
+list @ index-b6e70955.js:96
+queryFn @ index-b6e70955.js:96
+s @ index-b6e70955.js:67
+b @ index-b6e70955.js:67
+(anonymous) @ index-b6e70955.js:67
+Promise.then
+(anonymous) @ index-b6e70955.js:67
+Promise.catch
+b @ index-b6e70955.js:67
+start @ index-b6e70955.js:67
+fetch @ index-b6e70955.js:67
+fd @ index-b6e70955.js:67
+onSubscribe @ index-b6e70955.js:67
+subscribe @ index-b6e70955.js:67
+(anonymous) @ index-b6e70955.js:67
+N4 @ index-b6e70955.js:38
+rm @ index-b6e70955.js:40
+Rc @ index-b6e70955.js:40
+(anonymous) @ index-b6e70955.js:40
+U @ index-b6e70955.js:25
+F @ index-b6e70955.js:25Understand this error
+index-b6e70955.js:80 ❌ ERRO - Axios Response Interceptor Error: {url: '/operation/equipment', method: 'get', status: 404, statusText: '', data: {…}, …}
+(anonymous) @ index-b6e70955.js:80
+Promise.then
+_request @ index-b6e70955.js:80
+request @ index-b6e70955.js:79
+Up.<computed> @ index-b6e70955.js:80
+(anonymous) @ index-b6e70955.js:75
+list @ index-b6e70955.js:96
 queryFn @ index-b6e70955.js:96
 s @ index-b6e70955.js:67
 b @ index-b6e70955.js:67
@@ -641,92 +728,6 @@ request @ index-b6e70955.js:79
 Up.<computed> @ index-b6e70955.js:80
 (anonymous) @ index-b6e70955.js:75
 getEquipmentStatus @ index-b6e70955.js:96
-s @ index-b6e70955.js:67
-b @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.then
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-start @ index-b6e70955.js:67
-fetch @ index-b6e70955.js:67
-fd @ index-b6e70955.js:67
-onSubscribe @ index-b6e70955.js:67
-subscribe @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-N4 @ index-b6e70955.js:38
-rm @ index-b6e70955.js:40
-Rc @ index-b6e70955.js:40
-(anonymous) @ index-b6e70955.js:40
-U @ index-b6e70955.js:25
-F @ index-b6e70955.js:25Understand this error
-index-b6e70955.js:77  GET https://recoverytruck-production.up.railway.app/operation/equipment?tenant_id=7f02a566-2406-436d-b10d-90ecddd3fe2d 404 (Not Found)
-(anonymous) @ index-b6e70955.js:77
-xhr @ index-b6e70955.js:77
-tw @ index-b6e70955.js:79
-Promise.then
-_request @ index-b6e70955.js:80
-request @ index-b6e70955.js:79
-Up.<computed> @ index-b6e70955.js:80
-(anonymous) @ index-b6e70955.js:75
-list @ index-b6e70955.js:96
-queryFn @ index-b6e70955.js:96
-s @ index-b6e70955.js:67
-b @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.then
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-start @ index-b6e70955.js:67
-fetch @ index-b6e70955.js:67
-fd @ index-b6e70955.js:67
-onSubscribe @ index-b6e70955.js:67
-subscribe @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-N4 @ index-b6e70955.js:38
-rm @ index-b6e70955.js:40
-Rc @ index-b6e70955.js:40
-(anonymous) @ index-b6e70955.js:40
-U @ index-b6e70955.js:25
-F @ index-b6e70955.js:25Understand this error
-index-b6e70955.js:80 ❌ ERRO - Axios Response Interceptor Error: {url: '/operation/equipment', method: 'get', status: 404, statusText: '', data: {…}, …}
-(anonymous) @ index-b6e70955.js:80
-Promise.then
-_request @ index-b6e70955.js:80
-request @ index-b6e70955.js:79
-Up.<computed> @ index-b6e70955.js:80
-(anonymous) @ index-b6e70955.js:75
-list @ index-b6e70955.js:96
-queryFn @ index-b6e70955.js:96
-s @ index-b6e70955.js:67
-b @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.then
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-start @ index-b6e70955.js:67
-fetch @ index-b6e70955.js:67
-fd @ index-b6e70955.js:67
-onSubscribe @ index-b6e70955.js:67
-subscribe @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-N4 @ index-b6e70955.js:38
-rm @ index-b6e70955.js:40
-Rc @ index-b6e70955.js:40
-(anonymous) @ index-b6e70955.js:40
-U @ index-b6e70955.js:25
-F @ index-b6e70955.js:25Understand this error
-index-b6e70955.js:80 ❌ ERRO - Axios Response Interceptor Error: {url: '/operation', method: 'get', status: 404, statusText: '', data: {…}, …}
-(anonymous) @ index-b6e70955.js:80
-Promise.then
-_request @ index-b6e70955.js:80
-request @ index-b6e70955.js:79
-Up.<computed> @ index-b6e70955.js:80
-(anonymous) @ index-b6e70955.js:75
-getOperation @ index-b6e70955.js:96
-queryFn @ index-b6e70955.js:96
 s @ index-b6e70955.js:67
 b @ index-b6e70955.js:67
 (anonymous) @ index-b6e70955.js:67
@@ -1107,446 +1108,6 @@ U @ index-b6e70955.js:25
 F @ index-b6e70955.js:25Understand this error
 index-b6e70955.js:303 🔍 DEBUG - Tickets agrupados por cliente: {Gustavo Fugulin Soares da Silva: Array(9), Alec: Array(1), "Alex Quintans ": Array(131), Teste PWA: Array(1), EverGreen MKT: Array(3), …}
 index-b6e70955.js:303 🔍 DEBUG - Tickets agrupados por cliente: {Gustavo Fugulin Soares da Silva: Array(9), Alec: Array(1), "Alex Quintans ": Array(131), Teste PWA: Array(1), EverGreen MKT: Array(3), …}
-index-b6e70955.js:303 🔍 DEBUG - Tickets agrupados por cliente: {Gustavo Fugulin Soares da Silva: Array(9), Alec: Array(1), "Alex Quintans ": Array(131), Teste PWA: Array(1), EverGreen MKT: Array(3), …}
-index-b6e70955.js:303 🔍 DEBUG - Tickets agrupados por cliente: {Gustavo Fugulin Soares da Silva: Array(9), Alec: Array(1), "Alex Quintans ": Array(131), Teste PWA: Array(1), EverGreen MKT: Array(3), …}
-index-b6e70955.js:303 🔍 DEBUG - Tickets agrupados por cliente: {Gustavo Fugulin Soares da Silva: Array(9), Alec: Array(1), "Alex Quintans ": Array(131), Teste PWA: Array(1), EverGreen MKT: Array(3), …}
-index-b6e70955.js:303 🔍 DEBUG - Tickets agrupados por cliente: {Gustavo Fugulin Soares da Silva: Array(9), Alec: Array(1), "Alex Quintans ": Array(131), Teste PWA: Array(1), EverGreen MKT: Array(3), …}
-index-b6e70955.js:96 🔍 DEBUG - equipmentService.getEquipmentStatus - Iniciando requisição...
-index-b6e70955.js:96 🔍 DEBUG - equipmentService.getEquipmentStatus - URL: /tickets/equipment/status
-index-b6e70955.js:96 🔍 DEBUG - equipmentService.getEquipmentStatus - Params: {tenant_id: '7f02a566-2406-436d-b10d-90ecddd3fe2d'}
-index-b6e70955.js:80 🔍 DEBUG - Axios Request Interceptor: {url: '/tickets/equipment/status', method: 'get', headers: _m, params: {…}, data: undefined}
-index-b6e70955.js:303 🔍 DEBUG - Tickets agrupados por cliente: {Gustavo Fugulin Soares da Silva: Array(9), Alec: Array(1), "Alex Quintans ": Array(131), Teste PWA: Array(1), EverGreen MKT: Array(3), …}
-index-b6e70955.js:80 🔌 WebSocket - Conectando: wss://recoverytruck-production.up.railway.app/ws?tenant_id=7f02a566-2406-436d-b10d-90ecddd3fe2d&client_type=operator&token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmNGU1ZGYxZi1kNTM4LTQ5ZWItOTE1ZS1lYzk5ZjA0OTZkYzIiLCJleHAiOjE3NTUxMjIzMjd9.1xcXC-Qy8cqlRj4_vGbAA_eK2hSIZLoqyceqWIGx14c
-index-b6e70955.js:303 🔍 DEBUG - Tickets agrupados por cliente: {Gustavo Fugulin Soares da Silva: Array(9), Alec: Array(1), "Alex Quintans ": Array(131), Teste PWA: Array(1), EverGreen MKT: Array(3), …}
-index-b6e70955.js:77  GET https://recoverytruck-production.up.railway.app/tickets/equipment/status?tenant_id=7f02a566-2406-436d-b10d-90ecddd3fe2d 404 (Not Found)
-(anonymous) @ index-b6e70955.js:77
-xhr @ index-b6e70955.js:77
-tw @ index-b6e70955.js:79
-Promise.then
-_request @ index-b6e70955.js:80
-request @ index-b6e70955.js:79
-Up.<computed> @ index-b6e70955.js:80
-(anonymous) @ index-b6e70955.js:75
-getEquipmentStatus @ index-b6e70955.js:96
-s @ index-b6e70955.js:67
-b @ index-b6e70955.js:67
-start @ index-b6e70955.js:67
-fetch @ index-b6e70955.js:67
-fd @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-setInterval
-mg @ index-b6e70955.js:67
-gg @ index-b6e70955.js:67
-onQueryUpdate @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-batch @ index-b6e70955.js:67
-$s @ index-b6e70955.js:67
-l @ index-b6e70955.js:67
-m @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.then
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-start @ index-b6e70955.js:67
-fetch @ index-b6e70955.js:67
-fd @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-setInterval
-mg @ index-b6e70955.js:67
-gg @ index-b6e70955.js:67
-onQueryUpdate @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-batch @ index-b6e70955.js:67
-$s @ index-b6e70955.js:67
-l @ index-b6e70955.js:67
-m @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.then
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-start @ index-b6e70955.js:67
-fetch @ index-b6e70955.js:67
-fd @ index-b6e70955.js:67
-onSubscribe @ index-b6e70955.js:67
-subscribe @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-N4 @ index-b6e70955.js:38
-rm @ index-b6e70955.js:40
-Rc @ index-b6e70955.js:40
-(anonymous) @ index-b6e70955.js:40
-U @ index-b6e70955.js:25
-F @ index-b6e70955.js:25Understand this error
-index-b6e70955.js:80 ❌ ERRO - Axios Response Interceptor Error: {url: '/tickets/equipment/status', method: 'get', status: 404, statusText: '', data: {…}, …}
-(anonymous) @ index-b6e70955.js:80
-Promise.then
-_request @ index-b6e70955.js:80
-request @ index-b6e70955.js:79
-Up.<computed> @ index-b6e70955.js:80
-(anonymous) @ index-b6e70955.js:75
-getEquipmentStatus @ index-b6e70955.js:96
-s @ index-b6e70955.js:67
-b @ index-b6e70955.js:67
-start @ index-b6e70955.js:67
-fetch @ index-b6e70955.js:67
-fd @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-setInterval
-mg @ index-b6e70955.js:67
-gg @ index-b6e70955.js:67
-onQueryUpdate @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-batch @ index-b6e70955.js:67
-$s @ index-b6e70955.js:67
-l @ index-b6e70955.js:67
-m @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.then
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-start @ index-b6e70955.js:67
-fetch @ index-b6e70955.js:67
-fd @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-setInterval
-mg @ index-b6e70955.js:67
-gg @ index-b6e70955.js:67
-onQueryUpdate @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-batch @ index-b6e70955.js:67
-$s @ index-b6e70955.js:67
-l @ index-b6e70955.js:67
-m @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.then
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-start @ index-b6e70955.js:67
-fetch @ index-b6e70955.js:67
-fd @ index-b6e70955.js:67
-onSubscribe @ index-b6e70955.js:67
-subscribe @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-N4 @ index-b6e70955.js:38
-rm @ index-b6e70955.js:40
-Rc @ index-b6e70955.js:40
-(anonymous) @ index-b6e70955.js:40
-U @ index-b6e70955.js:25
-F @ index-b6e70955.js:25Understand this error
-index-b6e70955.js:96 ❌ ERRO - equipmentService.getEquipmentStatus: Nt {message: 'Request failed with status code 404', name: 'AxiosError', code: 'ERR_BAD_REQUEST', config: {…}, request: XMLHttpRequest, …}
-getEquipmentStatus @ index-b6e70955.js:96
-await in getEquipmentStatus
-s @ index-b6e70955.js:67
-b @ index-b6e70955.js:67
-start @ index-b6e70955.js:67
-fetch @ index-b6e70955.js:67
-fd @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-setInterval
-mg @ index-b6e70955.js:67
-gg @ index-b6e70955.js:67
-onQueryUpdate @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-batch @ index-b6e70955.js:67
-$s @ index-b6e70955.js:67
-l @ index-b6e70955.js:67
-m @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.then
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-start @ index-b6e70955.js:67
-fetch @ index-b6e70955.js:67
-fd @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-setInterval
-mg @ index-b6e70955.js:67
-gg @ index-b6e70955.js:67
-onQueryUpdate @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-batch @ index-b6e70955.js:67
-$s @ index-b6e70955.js:67
-l @ index-b6e70955.js:67
-m @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.then
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-start @ index-b6e70955.js:67
-fetch @ index-b6e70955.js:67
-fd @ index-b6e70955.js:67
-onSubscribe @ index-b6e70955.js:67
-subscribe @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-N4 @ index-b6e70955.js:38
-rm @ index-b6e70955.js:40
-Rc @ index-b6e70955.js:40
-(anonymous) @ index-b6e70955.js:40
-U @ index-b6e70955.js:25
-F @ index-b6e70955.js:25Understand this error
-index-b6e70955.js:303 🔍 DEBUG - Tickets agrupados por cliente: {Gustavo Fugulin Soares da Silva: Array(9), Alec: Array(1), "Alex Quintans ": Array(131), Teste PWA: Array(1), EverGreen MKT: Array(3), …}
-index-b6e70955.js:80 WebSocket connection to 'wss://recoverytruck-production.up.railway.app/ws?tenant_id=7f02a566-2406-436d-b10d-90ecddd3fe2d&client_type=operator&token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmNGU1ZGYxZi1kNTM4LTQ5ZWItOTE1ZS1lYzk5ZjA0OTZkYzIiLCJleHAiOjE3NTUxMjIzMjd9.1xcXC-Qy8cqlRj4_vGbAA_eK2hSIZLoqyceqWIGx14c' failed: 
-(anonymous) @ index-b6e70955.js:80
-(anonymous) @ index-b6e70955.js:80Understand this error
-index-b6e70955.js:80 ❌ WebSocket - Erro na conexão: Event {isTrusted: true, type: 'error', target: WebSocket, currentTarget: WebSocket, eventPhase: 2, …}
-G.onerror @ index-b6e70955.js:80Understand this error
-index-b6e70955.js:80 ❌ WebSocket error: Event {isTrusted: true, type: 'error', target: WebSocket, currentTarget: WebSocket, eventPhase: 2, …}
-(anonymous) @ index-b6e70955.js:80
-G.onerror @ index-b6e70955.js:80Understand this error
-index-b6e70955.js:96 🔌 WebSocket error: Event {isTrusted: true, type: 'error', target: WebSocket, currentTarget: WebSocket, eventPhase: 2, …}
-onError @ index-b6e70955.js:96
-(anonymous) @ index-b6e70955.js:80
-G.onerror @ index-b6e70955.js:80Understand this error
-index-b6e70955.js:80 🔌 WebSocket - Conexão fechada 1006 
-index-b6e70955.js:80 🔌 WebSocket fechado
-index-b6e70955.js:96 🔌 WebSocket fechado
-index-b6e70955.js:80 🔌 WebSocket - Tentativa de reconexão 3/5
-index-b6e70955.js:303 🔍 DEBUG - Tickets agrupados por cliente: {Gustavo Fugulin Soares da Silva: Array(9), Alec: Array(1), "Alex Quintans ": Array(131), Teste PWA: Array(1), EverGreen MKT: Array(3), …}
-index-b6e70955.js:303 🔍 DEBUG - Tickets agrupados por cliente: {Gustavo Fugulin Soares da Silva: Array(9), Alec: Array(1), "Alex Quintans ": Array(131), Teste PWA: Array(1), EverGreen MKT: Array(3), …}
-index-b6e70955.js:96 🔍 DEBUG - equipmentService.getEquipmentStatus - Iniciando requisição...
-index-b6e70955.js:96 🔍 DEBUG - equipmentService.getEquipmentStatus - URL: /tickets/equipment/status
-index-b6e70955.js:96 🔍 DEBUG - equipmentService.getEquipmentStatus - Params: {tenant_id: '7f02a566-2406-436d-b10d-90ecddd3fe2d'}
-index-b6e70955.js:80 🔍 DEBUG - Axios Request Interceptor: {url: '/tickets/equipment/status', method: 'get', headers: _m, params: {…}, data: undefined}
-index-b6e70955.js:303 🔍 DEBUG - Tickets agrupados por cliente: {Gustavo Fugulin Soares da Silva: Array(9), Alec: Array(1), "Alex Quintans ": Array(131), Teste PWA: Array(1), EverGreen MKT: Array(3), …}
-index-b6e70955.js:77  GET https://recoverytruck-production.up.railway.app/tickets/equipment/status?tenant_id=7f02a566-2406-436d-b10d-90ecddd3fe2d 404 (Not Found)
-(anonymous) @ index-b6e70955.js:77
-xhr @ index-b6e70955.js:77
-tw @ index-b6e70955.js:79
-Promise.then
-_request @ index-b6e70955.js:80
-request @ index-b6e70955.js:79
-Up.<computed> @ index-b6e70955.js:80
-(anonymous) @ index-b6e70955.js:75
-getEquipmentStatus @ index-b6e70955.js:96
-s @ index-b6e70955.js:67
-b @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.then
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-start @ index-b6e70955.js:67
-fetch @ index-b6e70955.js:67
-fd @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-setInterval
-mg @ index-b6e70955.js:67
-gg @ index-b6e70955.js:67
-onQueryUpdate @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-batch @ index-b6e70955.js:67
-$s @ index-b6e70955.js:67
-l @ index-b6e70955.js:67
-m @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.then
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-start @ index-b6e70955.js:67
-fetch @ index-b6e70955.js:67
-fd @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-setInterval
-mg @ index-b6e70955.js:67
-gg @ index-b6e70955.js:67
-onQueryUpdate @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-batch @ index-b6e70955.js:67
-$s @ index-b6e70955.js:67
-l @ index-b6e70955.js:67
-m @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.then
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-start @ index-b6e70955.js:67
-fetch @ index-b6e70955.js:67
-fd @ index-b6e70955.js:67
-onSubscribe @ index-b6e70955.js:67
-subscribe @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-N4 @ index-b6e70955.js:38
-rm @ index-b6e70955.js:40
-Rc @ index-b6e70955.js:40
-(anonymous) @ index-b6e70955.js:40
-U @ index-b6e70955.js:25
-F @ index-b6e70955.js:25Understand this error
-index-b6e70955.js:80 ❌ ERRO - Axios Response Interceptor Error: {url: '/tickets/equipment/status', method: 'get', status: 404, statusText: '', data: {…}, …}
-(anonymous) @ index-b6e70955.js:80
-Promise.then
-_request @ index-b6e70955.js:80
-request @ index-b6e70955.js:79
-Up.<computed> @ index-b6e70955.js:80
-(anonymous) @ index-b6e70955.js:75
-getEquipmentStatus @ index-b6e70955.js:96
-s @ index-b6e70955.js:67
-b @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.then
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-start @ index-b6e70955.js:67
-fetch @ index-b6e70955.js:67
-fd @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-setInterval
-mg @ index-b6e70955.js:67
-gg @ index-b6e70955.js:67
-onQueryUpdate @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-batch @ index-b6e70955.js:67
-$s @ index-b6e70955.js:67
-l @ index-b6e70955.js:67
-m @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.then
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-start @ index-b6e70955.js:67
-fetch @ index-b6e70955.js:67
-fd @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-setInterval
-mg @ index-b6e70955.js:67
-gg @ index-b6e70955.js:67
-onQueryUpdate @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-batch @ index-b6e70955.js:67
-$s @ index-b6e70955.js:67
-l @ index-b6e70955.js:67
-m @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.then
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-start @ index-b6e70955.js:67
-fetch @ index-b6e70955.js:67
-fd @ index-b6e70955.js:67
-onSubscribe @ index-b6e70955.js:67
-subscribe @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-N4 @ index-b6e70955.js:38
-rm @ index-b6e70955.js:40
-Rc @ index-b6e70955.js:40
-(anonymous) @ index-b6e70955.js:40
-U @ index-b6e70955.js:25
-F @ index-b6e70955.js:25Understand this error
-index-b6e70955.js:96 ❌ ERRO - equipmentService.getEquipmentStatus: Nt {message: 'Request failed with status code 404', name: 'AxiosError', code: 'ERR_BAD_REQUEST', config: {…}, request: XMLHttpRequest, …}
-getEquipmentStatus @ index-b6e70955.js:96
-await in getEquipmentStatus
-s @ index-b6e70955.js:67
-b @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.then
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-start @ index-b6e70955.js:67
-fetch @ index-b6e70955.js:67
-fd @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-setInterval
-mg @ index-b6e70955.js:67
-gg @ index-b6e70955.js:67
-onQueryUpdate @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-batch @ index-b6e70955.js:67
-$s @ index-b6e70955.js:67
-l @ index-b6e70955.js:67
-m @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.then
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-start @ index-b6e70955.js:67
-fetch @ index-b6e70955.js:67
-fd @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-setInterval
-mg @ index-b6e70955.js:67
-gg @ index-b6e70955.js:67
-onQueryUpdate @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-batch @ index-b6e70955.js:67
-$s @ index-b6e70955.js:67
-l @ index-b6e70955.js:67
-m @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-Promise.then
-(anonymous) @ index-b6e70955.js:67
-Promise.catch
-b @ index-b6e70955.js:67
-start @ index-b6e70955.js:67
-fetch @ index-b6e70955.js:67
-fd @ index-b6e70955.js:67
-onSubscribe @ index-b6e70955.js:67
-subscribe @ index-b6e70955.js:67
-(anonymous) @ index-b6e70955.js:67
-N4 @ index-b6e70955.js:38
-rm @ index-b6e70955.js:40
-Rc @ index-b6e70955.js:40
-(anonymous) @ index-b6e70955.js:40
-U @ index-b6e70955.js:25
-F @ index-b6e70955.js:25Understand this error
 index-b6e70955.js:303 🔍 DEBUG - Tickets agrupados por cliente: {Gustavo Fugulin Soares da Silva: Array(9), Alec: Array(1), "Alex Quintans ": Array(131), Teste PWA: Array(1), EverGreen MKT: Array(3), …}
 index-b6e70955.js:303 🔍 DEBUG - Tickets agrupados por cliente: {Gustavo Fugulin Soares da Silva: Array(9), Alec: Array(1), "Alex Quintans ": Array(131), Teste PWA: Array(1), EverGreen MKT: Array(3), …}
 index-b6e70955.js:303 🔍 DEBUG - Tickets agrupados por cliente: {Gustavo Fugulin Soares da Silva: Array(9), Alec: Array(1), "Alex Quintans ": Array(131), Teste PWA: Array(1), EverGreen MKT: Array(3), …}
