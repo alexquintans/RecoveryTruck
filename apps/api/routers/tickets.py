@@ -1546,7 +1546,7 @@ async def cancel_ticket(
     
     # ✅ NOVO: Commit das alterações
     db.commit()
-        
+    
     # ✅ NOVO: Broadcast de atualização para todos os equipamentos liberados
     for equipment in liberated_equipments:
         equipment_update_data = {
@@ -2476,8 +2476,10 @@ async def check_ticket_conflicts(
         conflicts["conflict_type"] = "customer_already_being_served"
         conflicts["can_proceed"] = False
         
-        # Buscar detalhes dos conflitos
+        # Buscar detalhes dos conflitos (evitando duplicatas)
         conflicting_tickets = []
+        seen_services = set()  # Para evitar duplicatas
+        
         for conflicting_progress in customer_services_in_progress:
             conflicting_ticket_service = db.query(TicketService).filter(
                 TicketService.id == conflicting_progress.ticket_service_id
@@ -2491,13 +2493,18 @@ async def check_ticket_conflicts(
                 service = db.query(Service).filter(Service.id == conflicting_ticket_service.service_id).first()
                 
                 if conflicting_ticket and service:
-                    conflicting_tickets.append({
-                        "ticket_number": conflicting_ticket.ticket_number,
-                        "service_name": service.name,
-                        "service_id": str(conflicting_ticket_service.service_id),
-                        "status": conflicting_progress.status,
-                        "assigned_operator": conflicting_ticket.assigned_operator.name if conflicting_ticket.assigned_operator else "Não atribuído"
-                    })
+                    # ✅ CORREÇÃO: Criar chave única para evitar duplicatas
+                    service_key = f"{conflicting_ticket.ticket_number}-{service.id}"
+                    
+                    if service_key not in seen_services:
+                        seen_services.add(service_key)
+                        conflicting_tickets.append({
+                            "ticket_number": conflicting_ticket.ticket_number,
+                            "service_name": service.name,
+                            "service_id": str(conflicting_ticket_service.service_id),
+                            "status": conflicting_progress.status,
+                            "assigned_operator": conflicting_ticket.assigned_operator.name if conflicting_ticket.assigned_operator else "Não atribuído"
+                        })
         
         conflicts["conflict_details"] = {
             "customer_name": ticket.customer_name,
