@@ -816,6 +816,43 @@ const getElapsedTime = useCallback((startTime: string | Date) => {
   }
 }, [currentTime]);
 
+// ✅ NOVO: Função para calcular countdown regressivo do serviço
+const getServiceCountdown = useCallback((ticket: any) => {
+  if (!(ticket.started_at || ticket.startedAt)) return null;
+  
+  const startTime = new Date(ticket.started_at || ticket.startedAt);
+  const now = currentTime;
+  const elapsedMs = now.getTime() - startTime.getTime();
+  const elapsedMins = Math.floor(elapsedMs / (1000 * 60));
+  
+  // Duração do serviço (padrão 10 minutos)
+  const serviceDuration = ticket.services?.[0]?.duration_minutes || 
+                         ticket.services?.[0]?.duration || 
+                         ticket.services?.[0]?.durationMinutes || 
+                         10; // Padrão de 10 minutos
+  
+  const remainingMins = Math.max(0, serviceDuration - elapsedMins);
+  const isOverdue = remainingMins <= 0;
+  
+  // Formatar tempo restante
+  const formatTime = (minutes: number) => {
+    if (minutes <= 0) return '0min';
+    if (minutes < 60) return `${minutes}min`;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}h ${mins}min`;
+  };
+  
+  return {
+    remainingTime: formatTime(remainingMins),
+    remainingMinutes: remainingMins,
+    elapsedMinutes: elapsedMins,
+    serviceDuration,
+    isOverdue,
+    progress: Math.min((elapsedMins / serviceDuration) * 100, 100)
+  };
+}, [currentTime]);
+
 // ✅ NOVO: Função para calcular progresso do serviço
 const getServiceProgress = useCallback((ticket: any) => {
   if (!(ticket.started_at || ticket.startedAt)) return null;
@@ -2711,47 +2748,62 @@ callLoading={callLoading}
                             ))}
                           </div>
                           
-                                                     {/* ✅ NOVO: Timer/Countdown do Serviço */}
+                                                     {/* ✅ NOVO: Countdown Regressivo do Serviço */}
                            {(ticket.started_at || ticket.startedAt) && (
                              <div className="mt-2 p-2 bg-blue-50 rounded-lg">
-                               <div className="flex items-center justify-between">
-                                 <div className="text-xs font-semibold text-blue-800">Tempo de Serviço:</div>
-                                 <div className="text-xs text-blue-600 font-mono">
-                                   {getElapsedTime(ticket.started_at || ticket.startedAt)}
-                                 </div>
-                               </div>
-                               
-                               {/* ✅ NOVO: Barra de Progresso Visual */}
                                {(() => {
-                                 const progressData = getServiceProgress(ticket);
-                                 if (!progressData) return null;
+                                 const countdownData = getServiceCountdown(ticket);
+                                 if (!countdownData) return null;
                                  
-                                 const { progress, isOverdue, estimatedDuration } = progressData;
+                                 const { remainingTime, remainingMinutes, serviceDuration, isOverdue, progress } = countdownData;
                                  
                                  return (
-                                   <div className="mt-1">
-                                     <div className="flex justify-between text-xs text-gray-600 mb-1">
-                                       <span>0min</span>
-                                       <span>{estimatedDuration}min</span>
-                                     </div>
-                                     <div className="w-full bg-gray-200 rounded-full h-2">
-                                       <div 
-                                         className={`h-2 rounded-full transition-all duration-300 ${
-                                           isOverdue 
-                                             ? 'bg-red-500' 
-                                             : progress > 80 
-                                               ? 'bg-orange-500' 
-                                               : 'bg-blue-500'
-                                         }`}
-                                         style={{ width: `${progress}%` }}
-                                       />
-                                     </div>
-                                     {isOverdue && (
-                                       <div className="text-xs text-red-600 font-semibold mt-1">
-                                         ⚠️ Tempo excedido
+                                   <>
+                                     <div className="flex items-center justify-between">
+                                       <div className="text-xs font-semibold text-blue-800">Tempo Restante:</div>
+                                       <div className={`text-xs font-mono font-bold ${
+                                         isOverdue 
+                                           ? 'text-red-600' 
+                                           : remainingMinutes <= 2 
+                                             ? 'text-orange-600' 
+                                             : 'text-blue-600'
+                                       }`}>
+                                         {remainingTime}
                                        </div>
-                                     )}
-                                   </div>
+                                     </div>
+                                     
+                                     {/* ✅ NOVO: Barra de Progresso Visual */}
+                                     <div className="mt-1">
+                                       <div className="flex justify-between text-xs text-gray-600 mb-1">
+                                         <span>0min</span>
+                                         <span>{serviceDuration}min</span>
+                                       </div>
+                                       <div className="w-full bg-gray-200 rounded-full h-2">
+                                         <div 
+                                           className={`h-2 rounded-full transition-all duration-300 ${
+                                             isOverdue 
+                                               ? 'bg-red-500' 
+                                               : progress > 80 
+                                                 ? 'bg-orange-500' 
+                                                 : 'bg-blue-500'
+                                           }`}
+                                           style={{ width: `${progress}%` }}
+                                         />
+                                       </div>
+                                       {isOverdue && (
+                                         <div className="text-xs text-red-600 font-semibold mt-1 flex items-center gap-1">
+                                           <span>⚠️</span>
+                                           <span>Tempo excedido em {Math.abs(remainingMinutes)}min</span>
+                                         </div>
+                                       )}
+                                       {!isOverdue && remainingMinutes <= 2 && (
+                                         <div className="text-xs text-orange-600 font-semibold mt-1 flex items-center gap-1">
+                                           <span>⏰</span>
+                                           <span>Terminando em breve!</span>
+                                         </div>
+                                       )}
+                                     </div>
+                                   </>
                                  );
                                })()}
                              </div>
