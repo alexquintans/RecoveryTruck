@@ -2751,9 +2751,9 @@ callLoading={callLoading}
                             ))}
                           </div>
                           
-                                                     {/* ✅ NOVO: Countdown Regressivo do Serviço - Design Melhorado */}
+                                                     {/* ✅ NOVO: Countdown Regressivo do Serviço - Design Compacto */}
                            {(ticket.started_at || ticket.startedAt) && (
-                             <div className="mt-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm">
+                             <div className="mt-2 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
                                {(() => {
                                  const countdownData = getServiceCountdown(ticket);
                                  if (!countdownData) return null;
@@ -2762,21 +2762,18 @@ callLoading={callLoading}
                                  
                                  return (
                                    <>
-                                     {/* Header do Countdown */}
-                                     <div className="flex items-center justify-between mb-3">
-                                       <div className="flex items-center gap-2">
-                                         <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                                         <span className="text-sm font-semibold text-gray-700">Tempo Restante</span>
-                                       </div>
+                                     {/* Header Compacto */}
+                                     <div className="flex items-center justify-between mb-2">
                                        <div className="flex items-center gap-1">
-                                         <span className="text-xs text-gray-500">Duração:</span>
-                                         <span className="text-xs font-medium text-gray-700">{serviceDuration}min</span>
+                                         <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
+                                         <span className="text-xs font-medium text-gray-700">Tempo Restante</span>
                                        </div>
+                                       <span className="text-xs text-gray-500">{serviceDuration}min</span>
                                      </div>
                                      
-                                     {/* Timer Principal */}
-                                     <div className="text-center mb-3">
-                                       <div className={`text-3xl font-bold font-mono tracking-wider ${
+                                     {/* Timer Compacto */}
+                                     <div className="text-center mb-2">
+                                       <div className={`text-lg font-bold font-mono tracking-wide ${
                                          isOverdue 
                                            ? 'text-red-600' 
                                            : remainingMinutes <= 2 
@@ -2785,54 +2782,41 @@ callLoading={callLoading}
                                        }`}>
                                          {remainingTime}
                                        </div>
-                                       <div className="text-xs text-gray-500 mt-1">
-                                         {isOverdue ? 'Tempo Excedido' : 'Restante'}
-                                       </div>
                                      </div>
                                      
-                                     {/* Barra de Progresso Melhorada */}
-                                     <div className="mb-3">
-                                       <div className="flex justify-between text-xs text-gray-600 mb-2">
-                                         <span>0:00</span>
-                                         <span>{serviceDuration}:00</span>
-                                       </div>
-                                       <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                                     {/* Barra de Progresso Compacta */}
+                                     <div className="mb-2">
+                                       <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                                          <div 
-                                           className={`h-full rounded-full transition-all duration-500 ease-out ${
+                                           className={`h-full rounded-full transition-all duration-300 ${
                                              isOverdue 
-                                               ? 'bg-gradient-to-r from-red-400 to-red-600' 
+                                               ? 'bg-red-500' 
                                                : progress > 80 
-                                                 ? 'bg-gradient-to-r from-orange-400 to-orange-600' 
-                                                 : 'bg-gradient-to-r from-blue-400 to-blue-600'
+                                                 ? 'bg-orange-500' 
+                                                 : 'bg-blue-500'
                                            }`}
                                            style={{ width: `${progress}%` }}
                                          />
                                        </div>
                                      </div>
                                      
-                                     {/* Alertas Visuais */}
+                                     {/* Alertas Compactos */}
                                      {isOverdue && (
-                                       <div className="bg-red-50 border border-red-200 rounded-lg p-2 flex items-center gap-2">
-                                         <span className="text-red-500">⚠️</span>
-                                         <span className="text-xs text-red-700 font-medium">
-                                           Tempo excedido em {Math.abs(remainingMinutes)}:{Math.abs(remainingSeconds).toString().padStart(2, '0')}
-                                         </span>
+                                       <div className="text-xs text-red-600 font-medium flex items-center gap-1">
+                                         <span>⚠️</span>
+                                         <span>Excedido {Math.abs(remainingMinutes)}:{Math.abs(remainingSeconds).toString().padStart(2, '0')}</span>
                                        </div>
                                      )}
                                      {!isOverdue && remainingMinutes <= 2 && remainingMinutes > 0 && (
-                                       <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 flex items-center gap-2">
-                                         <span className="text-orange-500">⏰</span>
-                                         <span className="text-xs text-orange-700 font-medium">
-                                           Terminando em breve!
-                                         </span>
+                                       <div className="text-xs text-orange-600 font-medium flex items-center gap-1">
+                                         <span>⏰</span>
+                                         <span>Terminando</span>
                                        </div>
                                      )}
                                      {!isOverdue && remainingMinutes === 0 && remainingSeconds <= 30 && (
-                                       <div className="bg-red-50 border border-red-200 rounded-lg p-2 flex items-center gap-2 animate-pulse">
-                                         <span className="text-red-500">🚨</span>
-                                         <span className="text-xs text-red-700 font-medium">
-                                           Últimos segundos!
-                                         </span>
+                                       <div className="text-xs text-red-600 font-medium flex items-center gap-1 animate-pulse">
+                                         <span>🚨</span>
+                                         <span>Últimos segundos!</span>
                                        </div>
                                      )}
                                    </>
