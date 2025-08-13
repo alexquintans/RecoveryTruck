@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useServiceProgress } from '../hooks/useServiceProgress';
 import { useOperatorConfig } from '../hooks/useOperatorConfig';
 import { useOperatorPreferences } from '../hooks/useOperatorPreferences';
+import { useEquipmentStatus } from '../hooks/useEquipmentStatus';
 import { fetchServices, fetchEquipments, fetchExtras, createService, createExtra, updateService as apiUpdateService, deleteService as apiDeleteService, updateExtra as apiUpdateExtra, deleteExtra as apiDeleteExtra, saveOperationConfig } from '../services/operatorConfigService';
 // ✅ PROTEÇÃO: Importar Error Boundary
 import { WebSocketErrorBoundary } from '@totem/hooks';
@@ -2156,15 +2157,28 @@ const queuedTickets = tickets.filter(ticket => ticket.status === 'in_queue');
 //   ticket.operatorId === operatorId
 // );
 
-// Gerar equipamentos baseado na configuração
+// ✅ NOVO: Usar status real dos equipamentos
+const { equipmentStatus, isLoading: equipmentStatusLoading, forceCleanup, isCleaningUp } = useEquipmentStatus();
+
+// ✅ NOVO: Combinar equipamentos configurados com status real
 const availableEquipments = (equipments || [])
 .filter(eq => eq.isActive && eq.count > 0)
-.map(eq => ({
-id: eq.id,
-name: eq.name,
-type: eq.type,
-status: 'available',
-}));
+.map(eq => {
+  // Buscar status real do equipamento
+  const realStatus = equipmentStatus.find(status => status.id === eq.id);
+  
+  return {
+    id: eq.id,
+    name: eq.name,
+    type: eq.type,
+    status: 'available', // Status padrão para compatibilidade
+    realStatus: realStatus ? {
+      status: realStatus.status,
+      in_use: realStatus.in_use,
+      assigned_operator_id: realStatus.assigned_operator_id
+    } : undefined
+  };
+});
 
 // Ícones de equipamentos
 const equipmentIcons: Record<string, JSX.Element> = {
@@ -2590,7 +2604,104 @@ tickets={safeMyTickets.length}
 </div>
 {/* Seleção de Equipamentos */}
 <section className="bg-white p-6 rounded-xl shadow flex flex-col gap-4">
-<h2 className="text-xl font-semibold mb-2">Selecione um Equipamento</h2>
+<div className="flex justify-between items-center mb-4">
+  <h2 className="text-xl font-semibold">Selecione um Equipamento</h2>
+  <div className="flex gap-2">
+    {/* ✅ NOVO: Botão de limpeza forçada */}
+    <button
+      onClick={() => {
+        console.log('🔧 DEBUG - Forçando limpeza dos equipamentos...');
+        forceCleanup();
+      }}
+      disabled={isCleaningUp}
+      className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 ${
+        isCleaningUp 
+          ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+          : 'bg-orange-500 hover:bg-orange-600 text-white shadow-md hover:shadow-lg'
+      }`}
+      title="Forçar limpeza dos equipamentos"
+    >
+      {isCleaningUp ? (
+        <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      ) : (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+      )}
+      {isCleaningUp ? 'Limpando...' : 'Limpar Equipamentos'}
+    </button>
+    
+    {/* ✅ NOVO: Botão de atualizar status */}
+    <button
+      onClick={() => {
+        console.log('🔍 DEBUG - Atualizando status dos equipamentos...');
+        queryClient.invalidateQueries({ queryKey: ['equipment', 'status'] });
+      }}
+      disabled={equipmentStatusLoading}
+      className={`p-2 rounded-lg transition-all duration-200 ${
+        equipmentStatusLoading 
+          ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+          : 'bg-blue-500 hover:bg-blue-600 text-white shadow-md hover:shadow-lg'
+      }`}
+      title="Atualizar status dos equipamentos"
+    >
+      {equipmentStatusLoading ? (
+        <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      ) : (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      )}
+    </button>
+  </div>
+</div>
+
+{/* ✅ NOVO: Status de carregamento */}
+{equipmentStatusLoading && (
+  <div className="flex items-center justify-center py-4 text-blue-600">
+    <svg className="w-5 h-5 animate-spin mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+    </svg>
+    Atualizando status dos equipamentos...
+  </div>
+)}
+
+{/* ✅ NOVO: Debug - Informações detalhadas dos equipamentos */}
+{process.env.NODE_ENV === 'development' && (
+  <details className="bg-gray-50 p-4 rounded-lg border">
+    <summary className="cursor-pointer font-medium text-gray-700 mb-2">
+      🔍 Debug - Status dos Equipamentos ({equipmentStatus.length})
+    </summary>
+    <div className="space-y-2 text-sm">
+      {equipmentStatus.map((status) => (
+        <div key={status.id} className="flex items-center justify-between p-2 bg-white rounded border">
+          <div>
+            <span className="font-medium">{status.identifier}</span>
+            <span className={`ml-2 px-2 py-1 rounded text-xs ${
+              status.in_use 
+                ? 'bg-red-100 text-red-700' 
+                : status.status === 'maintenance'
+                ? 'bg-yellow-100 text-yellow-700'
+                : status.status === 'offline'
+                ? 'bg-gray-100 text-gray-700'
+                : 'bg-green-100 text-green-700'
+            }`}>
+              {status.in_use ? 'Em uso' : status.status}
+            </span>
+          </div>
+          <div className="text-xs text-gray-500">
+            {status.assigned_operator_id && `Operador: ${status.assigned_operator_id.slice(0, 8)}...`}
+          </div>
+        </div>
+      ))}
+    </div>
+  </details>
+)}
+
 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
 {availableEquipments.map((equipment) => (
 <EquipmentCard
@@ -2598,6 +2709,7 @@ key={equipment.id}
 equipamento={equipment}
 selecionado={selectedEquipment === equipment.id}
 onClick={() => setSelectedEquipment(equipment.id)}
+realStatus={equipment.realStatus}
 />
 ))}
 </div>

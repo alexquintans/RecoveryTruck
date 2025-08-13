@@ -14,4 +14,14 @@ export const equipmentService = {
     const response = await api.post('/operation/stop', {}, { params: withTenant() });
     return response.data;
   },
+  // ✅ NOVO: Buscar status real dos equipamentos
+  async getEquipmentStatus() {
+    const response = await api.get('/tickets/equipment/status', { params: withTenant() });
+    return response.data;
+  },
+  // ✅ NOVO: Forçar limpeza dos equipamentos
+  async forceCleanup() {
+    const response = await api.post('/tickets/equipment/cleanup', {}, { params: withTenant() });
+    return response.data;
+  },
 }; 

@@ -1050,6 +1050,16 @@ async def call_ticket_service(
     # ✅ NOVA LÓGICA: Verificar se o equipamento está disponível - MELHORADA
     logger.info(f"🔍 DEBUG - Verificando disponibilidade do equipamento: {equipment.identifier}, status: {equipment.status.value}")
     
+    # ✅ NOVO: Verificar e corrigir estado dos equipamentos antes de verificar disponibilidade
+    verify_equipment_state(db)
+    
+    # ✅ NOVO: Limpar equipamentos presos antes de verificar disponibilidade
+    cleanup_stuck_equipment(db)
+    
+    # ✅ NOVO: Recarregar o equipamento após a limpeza
+    db.refresh(equipment)
+    logger.info(f"🔍 DEBUG - Status do equipamento após limpeza: {equipment.identifier}, status: {equipment.status.value}")
+    
     # ✅ CORREÇÃO: Permitir equipamentos offline se não estiverem sendo usados
     if equipment.status == EquipmentStatus.maintenance:
         raise HTTPException(
@@ -1057,23 +1067,52 @@ async def call_ticket_service(
             detail=f"Equipamento {equipment.identifier} está em manutenção. Status: {equipment.status.value}"
         )
     
-    # ✅ CORREÇÃO: Se o equipamento está offline mas não está sendo usado, permitir uso
-    if equipment.status == EquipmentStatus.offline:
-        # Verificar se o equipamento está realmente sendo usado
-        equipment_in_use = db.query(TicketServiceProgress).filter(
-            TicketServiceProgress.equipment_id == request.equipment_id,
-            TicketServiceProgress.status == "in_progress"
-        ).first()
+    # ✅ CORREÇÃO: Verificar se o equipamento está sendo usado - MELHORADA
+    logger.info(f"🔍 DEBUG - Verificando se equipamento {equipment.identifier} está sendo usado...")
+    
+    # ✅ NOVA LÓGICA: Verificar se o equipamento está sendo usado por qualquer serviço
+    equipment_in_use = db.query(TicketServiceProgress).filter(
+        TicketServiceProgress.equipment_id == request.equipment_id,
+        TicketServiceProgress.status == "in_progress"
+    ).first()
+    
+    # ✅ NOVO: Log detalhado da verificação
+    logger.info(f"🔍 DEBUG - Resultado da verificação de equipamento em uso:")
+    logger.info(f"  - Equipamento: {equipment.identifier}")
+    logger.info(f"  - Equipment ID: {request.equipment_id}")
+    logger.info(f"  - Status do equipamento: {equipment.status.value}")
+    logger.info(f"  - Está sendo usado: {equipment_in_use is not None}")
+    
+    if equipment_in_use:
+        # ✅ NOVO: Log detalhado para identificar qual serviço está usando o equipamento
+        logger.warning(f"🔍 DEBUG - Equipamento {equipment.identifier} está sendo usado por outro serviço")
         
-        if equipment_in_use:
-            logger.warning(f"🔍 DEBUG - Equipamento {equipment.identifier} está sendo usado por outro serviço")
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Equipamento {equipment.identifier} está sendo usado por outro serviço"
-            )
-        else:
-            logger.info(f"🔍 DEBUG - Equipamento {equipment.identifier} está offline mas não está sendo usado, permitindo uso")
-            # Não bloquear - permitir que o equipamento seja usado
+        # Buscar detalhes do serviço que está usando o equipamento
+        if equipment_in_use.ticket_service_id:
+            ticket_service_in_use = db.query(TicketService).filter(
+                TicketService.id == equipment_in_use.ticket_service_id
+            ).first()
+            
+            if ticket_service_in_use:
+                service_in_use = db.query(Service).filter(Service.id == ticket_service_in_use.service_id).first()
+                ticket_in_use = db.query(Ticket).filter(Ticket.id == ticket_service_in_use.ticket_id).first()
+                
+                logger.warning(f"🔍 DEBUG - Detalhes do conflito de equipamento:")
+                logger.warning(f"  - Equipamento: {equipment.identifier}")
+                logger.warning(f"  - Serviço em uso: {service_in_use.name if service_in_use else 'N/A'}")
+                logger.warning(f"  - Ticket em uso: {ticket_in_use.ticket_number if ticket_in_use else 'N/A'}")
+                logger.warning(f"  - Tentativa de usar para: {request.service_id}")
+                logger.warning(f"  - Progress ID: {equipment_in_use.id}")
+                logger.warning(f"  - Progress Status: {equipment_in_use.status}")
+                logger.warning(f"  - Progress Started At: {equipment_in_use.started_at}")
+        
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Equipamento {equipment.identifier} está sendo usado por outro serviço"
+        )
+    else:
+        logger.info(f"🔍 DEBUG - Equipamento {equipment.identifier} não está sendo usado, permitindo uso")
+        # ✅ CORREÇÃO: Se o equipamento não está sendo usado, permitir uso independente do status
     
     # ✅ NOVA LÓGICA: Verificar compatibilidade do equipamento com o serviço - MELHORADA
     logger.info(f"🔍 DEBUG - Verificando compatibilidade do equipamento: {equipment.identifier}, service_id: {equipment.service_id}, requested_service: {request.service_id}")
@@ -1197,6 +1236,73 @@ async def call_ticket_service(
         "started_at": progress.started_at.isoformat(),
         "duration_minutes": progress.duration_minutes
     }
+
+@router.get("/equipment/status")
+async def get_equipment_status(
+    db: Session = Depends(get_db),
+    current_operator = Depends(get_current_operator)
+):
+    """Verifica o status de todos os equipamentos"""
+    try:
+        # Verificar e corrigir estado dos equipamentos primeiro
+        verify_equipment_state(db)
+        
+        # Limpar equipamentos presos
+        cleanup_stuck_equipment(db)
+        
+        # Buscar todos os equipamentos
+        equipments = db.query(Equipment).filter(
+            Equipment.tenant_id == current_operator.tenant_id
+        ).all()
+        
+        equipment_status = []
+        for equipment in equipments:
+            # Verificar se está sendo usado
+            in_use = db.query(TicketServiceProgress).filter(
+                TicketServiceProgress.equipment_id == equipment.id,
+                TicketServiceProgress.status == "in_progress"
+            ).first()
+            
+            equipment_status.append({
+                "id": str(equipment.id),
+                "identifier": equipment.identifier,
+                "status": equipment.status.value,
+                "in_use": in_use is not None,
+                "assigned_operator_id": str(equipment.assigned_operator_id) if equipment.assigned_operator_id else None
+            })
+        
+        return {
+            "equipments": equipment_status,
+            "total": len(equipment_status)
+        }
+    except Exception as e:
+        logger.error(f"❌ ERRO ao verificar status dos equipamentos: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao verificar status dos equipamentos")
+
+@router.post("/equipment/cleanup")
+async def force_equipment_cleanup(
+    db: Session = Depends(get_db),
+    current_operator = Depends(get_current_operator)
+):
+    """Força a limpeza e verificação dos equipamentos"""
+    try:
+        logger.info(f"🔧 DEBUG - Iniciando limpeza forçada dos equipamentos...")
+        
+        # Verificar e corrigir estado dos equipamentos
+        verify_equipment_state(db)
+        
+        # Limpar equipamentos presos
+        cleanup_stuck_equipment(db)
+        
+        logger.info(f"🔧 DEBUG - Limpeza forçada dos equipamentos concluída")
+        
+        return {
+            "success": True,
+            "message": "Limpeza dos equipamentos concluída com sucesso"
+        }
+    except Exception as e:
+        logger.error(f"❌ ERRO ao forçar limpeza dos equipamentos: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao forçar limpeza dos equipamentos")
 
 @router.post("/{ticket_id}/start")
 async def start_ticket(
@@ -1921,6 +2027,84 @@ async def get_pending_payment_tickets(
     ).order_by(Ticket.created_at.desc()).all()
     
     return tickets 
+
+# ✅ NOVA FUNÇÃO: Liberar equipamentos "presos" (serviços concluídos mas equipamento ainda marcado como usado)
+def cleanup_stuck_equipment(db: Session):
+    """Libera equipamentos que estão marcados como usados mas os serviços já foram concluídos"""
+    try:
+        # Buscar equipamentos que estão sendo usados por serviços já concluídos
+        stuck_equipment = db.query(TicketServiceProgress).filter(
+            TicketServiceProgress.equipment_id.isnot(None),
+            TicketServiceProgress.status.in_(["completed", "cancelled"])
+        ).all()
+        
+        for stuck_progress in stuck_equipment:
+            if stuck_progress.equipment_id:
+                equipment = db.query(Equipment).filter(Equipment.id == stuck_progress.equipment_id).first()
+                if equipment and equipment.status == EquipmentStatus.offline:
+                    logger.info(f"🔧 DEBUG - Liberando equipamento preso: {equipment.identifier}")
+                    equipment.status = EquipmentStatus.online
+                    equipment.assigned_operator_id = None
+                    stuck_progress.equipment_id = None
+        
+        # ✅ NOVO: Verificar equipamentos offline que não estão sendo usados
+        offline_equipment = db.query(Equipment).filter(
+            Equipment.status == EquipmentStatus.offline
+        ).all()
+        
+        for equipment in offline_equipment:
+            # Verificar se o equipamento está realmente sendo usado
+            in_use = db.query(TicketServiceProgress).filter(
+                TicketServiceProgress.equipment_id == equipment.id,
+                TicketServiceProgress.status == "in_progress"
+            ).first()
+            
+            if not in_use:
+                logger.info(f"🔧 DEBUG - Equipamento offline não está sendo usado, liberando: {equipment.identifier}")
+                equipment.status = EquipmentStatus.online
+                equipment.assigned_operator_id = None
+        
+        db.commit()
+        logger.info(f"🔧 DEBUG - Limpeza de equipamentos presos concluída")
+    except Exception as e:
+        logger.error(f"❌ ERRO ao limpar equipamentos presos: {e}")
+        db.rollback()
+
+# ✅ NOVA FUNÇÃO: Verificar e corrigir estado dos equipamentos
+def verify_equipment_state(db: Session):
+    """Verifica e corrige o estado dos equipamentos"""
+    try:
+        logger.info(f"🔍 DEBUG - Verificando estado dos equipamentos...")
+        
+        # Buscar todos os equipamentos
+        equipments = db.query(Equipment).all()
+        
+        for equipment in equipments:
+            # Verificar se está sendo usado
+            in_use = db.query(TicketServiceProgress).filter(
+                TicketServiceProgress.equipment_id == equipment.id,
+                TicketServiceProgress.status == "in_progress"
+            ).first()
+            
+            logger.info(f"🔍 DEBUG - Equipamento {equipment.identifier}:")
+            logger.info(f"  - Status: {equipment.status.value}")
+            logger.info(f"  - Em uso: {in_use is not None}")
+            logger.info(f"  - Assigned operator: {equipment.assigned_operator_id}")
+            
+            # Corrigir estado inconsistente
+            if in_use and equipment.status == EquipmentStatus.online:
+                logger.warning(f"🔧 DEBUG - Corrigindo equipamento em uso mas com status online: {equipment.identifier}")
+                equipment.status = EquipmentStatus.offline
+            elif not in_use and equipment.status == EquipmentStatus.offline:
+                logger.warning(f"🔧 DEBUG - Corrigindo equipamento offline mas não em uso: {equipment.identifier}")
+                equipment.status = EquipmentStatus.online
+                equipment.assigned_operator_id = None
+        
+        db.commit()
+        logger.info(f"🔍 DEBUG - Verificação de estado dos equipamentos concluída")
+    except Exception as e:
+        logger.error(f"❌ ERRO ao verificar estado dos equipamentos: {e}")
+        db.rollback()
 
 @router.post("/{ticket_id}/call-intelligent")
 async def call_ticket_intelligent(
