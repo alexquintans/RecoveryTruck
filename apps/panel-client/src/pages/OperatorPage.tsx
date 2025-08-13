@@ -2715,7 +2715,7 @@ aria-label={`Ticket ${ticket.number || ticket.ticket_number}`}
 </div>
 </div>
 <div className="flex-1 flex flex-col gap-1 md:gap-2 w-full">
-<div className="font-semibold text-base md:text-lg text-gray-800 break-words">{ticket.customer_name}</div>
+<div className="font-semibold text-base md:text-lg text-gray-800 break-words">{ticket.customer_name || ticket.customer?.name}</div>
 <div className="flex flex-wrap gap-1 mt-1">
 {ticket.services?.map((s, idx) => {
 // ✅ CORREÇÃO: Verificar status do serviço específico com segurança
@@ -2880,7 +2880,7 @@ getProgressStatusText={getProgressStatusText}
 </div>
 
 <div className="text-xs text-gray-400 mt-1">
-{ticket.calledAt ? formatDistanceToNow(new Date(ticket.calledAt), { addSuffix: true, locale: ptBR }) : ""}
+{ticket.called_at ? formatDistanceToNow(new Date(ticket.called_at), { addSuffix: true, locale: ptBR }) : ""}
 </div>
 {ticket.status === 'in_progress' && (
 <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 w-full">
@@ -2895,10 +2895,10 @@ cancelLoading
 });
 return null;
 })()}
-{(ticket.startedAt || ticket.started_at) && (
+{(ticket.started_at || ticket.startedAt) && (
 <div className="flex-1 flex flex-col items-center sm:items-start">
 <ServiceCountdown
-startTime={ticket.startedAt || ticket.started_at}
+startTime={ticket.started_at || ticket.startedAt}
 duration={
 ticket.services?.[0]?.duration_minutes ??
 ticket.services?.[0]?.duration ??
@@ -2908,13 +2908,13 @@ ticket.services?.[0]?.durationMinutes ??
 />
 </div>
 )}
-{!(ticket.startedAt || ticket.started_at) && (
+{!(ticket.started_at || ticket.startedAt) && (
 <span className="text-red-500 font-bold">Início não informado</span>
 )}
 <div className="flex flex-col sm:flex-row gap-2 mt-2 sm:mt-0 w-full sm:w-auto justify-center items-center">
 <button
 className="w-full sm:w-auto px-5 py-2 bg-green-600 text-white rounded-lg font-bold shadow hover:bg-green-700 focus:ring-2 focus:ring-green-400 focus:outline-none transition-all disabled:bg-gray-300 disabled:text-gray-500"
-aria-label={`Concluir atendimento do ticket ${ticket.number}`}
+aria-label={`Concluir atendimento do ticket ${ticket.number || ticket.ticket_number}`}
 disabled={completeLoading || !canCompleteTicket(ticket.id)}
 onClick={async () => {
 try {
@@ -2950,7 +2950,7 @@ alert('Erro ao concluir ticket. Tente novamente.');
 </button>
 <button
 className="w-full sm:w-auto px-5 py-2 bg-red-500 text-white rounded-lg font-bold shadow hover:bg-red-600 focus:ring-2 focus:ring-red-400 focus:outline-none transition-all disabled:bg-gray-300 disabled:text-gray-500"
-aria-label={`Cancelar atendimento do ticket ${ticket.number}`}
+aria-label={`Cancelar atendimento do ticket ${ticket.number || ticket.ticket_number}`}
 disabled={cancelLoading}
 onClick={async () => {
 try {
@@ -2983,11 +2983,10 @@ alert('Erro ao cancelar ticket. Tente novamente.');
 </div>
 </div>
 )}
-</div>
 {ticket.status === 'called' && (
 <button
 className="mt-4 md:mt-0 w-full md:w-auto px-7 py-3 bg-yellow-500 text-white rounded-xl font-bold shadow-lg hover:bg-yellow-600 focus:ring-2 focus:ring-yellow-400 focus:outline-none transition-all scale-100 group-hover:scale-105 disabled:bg-gray-300 disabled:text-gray-500"
-aria-label={`Iniciar atendimento do ticket ${ticket.number}`}
+aria-label={`Iniciar atendimento do ticket ${ticket.number || ticket.ticket_number}`}
 onClick={async () => {
 try {
 console.log('🔄 Iniciando ticket:', { ticketId: ticket.id });
@@ -3008,7 +3007,7 @@ Iniciar
 {ticket.status === 'pending_payment' && ticket.payment_confirmed !== true && (
 <button
 className="w-full sm:w-auto px-5 py-2 bg-green-500 text-white rounded-lg font-bold shadow hover:bg-green-600 focus:ring-2 focus:ring-green-400 focus:outline-none transition-all disabled:bg-gray-300 disabled:text-gray-500"
-aria-label={`Confirmar pagamento do ticket ${ticket.number}`}
+aria-label={`Confirmar pagamento do ticket ${ticket.number || ticket.ticket_number}`}
 disabled={confirmLoading}
 onClick={async () => {
 try {
@@ -3037,7 +3036,7 @@ alert('Erro ao confirmar pagamento. Tente novamente.');
 {ticket.status === 'paid' && (
 <button
 className="mt-4 md:mt-0 w-full md:w-auto px-7 py-3 bg-green-500 text-white rounded-xl font-bold shadow-lg hover:bg-green-600 focus:ring-2 focus:ring-green-400 focus:outline-none transition-all scale-100 group-hover:scale-105 disabled:bg-gray-300 disabled:text-gray-500"
-aria-label={`Mover ticket ${ticket.number} para fila`}
+aria-label={`Mover ticket ${ticket.number || ticket.ticket_number} para fila`}
 disabled={moveToQueueLoading}
 onClick={async () => {
 try {
@@ -3056,9 +3055,8 @@ alert('Erro ao mover ticket para fila. Tente novamente.');
 )}
 </div>
 );
-})
-)}
-)}
+})}
+</div>
 </section>
 
 {/* Tickets Aguardando Confirmação de Pagamento */}

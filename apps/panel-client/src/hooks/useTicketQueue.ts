@@ -397,6 +397,12 @@ export function useTicketQueue() {
       originalTicket: t
     });
     
+    // ✅ CORREÇÃO CRÍTICA: Verificação de segurança antes da normalização
+    if (!t || !t.id) {
+      console.error('❌ ERRO: Ticket inválido para normalização:', t);
+      return null;
+    }
+    
     const normalized = {
       ...t,
       // ✅ CORREÇÃO CRÍTICA: Garantir que o ID seja preservado
@@ -408,7 +414,7 @@ export function useTicketQueue() {
       calledAt: t.called_at || t.calledAt,
       status: t.status,
       payment_confirmed: t.payment_confirmed,
-      // ✅ CORREÇÃO CRÍTICA: Padronizar estrutura de serviços
+      // ✅ CORREÇÃO CRÍTICA: Padronizar estrutura de serviços com proteção
       services: (t.services || []).map((ts: any) => {
         // ✅ PADRONIZAÇÃO: Sempre usar a estrutura service.id
         const serviceId = ts.service?.id || ts.id;
@@ -450,6 +456,7 @@ export function useTicketQueue() {
     // ✅ ADICIONADO: Verificação de segurança
     if (!normalized.id) {
       console.error('❌ ERRO: Ticket sem ID após normalização:', { original: t, normalized });
+      return null; // ✅ CORREÇÃO: Retornar null em vez de objeto inválido
     } else {
       console.log('✅ DEBUG - Ticket normalizado com sucesso:', {
         originalId: t.id,
@@ -471,7 +478,7 @@ export function useTicketQueue() {
 
   // ✅ CORREÇÃO: Memoizar arrays de tickets para evitar React Error #310
   const queueTickets = useMemo(() => 
-    ((queueQuery.data as any)?.items ?? []).map(normalizeTicket), 
+    ((queueQuery.data as any)?.items ?? []).map(normalizeTicket).filter(Boolean), 
     [queueQuery.data, normalizeTicket]
   );
 
@@ -516,46 +523,67 @@ export function useTicketQueue() {
       } : null
     });
     
-    // ✅ CORREÇÃO CRÍTICA: Verificar se há dados antes de normalizar
+    // ✅ CORREÇÃO CRÍTICA: Verificar se há dados antes de processar
     if (!rawData || rawData.length === 0) {
-      console.warn('🔍 DEBUG - myTickets: Nenhum dado para normalizar');
+      console.warn('🔍 DEBUG - myTickets: Nenhum dado para processar');
       return [];
     }
     
     try {
-      const normalized = rawData.map(normalizeTicket);
-      console.log('🔍 DEBUG - myTickets useMemo - DADOS NORMALIZADOS:', {
-        normalized,
-        normalizedLength: normalized.length,
-        normalizedIds: normalized.map((t: any) => t.id),
-        // ✅ NOVO: Verificar se normalização foi bem-sucedida
-        hasNormalizedData: normalized.length > 0,
-        firstNormalizedItem: normalized[0],
-        firstNormalizedItemStructure: normalized[0] ? {
-          id: normalized[0].id,
-          number: normalized[0].number,
-          status: normalized[0].status,
-          hasServices: !!normalized[0].services,
-          servicesCount: normalized[0].services?.length || 0
+      // ✅ CORREÇÃO CRÍTICA: Usar dados diretamente sem normalização complexa
+      const validTickets = rawData.filter(t => t && t.id);
+      console.log('🔍 DEBUG - myTickets - Tickets válidos encontrados:', validTickets.length);
+      
+      // ✅ CORREÇÃO CRÍTICA: Aplicar apenas normalização mínima necessária
+      const processedTickets = validTickets.map((t: any) => ({
+        ...t,
+        // ✅ CORREÇÃO: Garantir campos essenciais
+        id: t.id,
+        number: t.ticket_number || t.number,
+        status: t.status,
+        customer_name: t.customer_name || t.customer?.name,
+        services: t.services || [],
+        extras: t.extras || [],
+        // ✅ CORREÇÃO: Manter estrutura original para compatibilidade
+        ticket_number: t.ticket_number,
+        assigned_operator_id: t.assigned_operator_id,
+        called_at: t.called_at,
+        created_at: t.created_at,
+        payment_confirmed: t.payment_confirmed
+      }));
+      
+      console.log('🔍 DEBUG - myTickets useMemo - DADOS PROCESSADOS:', {
+        processedTickets,
+        processedLength: processedTickets.length,
+        processedIds: processedTickets.map((t: any) => t.id),
+        // ✅ NOVO: Verificar se processamento foi bem-sucedido
+        hasProcessedData: processedTickets.length > 0,
+        firstProcessedItem: processedTickets[0],
+        firstProcessedItemStructure: processedTickets[0] ? {
+          id: processedTickets[0].id,
+          number: processedTickets[0].number,
+          status: processedTickets[0].status,
+          hasServices: !!processedTickets[0].services,
+          servicesCount: processedTickets[0].services?.length || 0
         } : null
       });
       
       // ✅ DEBUG CRÍTICO: Verificar o que está sendo retornado
       console.log('🔍 DEBUG CRÍTICO - myTickets FINAL:', {
-        returnValue: normalized,
-        returnValueLength: normalized.length,
-        returnValueType: typeof normalized,
-        isArray: Array.isArray(normalized),
-        willBeReturned: normalized.length > 0 ? 'SIM - Dados serão retornados' : 'NÃO - Array vazio'
+        returnValue: processedTickets,
+        returnValueLength: processedTickets.length,
+        returnValueType: typeof processedTickets,
+        isArray: Array.isArray(processedTickets),
+        willBeReturned: processedTickets.length > 0 ? 'SIM - Dados serão retornados' : 'NÃO - Array vazio'
       });
       
-      return normalized;
+      return processedTickets;
     } catch (error) {
-      console.error('❌ ERRO na normalização de myTickets:', error);
+      console.error('❌ ERRO no processamento de myTickets:', error);
       console.error('❌ Dados que causaram erro:', rawData);
       return [];
     }
-  }, [myTicketsQuery.data, normalizeTicket]);
+  }, [myTicketsQuery.data]); // ✅ CORREÇÃO: Remover normalizeTicket das dependências
 
   const completedTickets = useMemo(() => 
     ((completedTicketsQuery.data as any)?.items ?? []).map(normalizeTicket), 
