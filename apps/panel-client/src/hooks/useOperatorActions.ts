@@ -42,6 +42,61 @@ export function useOperatorActions() {
     },
   });
 
+  // ✅ NOVO: Mutation para verificar conflitos
+  const checkConflictsMutation = useMutation({
+    mutationFn: ({ ticketId }: { ticketId: string }) => {
+      console.log('🔍 DEBUG - checkConflictsMutation.mutationFn:', {
+        ticketId,
+        ticketIdType: typeof ticketId
+      });
+      
+      return ticketService.checkConflicts(ticketId);
+    },
+    onError: (error) => {
+      console.error('❌ ERRO ao verificar conflitos:', error);
+    },
+  });
+
+  // ✅ NOVO: Mutation para chamada inteligente
+  const callIntelligentMutation = useMutation({
+    mutationFn: ({ 
+      ticketId, 
+      serviceId, 
+      equipmentId, 
+      checkConflicts = true 
+    }: { 
+      ticketId: string; 
+      serviceId: string; 
+      equipmentId: string; 
+      checkConflicts?: boolean;
+    }) => {
+      console.log('🔍 DEBUG - callIntelligentMutation.mutationFn:', {
+        ticketId,
+        serviceId,
+        equipmentId,
+        checkConflicts,
+        ticketIdType: typeof ticketId
+      });
+      
+      return ticketService.callIntelligent(ticketId, serviceId, equipmentId, checkConflicts);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
+      queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['service-progress'] });
+    },
+    onError: (error: any) => {
+      console.error('❌ ERRO na chamada inteligente:', error);
+      // ✅ NOVO: Tratar erros específicos de conflito
+      if (error?.response?.status === 409) {
+        const conflictDetails = error.response.data;
+        console.log('🔍 DEBUG - Conflito detectado:', conflictDetails);
+        // Aqui você pode mostrar um alerta específico para conflitos
+        throw new Error(`Conflito: ${conflictDetails?.message || 'Cliente já está sendo atendido'}`);
+      }
+    },
+  });
+
   const startMutation = useMutation({
     mutationFn: ({ ticketId }: { ticketId: string }) => ticketService.start(ticketId),
     onSuccess: () => {
@@ -129,5 +184,10 @@ export function useOperatorActions() {
     confirmLoading: confirmPaymentMutation.status === 'pending',
     moveToQueue: moveToQueueMutation.mutateAsync,
     moveToQueueLoading: moveToQueueMutation.status === 'pending',
+    // ✅ NOVAS FUNÇÕES: Verificação de conflitos e chamada inteligente
+    checkConflicts: checkConflictsMutation.mutateAsync,
+    checkConflictsLoading: checkConflictsMutation.status === 'pending',
+    callIntelligent: callIntelligentMutation.mutateAsync,
+    callIntelligentLoading: callIntelligentMutation.status === 'pending',
   };
 } 

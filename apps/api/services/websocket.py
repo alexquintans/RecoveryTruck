@@ -433,6 +433,42 @@ class ConnectionManager:
                 except Exception as e:
                     print(f"Error sending to general: {e}")
 
+    # ✅ NOVAS FUNÇÕES: Broadcast específico para serviços e tickets do operador
+    async def broadcast_service_started(self, tenant_id: str, service_data: dict):
+        """Transmite notificação de serviço iniciado para operadores"""
+        message = {
+            "type": "service_started",
+            "data": service_data
+        }
+        
+        if tenant_id in self.operator_connections:
+            for connection in list(self.operator_connections[tenant_id]):
+                try:
+                    await connection.send_json(message)
+                except WebSocketDisconnect:
+                    self.disconnect(connection, tenant_id, "operator")
+                except Exception as e:
+                    print(f"Error sending service_started to operator: {e}")
+
+    async def broadcast_my_tickets_update(self, tenant_id: str, operator_id: str):
+        """Transmite atualização dos tickets do operador específico"""
+        message = {
+            "type": "my_tickets_update",
+            "data": {
+                "operator_id": operator_id,
+                "updated_at": datetime.utcnow().isoformat()
+            }
+        }
+        
+        if tenant_id in self.operator_connections:
+            for connection in list(self.operator_connections[tenant_id]):
+                try:
+                    await connection.send_json(message)
+                except WebSocketDisconnect:
+                    self.disconnect(connection, tenant_id, "operator")
+                except Exception as e:
+                    print(f"Error sending my_tickets_update to operator: {e}")
+
 # Instância global do gerenciador
 manager = ConnectionManager()
 # Alias para compatibilidade (routers/tickets.py espera websocket_manager)

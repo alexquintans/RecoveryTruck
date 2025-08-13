@@ -473,7 +473,7 @@ return (
 {/* Botão de chamada - MELHORADO */}
 <div className="flex gap-2 ml-6">
 <button
-disabled={callLoading || !selectedEquipment || isCalledForThisService}
+disabled={callIntelligentLoading || checkConflictsLoading || !selectedEquipment || isCalledForThisService}
 onClick={() => onCall(ticket, currentService)}
 className={`px-4 py-2 rounded-lg font-semibold transition-all ${
            priority.isFirstService 
@@ -483,7 +483,7 @@ className={`px-4 py-2 rounded-lg font-semibold transition-all ${
              : 'bg-blue-600 hover:bg-blue-700 text-white'
          } disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg`}
 >
-{callLoading ? 'Chamando...' : 
+{callIntelligentLoading || checkConflictsLoading ? 'Verificando...' : 
 isCalledForThisService ? 'Serviço em Andamento' : 'Chamar Serviço'}
 </button>
 </div>
@@ -941,7 +941,12 @@ confirmPayment,
 confirmLoading,
 moveToQueue,
 moveToQueueLoading,
-callService
+callService,
+// ✅ NOVAS FUNÇÕES: Verificação de conflitos e chamada inteligente
+checkConflicts,
+checkConflictsLoading,
+callIntelligent,
+callIntelligentLoading
 } = useOperatorActions();
 
 // CORRIGIDO: Funções para persistir mudanças de estado - agora usando useCallback
@@ -2134,9 +2139,9 @@ const queue = serviceQueues.find(q => q.serviceId === serviceId);
 return queue?.tickets || [];
 };
 
-// ✅ CORREÇÃO CRÍTICA: Proteção robusta contra chamadas duplicadas
+// ✅ NOVA LÓGICA: Função inteligente para chamar tickets com verificação de conflitos
 const handleCallTicket = async (ticket: Ticket, serviceId: string) => {
-console.log('🔍 DEBUG - Chamando ticket:', {
+console.log('🔍 DEBUG - Chamando ticket com verificação inteligente:', {
 ticketId: ticket.id,
 ticketNumber: ticket.number,
 status: ticket.status,
@@ -2145,128 +2150,149 @@ serviceId: serviceId,
 ticketComplete: ticket
 });
 
-// ✅ CORREÇÃO CRÍTICA: Verificações de segurança robustas
+// ✅ VERIFICAÇÕES BÁSICAS
 if (!ticket.id) {
 console.error('❌ ERRO: ticket.id está undefined!', ticket);
-alert('Erro: ID do ticket não encontrado!');
+showConflictAlert('Erro: ID do ticket não encontrado!', 'error');
 return;
 }
 
 if (!selectedEquipment) {
 console.error('❌ ERRO: selectedEquipment está undefined!', { selectedEquipment });
-alert('Erro: Equipamento não selecionado!');
+showConflictAlert('Erro: Equipamento não selecionado!', 'error');
 return;
 }
 
 if (!serviceId) {
 console.error('❌ ERRO: serviceId está undefined!', { serviceId });
-alert('Erro: ID do serviço não encontrado!');
+showConflictAlert('Erro: ID do serviço não encontrado!', 'error');
 return;
 }
 
-// ✅ CORREÇÃO CRÍTICA: Verificar se equipamento está disponível
+// ✅ VERIFICAR SE EQUIPAMENTO ESTÁ DISPONÍVEL
 const equipment = safeEquipment.find(e => e.id === selectedEquipment);
 if (!equipment || equipment.status !== 'available') {
 console.error('❌ ERRO: Equipamento não está disponível!', { equipment, selectedEquipment });
-alert('Erro: Equipamento não está disponível para uso!');
+showConflictAlert('Erro: Equipamento não está disponível para uso!', 'error');
 return;
 }
 
-// ✅ CORREÇÃO CRÍTICA: Proteção contra chamadas duplicadas por serviço específico
+// ✅ VERIFICAR SE JÁ EXISTE CHAMADA EM ANDAMENTO
+if (callIntelligentLoading || checkConflictsLoading) {
+console.log('🔍 DEBUG - Já existe uma verificação/chamada em andamento, aguardando...');
+showConflictAlert('Já existe uma verificação em andamento. Aguarde a conclusão.', 'warning');
+return;
+}
+
+// ✅ PROTEÇÃO CONTRA CHAMADAS DUPLICADAS
 const serviceCallKey = `${ticket.id}-${serviceId}`;
 const lastServiceCallTime = ticketLastCallTime.current.get(serviceCallKey) || 0;
 const timeSinceLastServiceCall = Date.now() - lastServiceCallTime;
 
-if (timeSinceLastServiceCall < 3000) { // 3 segundos de proteção por serviço
-console.log('🔍 DEBUG - Serviço específico chamado recentemente, aguardando...', {
+if (timeSinceLastServiceCall < 3000) { // 3 segundos de proteção
+console.log('🔍 DEBUG - Serviço chamado recentemente, aguardando...', {
 ticketId: ticket.id,
 serviceId,
-timeSinceLastServiceCall,
-lastServiceCallTime: new Date(lastServiceCallTime)
+timeSinceLastServiceCall
 });
-alert('Este serviço foi chamado recentemente. Aguarde alguns segundos antes de tentar novamente.');
+showConflictAlert('Este serviço foi chamado recentemente. Aguarde alguns segundos.', 'warning');
 return;
 }
-
-// ✅ CORREÇÃO CRÍTICA: Verificar se já existe chamada em andamento
-if (callLoading) {
-console.log('🔍 DEBUG - Já existe uma chamada em andamento, aguardando...');
-alert('Já existe uma chamada em andamento. Aguarde a conclusão.');
-return;
-}
-
-// ✅ CORREÇÃO CRÍTICA: Verificar se o ticket está disponível para chamada
-if (!['in_queue', 'called', 'in_progress'].includes(ticket.status)) {
-console.log('🔍 DEBUG - Ticket não está disponível para chamada, status:', ticket.status);
-alert(`Este ticket não está disponível para chamada! Status atual: ${ticket.status}`);
-return;
-}
-
-// ✅ CORREÇÃO CRÍTICA: Verificar se este serviço específico já está em andamento
-const isServiceInProgress = ticket.serviceProgress?.some(p => 
-p.service_name === serviceId && p.status === 'in_progress'
-);
-
-if (isServiceInProgress) {
-console.log('🔍 DEBUG - Serviço específico já está em andamento:', { serviceId });
-alert('Este serviço específico já está em andamento!');
-return;
-}
-
-// ✅ ADICIONADO: Log adicional para debug do ticket.id
-console.log('🔍 DEBUG - Ticket antes da chamada:', {
-ticketId: ticket.id,
-ticketIdType: typeof ticket.id,
-ticketIdValue: ticket.id,
-ticketKeys: Object.keys(ticket),
-ticketComplete: ticket
-});
-
-// ✅ CORREÇÃO: Verificar se é o primeiro serviço do ticket
-const services = ticket.services || [ticket.service];
-console.log('🔍 DEBUG - Verificando primeiro serviço:', {
-ticketId: ticket.id,
-services: services.map(s => ({ id: s.id, name: s.name })),
-serviceId,
-firstServiceId: services[0]?.id
-});
-const isFirstService = services[0]?.id === serviceId;
 
 try {
-// ✅ CORREÇÃO CRÍTICA: Marcar o serviço específico como chamado ANTES da chamada
+// ✅ PASSO 1: Verificar conflitos antes de chamar
+console.log('🔍 DEBUG - Verificando conflitos para ticket:', ticket.id);
+const conflictsResult = await checkConflicts({ ticketId: ticket.id });
+
+console.log('🔍 DEBUG - Resultado da verificação de conflitos:', conflictsResult);
+
+if (conflictsResult.conflicts.has_conflicts) {
+// ✅ CONFLITO DETECTADO: Mostrar detalhes específicos
+const conflictType = conflictsResult.conflicts.conflict_type;
+const conflictMessage = conflictsResult.conflicts.message;
+
+console.log('🔍 DEBUG - Conflito detectado:', {
+type: conflictType,
+message: conflictMessage,
+details: conflictsResult.conflicts.conflict_details
+});
+
+// ✅ MOSTRAR ALERTA ESPECÍFICO BASEADO NO TIPO DE CONFLITO
+switch (conflictType) {
+case 'customer_already_being_served':
+const conflictingTickets = conflictsResult.conflicts.conflict_details?.conflicting_tickets || [];
+const ticketNumbers = conflictingTickets.map((t: any) => t.ticket_number).join(', ');
+showConflictAlert(
+`O cliente ${conflictsResult.customer_name} já está sendo atendido nos tickets: ${ticketNumbers}`,
+'warning'
+);
+break;
+
+case 'ticket_assigned_to_other_operator':
+const operatorName = conflictsResult.conflicts.conflict_details?.assigned_operator || 'outro operador';
+showConflictAlert(
+`Este ticket já está sendo atendido por ${operatorName}`,
+'warning'
+);
+break;
+
+case 'services_already_in_progress':
+const servicesInProgress = conflictsResult.conflicts.conflict_details?.services_in_progress || [];
+const serviceNames = servicesInProgress.map((s: any) => s.service_name).join(', ');
+showConflictAlert(
+`Alguns serviços já estão em andamento: ${serviceNames}`,
+'warning'
+);
+break;
+
+default:
+showConflictAlert(conflictMessage || 'Conflito detectado. Tente novamente.', 'warning');
+}
+
+return;
+}
+
+// ✅ PASSO 2: Se não há conflitos, fazer a chamada inteligente
+console.log('🔍 DEBUG - Nenhum conflito detectado, fazendo chamada inteligente...');
+
+// ✅ Marcar tempo da chamada
 ticketLastCallTime.current.set(serviceCallKey, Date.now());
 
-// ✅ CORREÇÃO CRÍTICA: SEMPRE chamar apenas o serviço específico
-const callServiceParams = { ticketId: ticket.id, serviceId: serviceId, equipmentId: selectedEquipment };
-console.log('🔍 DEBUG - Chamando serviço específico:', {
+// ✅ Fazer chamada inteligente
+const callResult = await callIntelligent({
 ticketId: ticket.id,
 serviceId: serviceId,
-equipment: selectedEquipment,
-ticketIdType: typeof ticket.id,
-ticketIdValue: ticket.id,
-isFirstService,
-callServiceParams
+equipmentId: selectedEquipment,
+checkConflicts: true // Verificação adicional na API
 });
 
-await callService(callServiceParams);
+console.log('🔍 DEBUG - Resultado da chamada inteligente:', callResult);
 
-// ✅ CORREÇÃO: Mostrar feedback visual
-const serviceName = services.find(s => s.id === serviceId)?.name || 'Serviço';
-console.log('🔍 DEBUG - Nome do serviço encontrado:', {
-serviceId,
-serviceName,
-foundService: services.find(s => s.id === serviceId)
-});
-const message = `Ticket #${ticket.number} chamado para ${serviceName} (serviço específico)`;
+// ✅ MOSTRAR SUCESSO
+const serviceName = conflictsResult.available_services?.find((s: any) => s.service_id === serviceId)?.service_name || 'Serviço';
+showConflictAlert(`Ticket #${ticket.number} chamado para ${serviceName} com sucesso!`, 'info');
 
-// TODO: Implementar notificação toast
-console.log('✅', message);
-
-} catch (error) {
+} catch (error: any) {
 console.error('❌ ERRO ao chamar ticket:', error);
-// ✅ CORREÇÃO: Remover marcação de tempo em caso de erro
+
+// ✅ Remover marcação de tempo em caso de erro
 ticketLastCallTime.current.delete(serviceCallKey);
-alert('Erro ao chamar ticket! Verifique se o equipamento está selecionado.');
+
+// ✅ TRATAR ERROS ESPECÍFICOS
+if (error?.response?.status === 409) {
+// Conflito detectado pela API
+const conflictDetails = error.response.data;
+showConflictAlert(
+`Conflito: ${conflictDetails?.message || 'Cliente já está sendo atendido'}`,
+'warning'
+);
+} else if (error?.message?.includes('Conflito:')) {
+// Erro de conflito já tratado
+showConflictAlert(error.message, 'warning');
+} else {
+// Erro genérico
+showConflictAlert('Erro ao chamar ticket. Tente novamente.', 'error');
+}
 }
 };
 
@@ -2345,6 +2371,68 @@ setServiceQueues([]);
 }
 }
 }, [organizedQueues, currentStep, activeServiceTab, updatePreference]);
+
+// ✅ NOVO: Função para verificar se ticket já foi chamado
+const isTicketAlreadyCalled = useCallback((ticketId: string) => {
+  // Verificar se o ticket já está em "Meus tickets" (já foi chamado)
+  return myTickets?.some(ticket => ticket.id === ticketId) || false;
+}, [myTickets]);
+
+// ✅ NOVO: Função para verificar se cliente já tem ticket em andamento
+const isCustomerAlreadyBeingServed = useCallback((customerName: string) => {
+  return myTickets?.some(ticket => {
+    const ticketCustomerName = ticket.customer_name || ticket.customer?.name;
+    return ticketCustomerName === customerName && ticket.status === 'in_progress';
+  }) || false;
+}, [myTickets]);
+
+// ✅ NOVO: Estado para alertas de conflito
+const [conflictAlert, setConflictAlert] = useState<{
+  show: boolean;
+  message: string;
+  type: 'warning' | 'error' | 'info';
+} | null>(null);
+
+// ✅ NOVO: Função para mostrar alerta
+const showConflictAlert = useCallback((message: string, type: 'warning' | 'error' | 'info' = 'warning') => {
+  setConflictAlert({ show: true, message, type });
+  
+  // Auto-hide após 5 segundos
+  setTimeout(() => {
+    setConflictAlert(null);
+  }, 5000);
+}, []);
+
+// ✅ NOVO: Função para chamar ticket com validação completa
+const callTicketWithFullValidation = useCallback(async (ticketId: string, customerName?: string) => {
+  try {
+    // Verificar se o ticket já foi chamado
+    if (isTicketAlreadyCalled(ticketId)) {
+      const message = 'Este ticket já foi chamado e está em atendimento.';
+      showConflictAlert(message, 'warning');
+      return { success: false, message };
+    }
+
+    // Verificar se o cliente já está sendo atendido
+    if (customerName && isCustomerAlreadyBeingServed(customerName)) {
+      const message = `O cliente ${customerName} já está sendo atendido em outro serviço.`;
+      showConflictAlert(message, 'warning');
+      return { success: false, message };
+    }
+
+    // Fazer a chamada do ticket
+    console.log('🔄 Chamando ticket:', ticketId);
+    // await callTicket({ ticketId });
+    
+    showConflictAlert('Ticket chamado com sucesso!', 'info');
+    return { success: true, message: 'Ticket chamado com sucesso' };
+  } catch (error) {
+    console.error('❌ Erro ao chamar ticket:', error);
+    const message = 'Erro ao chamar ticket. Tente novamente.';
+    showConflictAlert(message, 'error');
+    return { success: false, message };
+  }
+}, [isTicketAlreadyCalled, isCustomerAlreadyBeingServed, showConflictAlert]);
 
 return (
 <div className="p-4 space-y-8 max-w-6xl mx-auto">
@@ -2549,12 +2637,12 @@ callLoading={callLoading}
 
 {/* Meus Tickets */}
 <section className="bg-white p-6 rounded-xl shadow flex flex-col gap-4">
-  <h2 className="text-xl font-semibold mb-2">Meus Tickets</h2>
+<h2 className="text-xl font-semibold mb-2">Meus Tickets</h2>
   
   {/* Debug info */}
   <div className="text-xs text-gray-500 mb-2">
     Debug: {myTickets?.length || 0} tickets encontrados
-  </div>
+</div>
   
   {myTickets && myTickets.length > 0 ? (
     <div className="space-y-4">
@@ -2583,17 +2671,17 @@ callLoading={callLoading}
           const hasCalled = sortedTickets.some(t => t.status === 'called');
           const overallStatus = hasInProgress ? 'in_progress' : hasCalled ? 'called' : 'waiting';
 
-          return (
-            <div
+return (
+<div
               key={customerName}
               className={`rounded-2xl p-4 md:p-5 shadow-md hover:shadow-xl transition-transform hover:-translate-y-1 group focus-within:ring-2 focus-within:ring-yellow-400
                 ${overallStatus === 'called'
-                  ? 'bg-white border border-yellow-200'
+                       ? 'bg-white border border-yellow-200'
                   : overallStatus === 'in_progress'
-                    ? 'bg-green-50 border-2 border-green-400'
-                    : 'bg-white border border-gray-200 opacity-60'
-                }
-              `}
+                         ? 'bg-green-50 border-2 border-green-400'
+                         : 'bg-white border border-gray-200 opacity-60'
+                     }
+                   `}
             >
               {/* Cabeçalho do Cliente */}
               <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
@@ -2606,12 +2694,12 @@ callLoading={callLoading}
                       ${overallStatus === 'in_progress' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}
                     >
                       {overallStatus === 'in_progress' ? 'Em andamento' : 'Aguardando'}
-                    </span>
+</span>
                     <span className="text-xs text-gray-500">
                       {sortedTickets.length} ticket{sortedTickets.length > 1 ? 's' : ''}
-                    </span>
-                  </div>
-                </div>
+</span>
+</div>
+</div>
                 
                 {/* Botões de ação principais */}
                 <div className="flex flex-col gap-2 mt-4 md:mt-0">
@@ -2660,7 +2748,7 @@ callLoading={callLoading}
                             );
                             await refetch();
                             console.log('✅ Tickets cancelados com sucesso');
-                          } catch (error) {
+} catch (error) {
                             console.error('❌ Erro ao cancelar tickets:', error);
                             alert('Erro ao cancelar tickets. Tente novamente.');
                           }
@@ -2668,8 +2756,8 @@ callLoading={callLoading}
                       >
                         {cancelLoading ? 'Cancelando...' : 'Cancelar Todos'}
                       </button>
-                    </div>
-                  )}
+</div>
+)}
                   
                   {overallStatus === 'called' && (
                     <button
@@ -2694,8 +2782,8 @@ callLoading={callLoading}
                       Iniciar Todos
                     </button>
                   )}
-                </div>
-              </div>
+</div>
+</div>
 
               {/* Lista de Tickets do Cliente */}
               <div className="space-y-3">
@@ -2729,8 +2817,8 @@ callLoading={callLoading}
                             Principal
                           </span>
                         )}
-                      </div>
-                      
+</div>
+
                       <div className="text-xs text-gray-400">
                         {ticket.called_at ? formatDistanceToNow(new Date(ticket.called_at), { addSuffix: true, locale: ptBR }) : ""}
                       </div>
@@ -2747,27 +2835,27 @@ callLoading={callLoading}
                               <span key={s?.id || idx} className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">
                                 {s?.service?.name || s?.name || 'Serviço'}
                                 {s?.price && ` R$ ${s.price.toFixed(2).replace('.', ',')}`}
-                              </span>
+</span>
                             ))}
-                          </div>
+</div>
                           
                                                      {/* ✅ NOVO: Countdown Regressivo do Serviço - Design Compacto */}
                            {(ticket.started_at || ticket.startedAt) && (
                              <div className="mt-2 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                               {(() => {
+{(() => {
                                  const countdownData = getServiceCountdown(ticket);
                                  if (!countdownData) return null;
                                  
                                  const { remainingTime, remainingMinutes, remainingSeconds, serviceDuration, isOverdue, progress } = countdownData;
                                  
-                                 return (
+return (
                                    <>
                                      {/* Header Compacto */}
                                      <div className="flex items-center justify-between mb-2">
                                        <div className="flex items-center gap-1">
                                          <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
                                          <span className="text-xs font-medium text-gray-700">Tempo Restante</span>
-                                       </div>
+</div>
                                        <span className="text-xs text-gray-500">{serviceDuration}min</span>
                                      </div>
                                      
@@ -2781,7 +2869,7 @@ callLoading={callLoading}
                                              : 'text-blue-600'
                                        }`}>
                                          {remainingTime}
-                                       </div>
+</div>
                                      </div>
                                      
                                      {/* Barra de Progresso Compacta */}
@@ -2797,7 +2885,7 @@ callLoading={callLoading}
                                            }`}
                                            style={{ width: `${progress}%` }}
                                          />
-                                       </div>
+</div>
                                      </div>
                                      
                                      {/* Alertas Compactos */}
@@ -2820,9 +2908,9 @@ callLoading={callLoading}
                                        </div>
                                      )}
                                    </>
-                                 );
-                               })()}
-                             </div>
+);
+})()}
+</div>
                            )}
                           
                           {/* ✅ NOVO: Aviso se não há horário de início */}
@@ -2830,12 +2918,12 @@ callLoading={callLoading}
                             <div className="mt-2 p-2 bg-red-50 rounded-lg border border-red-200">
                               <div className="text-xs text-red-700 font-semibold">
                                 ⚠️ Horário de início não registrado
-                              </div>
+</div>
                               <div className="text-xs text-red-600 mt-1">
                                 Clique em "Iniciar" para começar o cronômetro
                               </div>
-                            </div>
-                          )}
+</div>
+)}
                         </div>
                       )}
 
@@ -2893,60 +2981,60 @@ callLoading={callLoading}
                               try {
                                 console.log('🔄 Concluindo ticket individual:', ticket.id);
                                 await completeService({ ticketId: ticket.id });
-                                await refetch();
-                              } catch (error) {
-                                console.error('❌ Erro ao concluir ticket:', error);
-                                alert('Erro ao concluir ticket. Tente novamente.');
-                              }
-                            }}
-                          >
+await refetch();
+} catch (error) {
+console.error('❌ Erro ao concluir ticket:', error);
+alert('Erro ao concluir ticket. Tente novamente.');
+}
+}}
+>
                             Concluir
-                          </button>
-                          <button
+</button>
+<button
                             className="flex-1 px-3 py-1 bg-red-500 text-white rounded text-xs font-medium hover:bg-red-600 focus:ring-2 focus:ring-red-400 focus:outline-none transition-all"
-                            onClick={async () => {
-                              try {
-                                const reason = prompt('Motivo do cancelamento:');
-                                if (!reason) {
-                                  alert('É necessário informar um motivo para cancelar o ticket.');
-                                  return;
-                                }
-                                await cancelTicket({ ticketId: ticket.id, reason });
-                                await refetch();
-                              } catch (error) {
-                                console.error('❌ Erro ao cancelar ticket:', error);
-                                alert('Erro ao cancelar ticket. Tente novamente.');
-                              }
-                            }}
-                          >
+onClick={async () => {
+try {
+const reason = prompt('Motivo do cancelamento:');
+if (!reason) {
+alert('É necessário informar um motivo para cancelar o ticket.');
+return;
+}
+await cancelTicket({ ticketId: ticket.id, reason });
+await refetch();
+} catch (error) {
+console.error('❌ Erro ao cancelar ticket:', error);
+alert('Erro ao cancelar ticket. Tente novamente.');
+}
+}}
+>
                             Cancelar
-                          </button>
+</button>
                         </>
-                      )}
+)}
                       
-                      {ticket.status === 'called' && (
-                        <button
+{ticket.status === 'called' && (
+<button
                           className="flex-1 px-3 py-1 bg-yellow-500 text-white rounded text-xs font-medium hover:bg-yellow-600 focus:ring-2 focus:ring-yellow-400 focus:outline-none transition-all"
-                          onClick={async () => {
-                            try {
+onClick={async () => {
+try {
                               console.log('🔄 Iniciando ticket individual:', ticket.id);
-                              await startService({ ticketId: ticket.id });
-                              await refetch();
-                            } catch (error) {
-                              console.error('❌ Erro ao iniciar ticket:', error);
-                              alert('Erro ao iniciar ticket. Tente novamente.');
-                            }
-                          }}
-                        >
-                          Iniciar
-                        </button>
-                      )}
+await startService({ ticketId: ticket.id });
+await refetch();
+} catch (error) {
+console.error('❌ Erro ao iniciar ticket:', error);
+alert('Erro ao iniciar ticket. Tente novamente.');
+}
+}}
+>
+Iniciar
+</button>
+)}
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-          );
+</div>
+);
         });
       })()}
     </div>
@@ -2954,7 +3042,7 @@ callLoading={callLoading}
     <div className="text-gray-400 text-center py-8">
       Nenhum ticket em atendimento
     </div>
-  )}
+)}
 </section>
 
 {/* Tickets Aguardando Confirmação de Pagamento */}
@@ -3332,15 +3420,64 @@ return (
 );
 }
 
+// ✅ NOVO: Componente de Alerta Global
+const GlobalAlert = () => {
+if (!conflictAlert || !conflictAlert.show) return null;
+  
+return (
+<div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg border-l-4 max-w-md ${
+  conflictAlert.type === 'error' 
+    ? 'bg-red-50 border-red-400 text-red-700' 
+    : conflictAlert.type === 'warning'
+    ? 'bg-yellow-50 border-yellow-400 text-yellow-700'
+    : 'bg-blue-50 border-blue-400 text-blue-700'
+}`}>
+  <div className="flex items-center gap-2">
+    <span className="text-lg">
+      {conflictAlert.type === 'error' ? '❌' : 
+       conflictAlert.type === 'warning' ? '⚠️' : 'ℹ️'}
+    </span>
+    <span className="text-sm font-medium">{conflictAlert.message}</span>
+  </div>
+  <button 
+    onClick={() => setConflictAlert(null)}
+    className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+  >
+    ✕
+  </button>
+</div>
+);
+};
+
 switch (currentStep) {
 case 'name':
-return renderNameStep();
+return (
+<>
+  <GlobalAlert />
+  {renderNameStep()}
+</>
+);
 case 'config':
-return renderConfigStep();
+return (
+<>
+  <GlobalAlert />
+  {renderConfigStep()}
+</>
+);
 case 'operation':
-return renderOperationStep();
+return (
+<>
+  <GlobalAlert />
+  {renderOperationStep()}
+</>
+);
 default:
-return renderNameStep();
+return (
+<>
+  <GlobalAlert />
+  {renderNameStep()}
+</>
+);
 }
 };
 

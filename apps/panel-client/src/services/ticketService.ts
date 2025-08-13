@@ -80,6 +80,40 @@ export const ticketService = {
     return response.data;
   },
 
+  // ✅ NOVO: Verificar conflitos antes de chamar ticket
+  async checkConflicts(ticketId: string) {
+    console.log('🔍 DEBUG - ticketService.checkConflicts:', {
+      ticketId,
+      url: `/tickets/${ticketId}/check-conflicts`
+    });
+    
+    const response = await api.get(`/tickets/${ticketId}/check-conflicts`, { params: withTenant() });
+    return response.data;
+  },
+
+  // ✅ NOVO: Chamada inteligente com verificação de conflitos
+  async callIntelligent(ticketId: string, serviceId: string, equipmentId: string, checkConflicts: boolean = true) {
+    console.log('🔍 DEBUG - ticketService.callIntelligent:', {
+      ticketId,
+      serviceId,
+      equipmentId,
+      checkConflicts,
+      url: `/tickets/${ticketId}/call-intelligent`,
+      body: { 
+        service_id: serviceId, 
+        equipment_id: equipmentId,
+        check_customer_conflicts: checkConflicts
+      }
+    });
+    
+    const response = await api.post(`/tickets/${ticketId}/call-intelligent`, { 
+      service_id: serviceId, 
+      equipment_id: equipmentId,
+      check_customer_conflicts: checkConflicts
+    }, { params: withTenant() });
+    return response.data;
+  },
+
   async start(ticketId: string) {
     const response = await api.post(`/tickets/${ticketId}/start`, undefined, { params: withTenant() });
     return response.data;
