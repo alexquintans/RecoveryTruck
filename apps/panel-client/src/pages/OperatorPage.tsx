@@ -2456,607 +2456,151 @@ callLoading={callLoading}
 
 {/* Meus Tickets */}
 <section className="bg-white p-6 rounded-xl shadow flex flex-col gap-4">
-            {(() => {
-              console.log('🔍 DEBUG - SEÇÃO MEUS TICKETS - ESTRUTURA INICIADA');
-              return null;
-            })()}
-<div className="flex justify-between items-center">
-<h2 className="text-xl font-semibold mb-2">Meus Tickets</h2>
-<div className="flex gap-2">
-<button
-onClick={() => {
-queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
-}}
-className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors"
->
-🔄
-</button>
-<button
-onClick={async () => {
-try {
-console.log('🧪 TESTE - Chamando getMyTickets diretamente...');
-const result = await ticketService.getMyTickets();
-console.log('🧪 TESTE - Resultado direto:', result);
-
-// ✅ NOVO: Teste detalhado da estrutura dos dados
-console.log('🧪 TESTE - Estrutura detalhada:', {
-resultType: typeof result,
-isArray: Array.isArray(result),
-length: result?.length || 0,
-firstItem: result?.[0],
-firstItemKeys: result?.[0] ? Object.keys(result[0]) : [],
-allItems: result?.map((t: any) => ({
-id: t.id,
-ticket_number: t.ticket_number,
-status: t.status,
-hasServices: !!t.services,
-servicesCount: t.services?.length || 0
-}))
-});
-
-alert(`Tickets encontrados: ${result?.length || 0}\nEstrutura: ${JSON.stringify(result?.[0] ? Object.keys(result[0]) : [], null, 2)}`);
-} catch (error) {
-console.error('🧪 TESTE - Erro:', error);
-alert(`Erro: ${error}`);
-}
-}}
-className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition-colors"
->
-🧪 Teste
-</button>
-</div>
-</div>
-{(() => {
-// ✅ CORREÇÃO CRÍTICA: Usar dados diretos do hook em vez de safeMyTickets
-const ticketsToRender = myTickets || [];
-
-// ✅ NOVO: Log imediato para verificar se a função está sendo executada
-console.log('🔍 DEBUG - SEÇÃO MEUS TICKETS - FUNÇÃO EXECUTADA');
-console.log('🔍 DEBUG - myTickets recebido:', myTickets);
-console.log('🔍 DEBUG - ticketsToRender:', ticketsToRender);
-
-// ✅ NOVO: Log inicial para verificar se a seção está sendo renderizada
-console.log('🔍 DEBUG - SEÇÃO MEUS TICKETS - INICIANDO RENDERIZAÇÃO:', {
-myTickets: myTickets,
-myTicketsLength: myTickets?.length || 0,
-ticketsToRender: ticketsToRender,
-ticketsToRenderLength: ticketsToRender.length,
-isArray: Array.isArray(ticketsToRender),
-hasData: ticketsToRender.length > 0
-});
-
-// ✅ NOVO: Teste de debug mais detalhado
-console.log('🔍 DEBUG - Meus tickets - RENDERIZAÇÃO CORRIGIDA:', {
-ticketsToRenderLength: ticketsToRender.length,
-ticketsToRender: ticketsToRender?.map((t: any) => ({
-id: t.id,
-ticket_number: t.ticket_number || t.number,
-status: t.status,
-assigned_operator_id: t.assigned_operator_id || t.operatorId,
-customer_name: t.customer_name || t.customer?.name
-})),
-myTicketsLength: myTickets?.length,
-safeMyTicketsLength: safeMyTickets.length,
-// ✅ NOVO: Verificar se há diferença entre os arrays
-arraysEqual: JSON.stringify(ticketsToRender) === JSON.stringify(myTickets),
-ticketsToRenderType: typeof ticketsToRender,
-myTicketsType: typeof myTickets,
-// ✅ NOVO: Verificar estrutura do primeiro item
-firstItemStructure: ticketsToRender[0] ? {
-id: ticketsToRender[0].id,
-number: ticketsToRender[0].number || ticketsToRender[0].ticket_number,
-status: ticketsToRender[0].status,
-hasServices: !!ticketsToRender[0].services,
-servicesCount: ticketsToRender[0].services?.length || 0
-} : null
-});
-
-console.log('🔍 DEBUG - Meus tickets - CONDIÇÃO DE RENDERIZAÇÃO CORRIGIDA:', {
-ticketsToRenderLength: ticketsToRender.length,
-shouldShowEmpty: ticketsToRender.length === 0,
-ticketsToRenderIsArray: Array.isArray(ticketsToRender),
-ticketsToRenderFirstItem: ticketsToRender[0],
-// ✅ NOVO: Verificar se o array tem conteúdo válido
-hasValidContent: ticketsToRender.length > 0 && ticketsToRender.every(t => t && t.id)
-});
-
-// ✅ NOVO: Teste de renderização forçada para debug
-if (ticketsToRender.length > 0) {
-console.log('🔍 DEBUG - FORÇANDO RENDERIZAÇÃO - Primeiro ticket:', ticketsToRender[0]);
-}
-
-// ✅ NOVO: Log da decisão de renderização
-console.log('🔍 DEBUG - DECISÃO DE RENDERIZAÇÃO:', {
-ticketsToRenderLength: ticketsToRender.length,
-condition: ticketsToRender.length === 0,
-willShowEmpty: ticketsToRender.length === 0,
-willShowTickets: ticketsToRender.length > 0
-});
-
-// ✅ NOVO: Teste simples antes da renderização forçada
-console.log('🔍 DEBUG - TESTE SIMPLES - Vai renderizar tickets?', ticketsToRender.length > 0);
-
-// ✅ CORREÇÃO: Remover renderização forçada de debug e deixar apenas a renderização normal
-console.log('🔍 DEBUG - RENDERIZANDO TICKETS NORMALMENTE - Quantidade:', ticketsToRender.length);
-
-// ✅ NOVO: Log detalhado de cada ticket antes da renderização
-ticketsToRender.forEach((ticket, index) => {
-console.log(`🔍 DEBUG - TICKET ${index + 1} ANTES DA RENDERIZAÇÃO:`, {
-id: ticket.id,
-number: ticket.number || ticket.ticket_number,
-status: ticket.status,
-customerName: ticket.customer_name || ticket.customer?.name,
-hasServices: !!ticket.services,
-servicesCount: ticket.services?.length || 0,
-services: ticket.services?.map((s: any) => ({
-id: s.id,
-name: s.name,
-serviceName: s.service?.name
-})) || [],
-allKeys: Object.keys(ticket)
-});
-});
-
-// ✅ NOVO: Filtrar tickets que têm informações mínimas necessárias
-const validTickets = ticketsToRender.filter(ticket => {
-const hasValidId = !!ticket.id;
-const hasValidNumber = !!(ticket.number || ticket.ticket_number);
-const hasValidStatus = !!ticket.status;
-
-console.log('🔍 DEBUG - VALIDANDO TICKET:', {
-id: ticket.id,
-number: ticket.number || ticket.ticket_number,
-status: ticket.status,
-hasValidId,
-hasValidNumber,
-hasValidStatus,
-isValid: hasValidId && hasValidNumber && hasValidStatus
-});
-
-return hasValidId && hasValidNumber && hasValidStatus;
-});
-
-// ✅ NOVO: Log detalhado da validação
-console.log('🔍 DEBUG - RESULTADO DA VALIDAÇÃO:', {
-totalTickets: ticketsToRender.length,
-validTickets: validTickets.length,
-invalidTickets: ticketsToRender.length - validTickets.length,
-validTicketsDetails: validTickets.map(t => ({
-id: t.id,
-number: t.number || t.ticket_number,
-status: t.status
-}))
-});
-
-console.log('🔍 DEBUG - TICKETS VÁLIDOS:', {
-total: ticketsToRender.length,
-valid: validTickets.length,
-invalid: ticketsToRender.length - validTickets.length
-});
-
-// ✅ NOVO: Log antes da renderização condicional
-console.log('🔍 DEBUG - SEÇÃO MEUS TICKETS - ANTES DA RENDERIZAÇÃO CONDICIONAL:', {
-validTicketsLength: validTickets.length,
-ticketsToRenderLength: ticketsToRender.length,
-willShowEmpty: validTickets.length === 0,
-willShowTickets: validTickets.length > 0
-});
-
-// ✅ NOVO: Log antes da renderização condicional
-console.log('🔍 DEBUG - SEÇÃO MEUS TICKETS - ANTES DA RENDERIZAÇÃO CONDICIONAL:', {
-validTicketsLength: validTickets.length,
-ticketsToRenderLength: ticketsToRender.length,
-willShowEmpty: validTickets.length === 0,
-willShowTickets: validTickets.length > 0
-});
-
-// ✅ CORREÇÃO: Renderizar sempre, mesmo que não haja tickets válidos
-console.log('🔍 DEBUG - ANTES DA RENDERIZAÇÃO - validTickets.length:', validTickets.length);
-
-if (validTickets.length === 0) {
-console.log('🔍 DEBUG - RENDERIZANDO MENSAGEM VAZIA');
-return (
-<div className="text-gray-400 text-center py-8">
-Nenhum ticket em atendimento (Total: {ticketsToRender.length}, Válidos: {validTickets.length})
-</div>
-);
-}
-
-console.log('🔍 DEBUG - RENDERIZANDO TICKETS - Quantidade:', validTickets.length);
-return (
-validTickets.map(ticket => {
-console.log('🔍 DEBUG - SEÇÃO MEUS TICKETS - RENDERIZANDO TICKET:', {
-ticketId: ticket.id,
-ticketNumber: ticket.number || ticket.ticket_number,
-status: ticket.status,
-customerName: ticket.customer_name || ticket.customer?.name,
-hasServices: !!ticket.services,
-servicesCount: ticket.services?.length || 0,
-services: ticket.services?.map((s: any) => ({
-id: s.id,
-name: s.name,
-serviceName: s.service?.name
-})) || []
-});
-console.log('🔍 DEBUG - RENDERIZANDO TICKET INDIVIDUAL:', {
-ticketId: ticket.id,
-ticketNumber: ticket.number || ticket.ticket_number,
-status: ticket.status,
-customerName: ticket.customer_name || ticket.customer?.name
-});
-
-return (
-<div
-key={ticket.id}
-className={`flex flex-col md:flex-row md:items-center justify-between rounded-2xl p-4 md:p-5 shadow-md hover:shadow-xl transition-transform hover:-translate-y-1 group focus-within:ring-2 focus-within:ring-yellow-400
-                     ${ticket.status === 'called'
-                       ? 'bg-white border border-yellow-200'
-                       : ticket.status === 'in_progress'
-                         ? 'bg-green-50 border-2 border-green-400'
-                         : 'bg-white border border-gray-200 opacity-60'
-                     }
-                   `}
-tabIndex={0}
-aria-label={`Ticket ${ticket.number || ticket.ticket_number}`}
->
-<div className="flex flex-row md:flex-col items-center gap-4 md:gap-2 w-full md:w-auto mb-2 md:mb-0">
-<div className="flex flex-col items-center">
-<span className={`text-xl md:text-2xl font-bold flex items-center gap-1
-                           ${ticket.status === 'in_progress' ? 'text-green-700' : 'text-yellow-600'}`}
->
-<MdConfirmationNumber className="inline text-2xl md:text-3xl" />
-{ticket.number || ticket.ticket_number || 'N/A'}
-</span>
-<span className={`text-xs font-bold px-2 py-1 rounded-full mt-1
-                           ${ticket.status === 'in_progress' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}
->
-{ticket.status === 'in_progress' ? 'Em andamento' : 'Aguardando'}
-</span>
-</div>
-</div>
-<div className="flex-1 flex flex-col gap-1 md:gap-2 w-full">
-<div className="font-semibold text-base md:text-lg text-gray-800 break-words">{ticket.customer_name || ticket.customer?.name}</div>
-<div className="flex flex-wrap gap-1 mt-1">
-{ticket.services?.map((s, idx) => {
-// ✅ CORREÇÃO: Verificar status do serviço específico com segurança
-try {
-const ticketProgress = serviceProgress?.[ticket.id] || [];
-const thisServiceProgress = ticketProgress.find(p => 
-p?.service_name === (s?.service?.name || s?.name)
-);
-
-const statusColor = thisServiceProgress?.status === 'completed' 
-? 'bg-green-100 text-green-700' 
-: thisServiceProgress?.status === 'in_progress'
-? 'bg-blue-100 text-blue-700'
-: 'bg-yellow-100 text-yellow-700';
-
-const statusIcon = thisServiceProgress?.status === 'completed' 
-? '✅' 
-: thisServiceProgress?.status === 'in_progress'
-? '⟳'
-: '⏳';
-
-return (
-<span key={s?.id || idx} className={`${statusColor} px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1`}>
-<span>{statusIcon}</span>
-{s?.service?.name || s?.name || 'Serviço'}
-</span>
-);
-} catch (error) {
-console.error('❌ Erro ao renderizar serviço:', error);
-return (
-<span key={s?.id || idx} className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-xs font-medium">
-{s?.service?.name || s?.name || 'Serviço'}
-</span>
-);
-}
-})}
-</div>
-{/* Chips de extras */}
-{ticket.extras && ticket.extras.length > 0 && (
-<div className="flex flex-wrap gap-1 mt-1">
-{ticket.extras.map((extra, idx) => (
-<span key={extra.id || idx} className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">
-{extra.extra?.name || extra.name || 'Extra'} {extra.quantity > 1 && `(${extra.quantity}x)`}
-</span>
-))}
-</div>
-)}
-{/* Cálculo do valor total com desconto */}
-{ticket.services && ticket.extras && (
-<div className="mt-2 p-2 bg-blue-50 rounded-lg">
-<div className="text-sm font-semibold text-blue-800 mb-1">Valor Total:</div>
-<div className="text-xs text-blue-600">
-{(() => {
-const { subtotal, discount, total } = calculateTotalWithDiscount(ticket.services, ticket.extras);
-
-return (
-<div>
-<div>Subtotal: R$ {subtotal.toFixed(2).replace('.', ',')}</div>
-{discount > 0 && (
-<div className="text-green-600">Desconto: -R$ {discount.toFixed(2).replace('.', ',')}</div>
-)}
-<div className="font-semibold">Total: R$ {total.toFixed(2).replace('.', ',')}</div>
-</div>
-);
-})()}
-</div>
-</div>
-)}
-
-{/* NOVO: Seção de Progresso Individual dos Serviços */}
-<div className="w-full mt-4">
-<div className="flex items-center justify-between mb-3">
-<h4 className="text-sm font-semibold text-gray-700">Progresso dos Serviços</h4>
-<button
-onClick={() => fetchServiceProgress(ticket.id)}
-className="text-xs text-blue-600 hover:text-blue-800 underline"
->
-Atualizar
-</button>
-</div>
-
-{/* Resumo do progresso */}
-{(() => {
-const summary = getTicketProgressSummary(ticket.id);
-const overallStatus = getTicketOverallStatus(ticket.id);
-
-return (
-<div className="mb-3 p-2 bg-gray-50 rounded-lg">
-<div className="flex items-center justify-between text-xs">
-<span className="font-medium">Progresso Geral:</span>
-<span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                 overallStatus === 'completed' ? 'bg-green-100 text-green-700' :
-                                 overallStatus === 'in_progress' ? 'bg-blue-100 text-blue-700' :
-                                 overallStatus === 'cancelled' ? 'bg-red-100 text-red-700' :
-                                 'bg-gray-100 text-gray-700'
-                               }`}>
-{overallStatus === 'completed' ? 'Concluído' :
-overallStatus === 'in_progress' ? 'Em Andamento' :
-overallStatus === 'cancelled' ? 'Cancelado' :
-'Pendente'}
-</span>
-</div>
-<div className="flex gap-2 mt-1 text-xs text-gray-600">
-<span>Total: {summary.total}</span>
-<span className="text-green-600">✓ {summary.completed}</span>
-<span className="text-blue-600">⟳ {summary.inProgress}</span>
-<span className="text-gray-600">⏳ {summary.pending}</span>
-</div>
-</div>
-);
-})()}
-
-{/* Carregar progresso dos serviços */}
-{(() => {
-const progress = serviceProgress[ticket.id] || [];
-const isLoading = progressLoading[ticket.id] || false;
-
-console.log('🔍 DEBUG - Progresso do ticket:', {
-ticketId: ticket.id,
-progressLength: progress.length,
-isLoading,
-progress: progress
-});
-
-if (isLoading) {
-return (
-<div className="text-xs text-gray-500 italic">
-Carregando progresso dos serviços...
-</div>
-);
-}
-
-if (progress.length === 0) {
-return (
-<div className="text-xs text-gray-500 italic">
-Nenhum progresso encontrado. Clique em "Atualizar" para carregar.
-</div>
-);
-}
-
-return (
-<div className="space-y-2">
-{progress.map((serviceProgress) => (
-<ServiceProgressCard
-key={serviceProgress.id}
-progress={serviceProgress}
-ticketId={ticket.id}
-selectedEquipment={selectedEquipment}
-setSelectedEquipment={setSelectedEquipment}
-equipments={equipments}
-startServiceProgress={startServiceProgress}
-completeServiceProgress={completeServiceProgress}
-cancelServiceProgress={cancelServiceProgress}
-fetchServiceProgress={fetchServiceProgress}
-getProgressStatusColor={getProgressStatusColor}
-getProgressStatusText={getProgressStatusText}
-/>
-))}
-</div>
-);
-})()}
-</div>
-
-<div className="text-xs text-gray-400 mt-1">
-{ticket.called_at ? formatDistanceToNow(new Date(ticket.called_at), { addSuffix: true, locale: ptBR }) : ""}
-</div>
-{ticket.status === 'in_progress' && (
-<div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 w-full">
-{(() => {
-const canComplete = canCompleteTicket(ticket.id);
-console.log('🔍 DEBUG - Botões do ticket:', {
-ticketId: ticket.id,
-status: ticket.status,
-canComplete,
-completeLoading,
-cancelLoading
-});
-return null;
-})()}
-{(ticket.started_at || ticket.startedAt) && (
-<div className="flex-1 flex flex-col items-center sm:items-start">
-<ServiceCountdown
-startTime={ticket.started_at || ticket.startedAt}
-duration={
-ticket.services?.[0]?.duration_minutes ??
-ticket.services?.[0]?.duration ??
-ticket.services?.[0]?.durationMinutes ??
-10
-}
-/>
-</div>
-)}
-{!(ticket.started_at || ticket.startedAt) && (
-<span className="text-red-500 font-bold">Início não informado</span>
-)}
-<div className="flex flex-col sm:flex-row gap-2 mt-2 sm:mt-0 w-full sm:w-auto justify-center items-center">
-<button
-className="w-full sm:w-auto px-5 py-2 bg-green-600 text-white rounded-lg font-bold shadow hover:bg-green-700 focus:ring-2 focus:ring-green-400 focus:outline-none transition-all disabled:bg-gray-300 disabled:text-gray-500"
-aria-label={`Concluir atendimento do ticket ${ticket.number || ticket.ticket_number}`}
-disabled={completeLoading || !canCompleteTicket(ticket.id)}
-onClick={async () => {
-try {
-console.log('🔄 Tentando concluir ticket:', { ticketId: ticket.id });
-
-// Verificar se pode concluir
-const canComplete = canCompleteTicket(ticket.id);
-console.log('🔍 DEBUG - Pode concluir:', canComplete);
-
-if (!canComplete) {
-alert('Não é possível concluir este ticket. Verifique se pelo menos um serviço está completo.');
-return;
-}
-
-console.log('🔄 Concluindo ticket:', ticket.id);
-await completeService({ ticketId: ticket.id });
-
-// ✅ CORREÇÃO: Invalidar queries específicas
-console.log('🔄 Invalidando queries após conclusão...');
-queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
-queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
-queryClient.invalidateQueries({ queryKey: ['service-progress'] });
-
-await refetch();
-console.log('✅ Ticket concluído com sucesso');
-} catch (error) {
-console.error('❌ Erro ao concluir ticket:', error);
-alert('Erro ao concluir ticket. Tente novamente.');
-}
-}}
->
-{completeLoading ? 'Concluindo...' : 'Concluir'}
-</button>
-<button
-className="w-full sm:w-auto px-5 py-2 bg-red-500 text-white rounded-lg font-bold shadow hover:bg-red-600 focus:ring-2 focus:ring-red-400 focus:outline-none transition-all disabled:bg-gray-300 disabled:text-gray-500"
-aria-label={`Cancelar atendimento do ticket ${ticket.number || ticket.ticket_number}`}
-disabled={cancelLoading}
-onClick={async () => {
-try {
-// ✅ CORREÇÃO: Solicitar motivo do cancelamento
-const reason = prompt('Motivo do cancelamento:');
-if (!reason) {
-alert('É necessário informar um motivo para cancelar o ticket.');
-return;
-}
-
-console.log('🔄 Cancelando ticket:', { ticketId: ticket.id, reason });
-await cancelTicket({ ticketId: ticket.id, reason });
-
-// ✅ CORREÇÃO: Invalidar queries específicas
-console.log('🔄 Invalidando queries após cancelamento...');
-queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
-queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
-queryClient.invalidateQueries({ queryKey: ['service-progress'] });
-
-await refetch();
-console.log('✅ Ticket cancelado com sucesso');
-} catch (error) {
-console.error('❌ Erro ao cancelar ticket:', error);
-alert('Erro ao cancelar ticket. Tente novamente.');
-}
-}}
->
-{cancelLoading ? 'Cancelando...' : 'Cancelar'}
-</button>
-</div>
-</div>
-)}
-{ticket.status === 'called' && (
-<button
-className="mt-4 md:mt-0 w-full md:w-auto px-7 py-3 bg-yellow-500 text-white rounded-xl font-bold shadow-lg hover:bg-yellow-600 focus:ring-2 focus:ring-yellow-400 focus:outline-none transition-all scale-100 group-hover:scale-105 disabled:bg-gray-300 disabled:text-gray-500"
-aria-label={`Iniciar atendimento do ticket ${ticket.number || ticket.ticket_number}`}
-onClick={async () => {
-try {
-console.log('🔄 Iniciando ticket:', { ticketId: ticket.id });
-await startService({ ticketId: ticket.id });
-await refetch();
-queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
-queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
-console.log('✅ Ticket iniciado com sucesso');
-} catch (error) {
-console.error('❌ Erro ao iniciar ticket:', error);
-alert('Erro ao iniciar ticket. Tente novamente.');
-}
-}}
->
-Iniciar
-</button>
-)}
-{ticket.status === 'pending_payment' && ticket.payment_confirmed !== true && (
-<button
-className="w-full sm:w-auto px-5 py-2 bg-green-500 text-white rounded-lg font-bold shadow hover:bg-green-600 focus:ring-2 focus:ring-green-400 focus:outline-none transition-all disabled:bg-gray-300 disabled:text-gray-500"
-aria-label={`Confirmar pagamento do ticket ${ticket.number || ticket.ticket_number}`}
-disabled={confirmLoading}
-onClick={async () => {
-try {
-console.log('🔄 Confirmando pagamento do ticket:', ticket.id);
-await confirmPayment({ ticketId: ticket.id });
-
-// Forçar refetch de todas as queries relacionadas
-console.log('🔄 Atualizando queries após confirmação...');
-await refetch();
-
-// Invalidar queries específicas
-queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
-queryClient.invalidateQueries({ queryKey: ['tickets', 'pending-payment'] });
-queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
-
-console.log('✅ Pagamento confirmado e queries atualizadas');
-} catch (error) {
-console.error('❌ Erro ao confirmar pagamento:', error);
-alert('Erro ao confirmar pagamento. Tente novamente.');
-}
-}}
->
-{confirmLoading ? 'Confirmando...' : 'Confirmar Pagamento'}
-</button>
-)}
-{ticket.status === 'paid' && (
-<button
-className="mt-4 md:mt-0 w-full md:w-auto px-7 py-3 bg-green-500 text-white rounded-xl font-bold shadow-lg hover:bg-green-600 focus:ring-2 focus:ring-green-400 focus:outline-none transition-all scale-100 group-hover:scale-105 disabled:bg-gray-300 disabled:text-gray-500"
-aria-label={`Mover ticket ${ticket.number || ticket.ticket_number} para fila`}
-disabled={moveToQueueLoading}
-onClick={async () => {
-try {
-console.log('🔄 Movendo ticket para fila:', { ticketId: ticket.id });
-await moveToQueue({ ticketId: ticket.id });
-await refetch();
-console.log('✅ Ticket movido para fila com sucesso');
-} catch (error) {
-console.error('❌ Erro ao mover ticket para fila:', error);
-alert('Erro ao mover ticket para fila. Tente novamente.');
-}
-}}
->
-{moveToQueueLoading ? 'Movendo...' : 'Mover para Fila'}
-</button>
-)}
-</div>
-);
-})}
-</div>
+  <h2 className="text-xl font-semibold mb-2">Meus Tickets</h2>
+  
+  {/* Debug info */}
+  <div className="text-xs text-gray-500 mb-2">
+    Debug: {myTickets?.length || 0} tickets encontrados
+  </div>
+  
+  {myTickets && myTickets.length > 0 ? (
+    <div className="space-y-4">
+      {myTickets.map(ticket => (
+        <div
+          key={ticket.id}
+          className={`flex flex-col md:flex-row md:items-center justify-between rounded-2xl p-4 md:p-5 shadow-md hover:shadow-xl transition-transform hover:-translate-y-1 group focus-within:ring-2 focus-within:ring-yellow-400
+            ${ticket.status === 'called'
+              ? 'bg-white border border-yellow-200'
+              : ticket.status === 'in_progress'
+                ? 'bg-green-50 border-2 border-green-400'
+                : 'bg-white border border-gray-200 opacity-60'
+            }
+          `}
+          tabIndex={0}
+          aria-label={`Ticket ${ticket.number || ticket.ticket_number}`}
+        >
+          <div className="flex flex-row md:flex-col items-center gap-4 md:gap-2 w-full md:w-auto mb-2 md:mb-0">
+            <div className="flex flex-col items-center">
+              <span className={`text-xl md:text-2xl font-bold flex items-center gap-1
+                ${ticket.status === 'in_progress' ? 'text-green-700' : 'text-yellow-600'}`}
+              >
+                <MdConfirmationNumber className="inline text-2xl md:text-3xl" />
+                {ticket.number || ticket.ticket_number || 'N/A'}
+              </span>
+              <span className={`text-xs font-bold px-2 py-1 rounded-full mt-1
+                ${ticket.status === 'in_progress' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}
+              >
+                {ticket.status === 'in_progress' ? 'Em andamento' : 'Aguardando'}
+              </span>
+            </div>
+          </div>
+          
+          <div className="flex-1 flex flex-col gap-1 md:gap-2 w-full">
+            <div className="font-semibold text-base md:text-lg text-gray-800 break-words">
+              {ticket.customer_name || ticket.customer?.name || 'Cliente não identificado'}
+            </div>
+            
+            <div className="flex flex-wrap gap-1 mt-1">
+              {ticket.services?.map((s, idx) => (
+                <span key={s?.id || idx} className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                  {s?.service?.name || s?.name || 'Serviço'}
+                </span>
+              ))}
+            </div>
+            
+            {/* Chips de extras */}
+            {ticket.extras && ticket.extras.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {ticket.extras.map((extra, idx) => (
+                  <span key={extra.id || idx} className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                    {extra.extra?.name || extra.name || 'Extra'} {extra.quantity > 1 && `(${extra.quantity}x)`}
+                  </span>
+                ))}
+              </div>
+            )}
+            
+            <div className="text-xs text-gray-400 mt-1">
+              {ticket.called_at ? formatDistanceToNow(new Date(ticket.called_at), { addSuffix: true, locale: ptBR }) : ""}
+            </div>
+          </div>
+          
+          {/* Botões de ação */}
+          <div className="flex flex-col gap-2 mt-4 md:mt-0">
+            {ticket.status === 'in_progress' && (
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button
+                  className="w-full sm:w-auto px-5 py-2 bg-green-600 text-white rounded-lg font-bold shadow hover:bg-green-700 focus:ring-2 focus:ring-green-400 focus:outline-none transition-all disabled:bg-gray-300 disabled:text-gray-500"
+                  aria-label={`Concluir atendimento do ticket ${ticket.number || ticket.ticket_number}`}
+                  disabled={completeLoading}
+                  onClick={async () => {
+                    try {
+                      console.log('🔄 Concluindo ticket:', ticket.id);
+                      await completeService({ ticketId: ticket.id });
+                      await refetch();
+                      console.log('✅ Ticket concluído com sucesso');
+                    } catch (error) {
+                      console.error('❌ Erro ao concluir ticket:', error);
+                      alert('Erro ao concluir ticket. Tente novamente.');
+                    }
+                  }}
+                >
+                  {completeLoading ? 'Concluindo...' : 'Concluir'}
+                </button>
+                
+                <button
+                  className="w-full sm:w-auto px-5 py-2 bg-red-500 text-white rounded-lg font-bold shadow hover:bg-red-600 focus:ring-2 focus:ring-red-400 focus:outline-none transition-all disabled:bg-gray-300 disabled:text-gray-500"
+                  aria-label={`Cancelar atendimento do ticket ${ticket.number || ticket.ticket_number}`}
+                  disabled={cancelLoading}
+                  onClick={async () => {
+                    try {
+                      const reason = prompt('Motivo do cancelamento:');
+                      if (!reason) {
+                        alert('É necessário informar um motivo para cancelar o ticket.');
+                        return;
+                      }
+                      console.log('🔄 Cancelando ticket:', { ticketId: ticket.id, reason });
+                      await cancelTicket({ ticketId: ticket.id, reason });
+                      await refetch();
+                      console.log('✅ Ticket cancelado com sucesso');
+                    } catch (error) {
+                      console.error('❌ Erro ao cancelar ticket:', error);
+                      alert('Erro ao cancelar ticket. Tente novamente.');
+                    }
+                  }}
+                >
+                  {cancelLoading ? 'Cancelando...' : 'Cancelar'}
+                </button>
+              </div>
+            )}
+            
+            {ticket.status === 'called' && (
+              <button
+                className="mt-4 md:mt-0 w-full md:w-auto px-7 py-3 bg-yellow-500 text-white rounded-xl font-bold shadow-lg hover:bg-yellow-600 focus:ring-2 focus:ring-yellow-400 focus:outline-none transition-all scale-100 group-hover:scale-105 disabled:bg-gray-300 disabled:text-gray-500"
+                aria-label={`Iniciar atendimento do ticket ${ticket.number || ticket.ticket_number}`}
+                onClick={async () => {
+                  try {
+                    console.log('🔄 Iniciando ticket:', { ticketId: ticket.id });
+                    await startService({ ticketId: ticket.id });
+                    await refetch();
+                    console.log('✅ Ticket iniciado com sucesso');
+                  } catch (error) {
+                    console.error('❌ Erro ao iniciar ticket:', error);
+                    alert('Erro ao iniciar ticket. Tente novamente.');
+                  }
+                }}
+              >
+                Iniciar
+              </button>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  ) : (
+    <div className="text-gray-400 text-center py-8">
+      Nenhum ticket em atendimento
+    </div>
+  )}
 </section>
 
 {/* Tickets Aguardando Confirmação de Pagamento */}
