@@ -831,25 +831,28 @@ const getServiceCountdown = useCallback((ticket: any) => {
                          ticket.services?.[0]?.durationMinutes || 
                          10; // Padrão de 10 minutos
   
-  const remainingMins = Math.max(0, serviceDuration - elapsedMins);
-  const isOverdue = remainingMins <= 0;
+  const remainingMs = Math.max(0, (serviceDuration * 60 * 1000) - elapsedMs);
+  const remainingMins = Math.floor(remainingMs / (1000 * 60));
+  const remainingSecs = Math.floor((remainingMs % (1000 * 60)) / 1000);
+  const isOverdue = remainingMs <= 0;
   
-  // Formatar tempo restante
-  const formatTime = (minutes: number) => {
-    if (minutes <= 0) return '0min';
-    if (minutes < 60) return `${minutes}min`;
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours}h ${mins}min`;
+  // Formatar tempo restante em MM:SS
+  const formatTime = (minutes: number, seconds: number) => {
+    if (minutes <= 0 && seconds <= 0) return '00:00';
+    const mins = minutes.toString().padStart(2, '0');
+    const secs = seconds.toString().padStart(2, '0');
+    return `${mins}:${secs}`;
   };
   
   return {
-    remainingTime: formatTime(remainingMins),
+    remainingTime: formatTime(remainingMins, remainingSecs),
     remainingMinutes: remainingMins,
+    remainingSeconds: remainingSecs,
+    remainingMs,
     elapsedMinutes: elapsedMins,
     serviceDuration,
     isOverdue,
-    progress: Math.min((elapsedMins / serviceDuration) * 100, 100)
+    progress: Math.min((elapsedMs / (serviceDuration * 60 * 1000)) * 100, 100)
   };
 }, [currentTime]);
 
@@ -2748,20 +2751,32 @@ callLoading={callLoading}
                             ))}
                           </div>
                           
-                                                     {/* ✅ NOVO: Countdown Regressivo do Serviço */}
+                                                     {/* ✅ NOVO: Countdown Regressivo do Serviço - Design Melhorado */}
                            {(ticket.started_at || ticket.startedAt) && (
-                             <div className="mt-2 p-2 bg-blue-50 rounded-lg">
+                             <div className="mt-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm">
                                {(() => {
                                  const countdownData = getServiceCountdown(ticket);
                                  if (!countdownData) return null;
                                  
-                                 const { remainingTime, remainingMinutes, serviceDuration, isOverdue, progress } = countdownData;
+                                 const { remainingTime, remainingMinutes, remainingSeconds, serviceDuration, isOverdue, progress } = countdownData;
                                  
                                  return (
                                    <>
-                                     <div className="flex items-center justify-between">
-                                       <div className="text-xs font-semibold text-blue-800">Tempo Restante:</div>
-                                       <div className={`text-xs font-mono font-bold ${
+                                     {/* Header do Countdown */}
+                                     <div className="flex items-center justify-between mb-3">
+                                       <div className="flex items-center gap-2">
+                                         <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                         <span className="text-sm font-semibold text-gray-700">Tempo Restante</span>
+                                       </div>
+                                       <div className="flex items-center gap-1">
+                                         <span className="text-xs text-gray-500">Duração:</span>
+                                         <span className="text-xs font-medium text-gray-700">{serviceDuration}min</span>
+                                       </div>
+                                     </div>
+                                     
+                                     {/* Timer Principal */}
+                                     <div className="text-center mb-3">
+                                       <div className={`text-3xl font-bold font-mono tracking-wider ${
                                          isOverdue 
                                            ? 'text-red-600' 
                                            : remainingMinutes <= 2 
@@ -2770,39 +2785,56 @@ callLoading={callLoading}
                                        }`}>
                                          {remainingTime}
                                        </div>
+                                       <div className="text-xs text-gray-500 mt-1">
+                                         {isOverdue ? 'Tempo Excedido' : 'Restante'}
+                                       </div>
                                      </div>
                                      
-                                     {/* ✅ NOVO: Barra de Progresso Visual */}
-                                     <div className="mt-1">
-                                       <div className="flex justify-between text-xs text-gray-600 mb-1">
-                                         <span>0min</span>
-                                         <span>{serviceDuration}min</span>
+                                     {/* Barra de Progresso Melhorada */}
+                                     <div className="mb-3">
+                                       <div className="flex justify-between text-xs text-gray-600 mb-2">
+                                         <span>0:00</span>
+                                         <span>{serviceDuration}:00</span>
                                        </div>
-                                       <div className="w-full bg-gray-200 rounded-full h-2">
+                                       <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                                          <div 
-                                           className={`h-2 rounded-full transition-all duration-300 ${
+                                           className={`h-full rounded-full transition-all duration-500 ease-out ${
                                              isOverdue 
-                                               ? 'bg-red-500' 
+                                               ? 'bg-gradient-to-r from-red-400 to-red-600' 
                                                : progress > 80 
-                                                 ? 'bg-orange-500' 
-                                                 : 'bg-blue-500'
+                                                 ? 'bg-gradient-to-r from-orange-400 to-orange-600' 
+                                                 : 'bg-gradient-to-r from-blue-400 to-blue-600'
                                            }`}
                                            style={{ width: `${progress}%` }}
                                          />
                                        </div>
-                                       {isOverdue && (
-                                         <div className="text-xs text-red-600 font-semibold mt-1 flex items-center gap-1">
-                                           <span>⚠️</span>
-                                           <span>Tempo excedido em {Math.abs(remainingMinutes)}min</span>
-                                         </div>
-                                       )}
-                                       {!isOverdue && remainingMinutes <= 2 && (
-                                         <div className="text-xs text-orange-600 font-semibold mt-1 flex items-center gap-1">
-                                           <span>⏰</span>
-                                           <span>Terminando em breve!</span>
-                                         </div>
-                                       )}
                                      </div>
+                                     
+                                     {/* Alertas Visuais */}
+                                     {isOverdue && (
+                                       <div className="bg-red-50 border border-red-200 rounded-lg p-2 flex items-center gap-2">
+                                         <span className="text-red-500">⚠️</span>
+                                         <span className="text-xs text-red-700 font-medium">
+                                           Tempo excedido em {Math.abs(remainingMinutes)}:{Math.abs(remainingSeconds).toString().padStart(2, '0')}
+                                         </span>
+                                       </div>
+                                     )}
+                                     {!isOverdue && remainingMinutes <= 2 && remainingMinutes > 0 && (
+                                       <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 flex items-center gap-2">
+                                         <span className="text-orange-500">⏰</span>
+                                         <span className="text-xs text-orange-700 font-medium">
+                                           Terminando em breve!
+                                         </span>
+                                       </div>
+                                     )}
+                                     {!isOverdue && remainingMinutes === 0 && remainingSeconds <= 30 && (
+                                       <div className="bg-red-50 border border-red-200 rounded-lg p-2 flex items-center gap-2 animate-pulse">
+                                         <span className="text-red-500">🚨</span>
+                                         <span className="text-xs text-red-700 font-medium">
+                                           Últimos segundos!
+                                         </span>
+                                       </div>
+                                     )}
                                    </>
                                  );
                                })()}
