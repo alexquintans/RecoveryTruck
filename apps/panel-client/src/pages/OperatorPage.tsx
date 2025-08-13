@@ -788,6 +788,59 @@ return operatorConfig?.extras || [];
 const [equipments, setEquipments] = useState<Equipment[]>(() => {
 return operatorConfig?.equipments || [];
 });
+
+// ✅ NOVO: Hook para timer em tempo real
+const [currentTime, setCurrentTime] = useState(new Date());
+
+useEffect(() => {
+  const timer = setInterval(() => {
+    setCurrentTime(new Date());
+  }, 1000);
+
+  return () => clearInterval(timer);
+}, []);
+
+// ✅ NOVO: Função para calcular tempo decorrido
+const getElapsedTime = useCallback((startTime: string | Date) => {
+  const start = new Date(startTime);
+  const now = currentTime;
+  const diffMs = now.getTime() - start.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMins / 60);
+  const remainingMins = diffMins % 60;
+  
+  if (diffHours > 0) {
+    return `${diffHours}h ${remainingMins}min`;
+  } else {
+    return `${diffMins}min`;
+  }
+}, [currentTime]);
+
+// ✅ NOVO: Função para calcular progresso do serviço
+const getServiceProgress = useCallback((ticket: any) => {
+  if (!(ticket.started_at || ticket.startedAt)) return null;
+  
+  const startTime = new Date(ticket.started_at || ticket.startedAt);
+  const now = currentTime;
+  const diffMs = now.getTime() - startTime.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  
+  // Duração estimada do serviço (em minutos)
+  const estimatedDuration = ticket.services?.[0]?.duration_minutes || 
+                           ticket.services?.[0]?.duration || 
+                           ticket.services?.[0]?.durationMinutes || 
+                           30; // Padrão de 30 minutos
+  
+  const progress = Math.min((diffMins / estimatedDuration) * 100, 100);
+  const isOverdue = progress > 100;
+  
+  return {
+    progress: Math.min(progress, 100),
+    isOverdue,
+    estimatedDuration,
+    elapsedMinutes: diffMins
+  };
+}, [currentTime]);
 const [paymentModes, setPaymentModes] = useState<string[]>(() => {
 return operatorConfig?.paymentModes || ['none'];
 });
@@ -2657,6 +2710,64 @@ callLoading={callLoading}
                               </span>
                             ))}
                           </div>
+                          
+                                                     {/* ✅ NOVO: Timer/Countdown do Serviço */}
+                           {(ticket.started_at || ticket.startedAt) && (
+                             <div className="mt-2 p-2 bg-blue-50 rounded-lg">
+                               <div className="flex items-center justify-between">
+                                 <div className="text-xs font-semibold text-blue-800">Tempo de Serviço:</div>
+                                 <div className="text-xs text-blue-600 font-mono">
+                                   {getElapsedTime(ticket.started_at || ticket.startedAt)}
+                                 </div>
+                               </div>
+                               
+                               {/* ✅ NOVO: Barra de Progresso Visual */}
+                               {(() => {
+                                 const progressData = getServiceProgress(ticket);
+                                 if (!progressData) return null;
+                                 
+                                 const { progress, isOverdue, estimatedDuration } = progressData;
+                                 
+                                 return (
+                                   <div className="mt-1">
+                                     <div className="flex justify-between text-xs text-gray-600 mb-1">
+                                       <span>0min</span>
+                                       <span>{estimatedDuration}min</span>
+                                     </div>
+                                     <div className="w-full bg-gray-200 rounded-full h-2">
+                                       <div 
+                                         className={`h-2 rounded-full transition-all duration-300 ${
+                                           isOverdue 
+                                             ? 'bg-red-500' 
+                                             : progress > 80 
+                                               ? 'bg-orange-500' 
+                                               : 'bg-blue-500'
+                                         }`}
+                                         style={{ width: `${progress}%` }}
+                                       />
+                                     </div>
+                                     {isOverdue && (
+                                       <div className="text-xs text-red-600 font-semibold mt-1">
+                                         ⚠️ Tempo excedido
+                                       </div>
+                                     )}
+                                   </div>
+                                 );
+                               })()}
+                             </div>
+                           )}
+                          
+                          {/* ✅ NOVO: Aviso se não há horário de início */}
+                          {!(ticket.started_at || ticket.startedAt) && (
+                            <div className="mt-2 p-2 bg-red-50 rounded-lg border border-red-200">
+                              <div className="text-xs text-red-700 font-semibold">
+                                ⚠️ Horário de início não registrado
+                              </div>
+                              <div className="text-xs text-red-600 mt-1">
+                                Clique em "Iniciar" para começar o cronômetro
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -2672,6 +2783,18 @@ callLoading={callLoading}
                               </span>
                             ))}
                           </div>
+                          
+                                                     {/* ✅ NOVO: Tempo de espera para tickets aguardando */}
+                           {ticket.called_at && (
+                             <div className="mt-2 p-2 bg-yellow-50 rounded-lg">
+                               <div className="flex items-center justify-between">
+                                 <div className="text-xs font-semibold text-yellow-800">Tempo de Espera:</div>
+                                 <div className="text-xs text-yellow-600 font-mono">
+                                   {getElapsedTime(ticket.called_at)}
+                                 </div>
+                               </div>
+                             </div>
+                           )}
                         </div>
                       )}
 
