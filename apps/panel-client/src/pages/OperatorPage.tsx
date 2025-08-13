@@ -3456,3 +3456,6 @@ return (
 </WebSocketErrorBoundary>
 );
 };
+
+// ✅ CORREÇÃO: Adicionar export default para o componente
+export default OperatorPageWithErrorBoundary;
