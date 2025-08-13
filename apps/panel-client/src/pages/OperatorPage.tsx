@@ -3420,7 +3420,41 @@ return (
 );
 }
 
-// ✅ NOVO: Componente de Alerta Global - MOVIDO PARA FORA DO COMPONENTE
+
+
+switch (currentStep) {
+case 'name':
+return (
+<>
+  <GlobalAlert conflictAlert={conflictAlert} setConflictAlert={setConflictAlert} />
+  {renderNameStep()}
+</>
+);
+case 'config':
+return (
+<>
+  <GlobalAlert conflictAlert={conflictAlert} setConflictAlert={setConflictAlert} />
+  {renderConfigStep()}
+</>
+);
+case 'operation':
+return (
+<>
+  <GlobalAlert conflictAlert={conflictAlert} setConflictAlert={setConflictAlert} />
+  {renderOperationStep()}
+</>
+);
+default:
+return (
+<>
+  <GlobalAlert conflictAlert={conflictAlert} setConflictAlert={setConflictAlert} />
+  {renderNameStep()}
+</>
+);
+}
+};
+
+// ✅ NOVO: Componente de Alerta Global - DEFINIDO FORA DO COMPONENTE PRINCIPAL
 const GlobalAlert = ({ 
   conflictAlert, 
   setConflictAlert 
@@ -3453,38 +3487,6 @@ const GlobalAlert = ({
       </button>
     </div>
   );
-};
-
-switch (currentStep) {
-case 'name':
-return (
-<>
-  <GlobalAlert conflictAlert={conflictAlert} setConflictAlert={setConflictAlert} />
-  {renderNameStep()}
-</>
-);
-case 'config':
-return (
-<>
-  <GlobalAlert conflictAlert={conflictAlert} setConflictAlert={setConflictAlert} />
-  {renderConfigStep()}
-</>
-);
-case 'operation':
-return (
-<>
-  <GlobalAlert conflictAlert={conflictAlert} setConflictAlert={setConflictAlert} />
-  {renderOperationStep()}
-</>
-);
-default:
-return (
-<>
-  <GlobalAlert conflictAlert={conflictAlert} setConflictAlert={setConflictAlert} />
-  {renderNameStep()}
-</>
-);
-}
 };
 
 // ✅ SOLUÇÃO: Wrapper com Error Boundary para capturar React Error #310
