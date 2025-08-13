@@ -3420,61 +3420,67 @@ return (
 );
 }
 
-// ✅ NOVO: Componente de Alerta Global
-const GlobalAlert = () => {
-if (!conflictAlert || !conflictAlert.show) return null;
+// ✅ NOVO: Componente de Alerta Global - MOVIDO PARA FORA DO COMPONENTE
+const GlobalAlert = ({ 
+  conflictAlert, 
+  setConflictAlert 
+}: { 
+  conflictAlert: { show: boolean; message: string; type: 'warning' | 'error' | 'info'; } | null;
+  setConflictAlert: (alert: { show: boolean; message: string; type: 'warning' | 'error' | 'info'; } | null) => void;
+}) => {
+  if (!conflictAlert || !conflictAlert.show) return null;
   
-return (
-<div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg border-l-4 max-w-md ${
-  conflictAlert.type === 'error' 
-    ? 'bg-red-50 border-red-400 text-red-700' 
-    : conflictAlert.type === 'warning'
-    ? 'bg-yellow-50 border-yellow-400 text-yellow-700'
-    : 'bg-blue-50 border-blue-400 text-blue-700'
-}`}>
-  <div className="flex items-center gap-2">
-    <span className="text-lg">
-      {conflictAlert.type === 'error' ? '❌' : 
-       conflictAlert.type === 'warning' ? '⚠️' : 'ℹ️'}
-    </span>
-    <span className="text-sm font-medium">{conflictAlert.message}</span>
-  </div>
-  <button 
-    onClick={() => setConflictAlert(null)}
-    className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
-  >
-    ✕
-  </button>
-</div>
-);
+  return (
+    <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg border-l-4 max-w-md ${
+      conflictAlert.type === 'error' 
+        ? 'bg-red-50 border-red-400 text-red-700' 
+        : conflictAlert.type === 'warning'
+        ? 'bg-yellow-50 border-yellow-400 text-yellow-700'
+        : 'bg-blue-50 border-blue-400 text-blue-700'
+    }`}>
+      <div className="flex items-center gap-2">
+        <span className="text-lg">
+          {conflictAlert.type === 'error' ? '❌' : 
+           conflictAlert.type === 'warning' ? '⚠️' : 'ℹ️'}
+        </span>
+        <span className="text-sm font-medium">{conflictAlert.message}</span>
+      </div>
+      <button 
+        onClick={() => setConflictAlert(null)}
+        className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+      >
+        ✕
+      </button>
+    </div>
+  );
 };
 
 switch (currentStep) {
 case 'name':
 return (
 <>
-  <GlobalAlert />
+  <GlobalAlert conflictAlert={conflictAlert} setConflictAlert={setConflictAlert} />
   {renderNameStep()}
 </>
 );
 case 'config':
 return (
 <>
-  <GlobalAlert />
+  <GlobalAlert conflictAlert={conflictAlert} setConflictAlert={setConflictAlert} />
   {renderConfigStep()}
 </>
 );
 case 'operation':
 return (
 <>
-  <GlobalAlert />
+  <GlobalAlert conflictAlert={conflictAlert} setConflictAlert={setConflictAlert} />
   {renderOperationStep()}
 </>
 );
 default:
 return (
 <>
-  <GlobalAlert />
+  <GlobalAlert conflictAlert={conflictAlert} setConflictAlert={setConflictAlert} />
   {renderNameStep()}
 </>
 );
