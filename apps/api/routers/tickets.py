@@ -413,7 +413,7 @@ async def get_public_queue(
     )
 
     if not tickets:
-         return {
+        return {
             "items": [], "total": 0, "by_service": {}, "by_status": {}, 
             "by_priority": {}, "queue_stats": {}, "estimated_total_time": 0
         }
@@ -555,7 +555,7 @@ async def get_next_ticket(
         operator_id=str(current_operator.id)
     )
     if not next_ticket:
-         return {
+        return {
             "message": "Nenhum ticket disponível na fila",
             "ticket": None
         }
@@ -610,7 +610,7 @@ async def assign_ticket(
             detail="Ticket não encontrado"
         )
    
-
+    
     return {
         "message": f"Ticket atribuído ao operador {target_operator_id}",
         "ticket_id": ticket_id,
@@ -630,7 +630,7 @@ async def auto_expire_tickets(
         tenant_id=str(current_operator.tenant_id)
     )
    
-
+    
     return {
         "message": f"{expired_count} tickets expirados automaticamente",
         "expired_count": expired_count
@@ -1086,25 +1086,29 @@ async def call_ticket_service(
         # ✅ CORREÇÃO: Se o equipamento não está sendo usado, permitir uso independente do status
     
     # ✅ NOVA LÓGICA: Verificar compatibilidade do equipamento com o serviço - MELHORADA
-    
-    # ✅ CORREÇÃO: Só verificar compatibilidade se o equipamento tiver service_id definido
-    if equipment.service_id:
-        pass
+    # Verificar compatibilidade quando o equipamento declara um serviço específico
+    if equipment.service_id and str(equipment.service_id) != str(request.service_id):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Equipamento {equipment.identifier} não é compatível com o serviço solicitado"
+        )
 
-        pass
+    # Atualizar progresso do serviço específico
+    progress.status = "in_progress"
+    progress.started_at = datetime.now(timezone.utc)
+    progress.equipment_id = request.equipment_id
+    progress.operator_notes = f"Iniciado pelo operador {current_operator.name}"
 
-    else:
-        pass
+    # Atualizar status global apenas para 'called' se ainda estava na fila
+    if ticket.status == TicketStatus.IN_QUEUE.value:
+        ticket.status = TicketStatus.CALLED.value
+        ticket.called_at = datetime.now(timezone.utc)
+        ticket.assigned_operator_id = current_operator.id
 
-        pass
-    # ✅ NÃO atualizar para "in_progress" global - cada serviço tem seu próprio progresso
-    
     # Marcar equipamento como indisponível
-
-    
     equipment.status = EquipmentStatus.offline
     equipment.assigned_operator_id = current_operator.id
-    
+
     db.commit()
     db.refresh(progress)
     db.refresh(equipment)
@@ -1133,7 +1137,7 @@ async def call_ticket_service(
         "equipment_id": str(request.equipment_id),
         "equipment_name": equipment.identifier,
         "operator_name": current_operator.name,
-        "started_at": progress.started_at.isoformat(),
+        "started_at": (progress.started_at.isoformat() if progress.started_at else datetime.now(timezone.utc).isoformat()),
         "duration_minutes": progress.duration_minutes
     }
     await websocket_manager.broadcast_service_started(str(current_operator.tenant_id), service_started_data)
@@ -1146,7 +1150,7 @@ async def call_ticket_service(
     # ✅ NOVA LÓGICA: Broadcast de atualização dos tickets do operador
     await websocket_manager.broadcast_my_tickets_update(str(current_operator.tenant_id), str(current_operator.id))
    
-
+    
     return {
         "success": True,
         "message": f"Serviço {service_name} iniciado com sucesso",
@@ -1155,7 +1159,7 @@ async def call_ticket_service(
         "service_name": service_name,
         "equipment_id": str(request.equipment_id),
         "equipment_name": equipment.identifier,
-        "started_at": progress.started_at.isoformat(),
+        "started_at": (progress.started_at.isoformat() if progress.started_at else datetime.now(timezone.utc).isoformat()),
         "duration_minutes": progress.duration_minutes
     }
 
@@ -1576,7 +1580,7 @@ async def reprint_ticket(
         
         logger.info(f"🖨️ Ticket #{ticket.ticket_number} queued for reprint (attempt #{ticket.print_attempts})")
        
-
+        
         return {
             "status": "success",
             "message": f"Ticket #{ticket.ticket_number} enviado para reimpressão",
@@ -1599,7 +1603,7 @@ async def get_status_info():
     for ticket_status in TicketStatus:
         status_info[ticket_status.value] = get_status_info_func(ticket_status)
    
-
+    
     return {
         "statuses": status_info,
         "categories": TICKET_STATE_CATEGORIES,
@@ -1664,7 +1668,7 @@ async def get_dashboard_stats(
         if service_times:
             avg_service_time = sum(service_times) / len(service_times)
    
-
+    
     return {
         "summary": {
             "total_tickets": len(tickets),
@@ -2022,7 +2026,7 @@ async def confirm_payment(
 
     # Já confirmado?
     if ticket.payment_confirmed:
-         return {"status": "already_confirmed"}
+        return {"status": "already_confirmed"}
 
     # Confirmar pagamento e mover para fila
     ticket.payment_confirmed = True
@@ -2113,7 +2117,7 @@ async def move_ticket_to_queue(
     
     logger.info(f"🎯 Ticket #{ticket.ticket_number} movido para fila (paid -> in_queue)")
    
-
+    
     return {
         "status": "success",
         "message": f"Ticket #{ticket.ticket_number} movido para fila",
