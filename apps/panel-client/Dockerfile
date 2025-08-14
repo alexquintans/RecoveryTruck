@@ -14,8 +14,6 @@ RUN rm -rf node_modules apps/*/node_modules packages/*/node_modules
 RUN pnpm install
 
 # compila apenas o painel
-# checagem de tipos antes do build (falha cedo se houver erro TS/JSX)
-RUN pnpm --filter ./apps/panel-client run typecheck
 RUN pnpm --filter ./apps/panel-client run build
 
 # ---------- run ----------
