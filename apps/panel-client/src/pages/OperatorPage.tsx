@@ -2813,9 +2813,13 @@ callLoading={callServiceLoading}
             (a.number || a.ticket_number || 0) - (b.number || b.ticket_number || 0)
           );
 
-          // Determinar status geral do cliente
-          const hasInProgress = sortedTickets.some(t => t.status === 'in_progress');
-          const hasCalled = sortedTickets.some(t => t.status === 'called');
+          // Determinar status geral do cliente a partir do progresso por serviço
+          const hasInProgress = sortedTickets.some(t =>
+            Array.isArray((t as any).serviceProgress) && (t as any).serviceProgress.some((p: any) => p?.status === 'in_progress')
+          );
+          const hasCalled = sortedTickets.some(t =>
+            Array.isArray((t as any).serviceProgress) && (t as any).serviceProgress.some((p: any) => p?.status === 'called')
+          );
           const overallStatus = hasInProgress ? 'in_progress' : hasCalled ? 'called' : 'waiting';
 
 return (
@@ -2982,7 +2986,8 @@ return (
                         const p = progressList.find((pp: any) => {
                           const svcId = s?.service?.id || s?.id;
                           const svcName = s?.service?.name || s?.name;
-                          return (pp?.service_id === svcId) || (pp?.service_name && pp?.service_name === svcName);
+                          return (pp?.service_id && String(pp.service_id) === String(svcId)) ||
+                                 (pp?.service_name && String(pp.service_name) === String(svcName));
                         });
                         const status = p?.status || 'pending';
                         const startedAt = p?.started_at ? new Date(p.started_at) : null;
