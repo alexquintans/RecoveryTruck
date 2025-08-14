@@ -952,8 +952,8 @@ async def call_ticket(
     }
     try:
         await websocket_manager.broadcast_equipment_update(str(current_operator.tenant_id), equipment_update_data)
-    except Exception as e:
-        logger.error(f"Erro ao enviar broadcast_equipment_update: {e}")
+    except Exception as exc:
+        logger.error(f"Erro ao enviar broadcast_equipment_update: {exc}")
     
     # Buscar informações do equipamento
     equipment_name = None
@@ -1104,11 +1104,11 @@ async def call_ticket_service(
 
     # Não alterar o status global do ticket aqui.
     # Outros serviços deste mesmo ticket devem continuar na(s) fila(s) correspondente(s).
-
+    
     # Marcar equipamento como indisponível
     equipment.status = EquipmentStatus.offline
     equipment.assigned_operator_id = current_operator.id
-
+    
     db.commit()
     db.refresh(progress)
     db.refresh(equipment)
@@ -1168,21 +1168,15 @@ async def call_ticket_service(
             "service_id": str(request.service_id),
             "items": safe_queue
         })
-    except Exception as e:
-        logger.error(f"Erro ao enviar broadcast_queue_update (service scoped): {e}")
+    except Exception as exc:
+        logger.error(f"Erro ao enviar broadcast_queue_update (service scoped): {exc}")
     
     # ✅ NOVA LÓGICA: Broadcast de atualização dos tickets do operador (apenas este serviço)
     try:
+        # Compatível com assinatura antiga (tenant_id, operator_id)
         await websocket_manager.broadcast_my_tickets_update(
             str(current_operator.tenant_id),
-            str(current_operator.id),
-            {
-                "ticket_id": str(ticket.id),
-                "service_id": str(request.service_id),
-                "progress_status": progress.status,
-                "started_at": (progress.started_at.isoformat() if progress.started_at else None),
-                "equipment_id": str(request.equipment_id)
-            }
+            str(current_operator.id)
         )
     except Exception as e:
         logger.error(f"Erro ao enviar broadcast_my_tickets_update: {e}")
