@@ -1134,8 +1134,16 @@ async def call_ticket_service(
     progress.equipment_id = request.equipment_id
     progress.operator_notes = f"Iniciado pelo operador {current_operator.name}"
 
-    # Não alterar o status global do ticket aqui.
-    # Outros serviços deste mesmo ticket devem continuar na(s) fila(s) correspondente(s).
+    # Atualizar status global do ticket para 'called' para refletir em "Meus Tickets",
+    # mantendo independência por serviço nas filas (tratada no frontend por serviceProgress)
+    try:
+        if ticket.status != TicketStatus.CALLED.value:
+            ticket.status = TicketStatus.CALLED.value
+            ticket.called_at = datetime.now(timezone.utc)
+    except Exception:
+        # Em caso de quaisquer inconsistências de enum/valor, garantir fallback string
+        ticket.status = "called"
+        ticket.called_at = datetime.now(timezone.utc)
     
     # Marcar equipamento como indisponível
     equipment.status = EquipmentStatus.offline
@@ -1176,6 +1184,12 @@ async def call_ticket_service(
         await websocket_manager.broadcast_service_started(str(current_operator.tenant_id), service_started_data)
     except Exception as e:
         logger.error(f"Erro ao enviar broadcast_service_started: {e}")
+
+    # ✅ NOVO: Broadcast do ticket atualizado para refletir status 'called' em "Meus Tickets"
+    try:
+        await websocket_manager.broadcast_ticket_update(str(current_operator.tenant_id), ticket)
+    except Exception as e:
+        logger.error(f"Erro ao enviar broadcast_ticket_update: {e}")
     
     # Broadcast de atualização da fila apenas do serviço afetado
     try:

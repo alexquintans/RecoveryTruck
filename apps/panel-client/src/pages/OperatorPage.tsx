@@ -325,11 +325,15 @@ const created = ticket.createdAt ? new Date(ticket.createdAt) : null;
 const now = new Date();
 const waitingMinutes = created ? Math.floor((now.getTime() - created.getTime()) / 60000) : null;
 
-// ✅ CORREÇÃO: Verificar se o ticket já foi chamado em outras filas
-// Mas permitir que apareça na fila do serviço atual se ainda não foi chamado para este serviço específico
-const isCalledInOtherQueues = ticket.status === 'called' || ticket.status === 'in_progress';
-const isCalledForThisService = ticket.serviceProgress?.some(p => 
-  (p.service_id === currentService || p.service_name === currentService) && p.status === 'in_progress'
+// ✅ CORREÇÃO: Determinar chamadas por serviço de forma independente
+// - isCalledForThisService: há progresso "in_progress" para o serviço atual
+// - isCalledInOtherQueues: há progresso "in_progress" em OUTRO serviço deste mesmo ticket
+const serviceProgressList = Array.isArray((ticket as any).serviceProgress) ? (ticket as any).serviceProgress : [];
+const isCalledForThisService = serviceProgressList?.some((p: any) => 
+  p && ((p.service_id === currentService || p.service_name === currentService || p.service?.id === currentService) && p.status === 'in_progress')
+);
+const isCalledInOtherQueues = serviceProgressList?.some((p: any) => 
+  p && ((p.service_id !== currentService && p.service_name !== currentService && p.service?.id !== currentService) && p.status === 'in_progress')
 );
 
 return (
@@ -2229,25 +2233,33 @@ console.warn('organizeTicketsByService: serviço inválido:', service);
 return { serviceId: '', serviceName: '', tickets: [] };
 }
 
-// ✅ CORREÇÃO CRÍTICA: Lógica simplificada de filtro
+// ✅ CORREÇÃO CRÍTICA: Lógica de filtro baseada no progresso do serviço específico
 const serviceTickets = queueTickets.filter(ticket => {
 if (!ticket) return false;
 
 // ✅ PADRONIZAÇÃO: Usar sempre a estrutura normalizada
 const ticketServices = ticket.services || [];
+  const progressList = Array.isArray((ticket as any).serviceProgress) ? (ticket as any).serviceProgress : [];
 
 // ✅ CORREÇÃO CRÍTICA: Comparação simples e direta
 const hasService = ticketServices.some(s => 
 s && (s.id === service.id || s.service_id === service.id)
 );
 
+  // ✅ NOVO: Excluir da fila do serviço atual se o progresso deste serviço já está em andamento ou concluído
+  const progressForService = progressList.find((p: any) => 
+    p && (p.service_id === service.id || p.service_name === service.id || p.service?.id === service.id)
+  );
+  const isServiceInProgressOrCompleted = progressForService && (progressForService.status === 'in_progress' || progressForService.status === 'completed');
+
 console.log(`🔍 DEBUG - Ticket ${ticket.number} - Serviço ${service.name}:`, {
 ticketServices: ticketServices.map(s => ({ id: s?.id, name: s?.name })),
 serviceId: service.id,
-hasService
+    hasService,
+    progressStatus: progressForService?.status
 });
 
-return hasService;
+  return hasService && !isServiceInProgressOrCompleted;
 });
 
 console.log(`🔍 DEBUG - Serviço ${service.name}: ${serviceTickets.length} tickets`);

@@ -305,6 +305,8 @@ export function useTicketQueue() {
           
           // Também invalidar a query de meus tickets
           queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+          // ✅ NOVO: Invalidar progresso por serviço quando um ticket é atualizado
+          queryClient.invalidateQueries({ queryKey: ['service-progress'] });
         } catch (error) {
           console.error('Erro ao atualizar ticket via WebSocket:', error);
         }
@@ -315,8 +317,20 @@ export function useTicketQueue() {
           // Invalidar ambas as queries quando um ticket é chamado
           queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
           queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+          // ✅ NOVO: Recarregar o progresso por serviço para refletir chamada por serviço
+          queryClient.invalidateQueries({ queryKey: ['service-progress'] });
         } catch (error) {
           console.error('Erro ao invalidar tickets via WebSocket:', error);
+        }
+      }
+      // ✅ NOVO: Quando serviço for iniciado, recarregar progresso imediatamente
+      if (type === 'service_started') {
+        console.log('🔄 Serviço iniciado via WebSocket');
+        try {
+          queryClient.invalidateQueries({ queryKey: ['service-progress'] });
+          queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+        } catch (error) {
+          console.error('Erro ao invalidar queries de progresso de serviço:', error);
         }
       }
       if (type === 'payment_update') {
