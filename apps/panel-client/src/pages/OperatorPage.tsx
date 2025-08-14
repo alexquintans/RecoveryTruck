@@ -2907,7 +2907,7 @@ return (
 )}
                   
                   {overallStatus === 'called' && (
-                    <button
+<button
                       className="w-full md:w-auto px-7 py-3 bg-yellow-500 text-white rounded-xl font-bold shadow-lg hover:bg-yellow-600 focus:ring-2 focus:ring-yellow-400 focus:outline-none transition-all scale-100 group-hover:scale-105 disabled:bg-gray-300 disabled:text-gray-500"
                       aria-label={`Iniciar atendimento do cliente ${customerName}`}
                       onClick={async () => {
@@ -2927,7 +2927,7 @@ return (
                       }}
                     >
                       Iniciar Todos
-                    </button>
+</button>
                   )}
 </div>
 </div>
@@ -2938,7 +2938,7 @@ return (
                   const sp = Array.isArray(ticket.serviceProgress) ? ticket.serviceProgress : [];
                   const hasInProgress = sp.some((p: any) => p?.status === 'in_progress');
                   const hasCalled = sp.some((p: any) => p?.status === 'called');
-                  return (
+return (
                   <div
                     key={ticket.id}
                     className={`p-3 rounded-lg border-l-4 ${
@@ -2957,7 +2957,7 @@ return (
                         >
                           <MdConfirmationNumber className="inline text-xl" />
                           {ticket.number || ticket.ticket_number || 'N/A'}
-                        </span>
+</span>
                         <span className={`text-xs font-bold px-2 py-1 rounded-full
                           ${hasInProgress ? 'bg-green-200 text-green-800' : hasCalled ? 'bg-yellow-200 text-yellow-800' : 'bg-gray-200 text-gray-800'}`}
                         >
@@ -2979,7 +2979,11 @@ return (
                     <div className="space-y-2">
                       {Array.isArray(ticket.services) && ticket.services.map((s: any, idx: number) => {
                         const progressList = Array.isArray(ticket.serviceProgress) ? ticket.serviceProgress : [];
-                        const p = progressList.find((pp: any) => pp?.service_id === s?.id || pp?.service_name === s?.name);
+                        const p = progressList.find((pp: any) => {
+                          const svcId = s?.service?.id || s?.id;
+                          const svcName = s?.service?.name || s?.name;
+                          return (pp?.service_id === svcId) || (pp?.service_name && pp?.service_name === svcName);
+                        });
                         const status = p?.status || 'pending';
                         const startedAt = p?.started_at ? new Date(p.started_at) : null;
                         const duration = p?.duration_minutes || s?.duration || 10;
@@ -3073,7 +3077,7 @@ alert('Erro ao cancelar ticket. Tente novamente.');
                             Cancelar
 </button>
                         </>
-                      )}
+)}
                       
                       {hasCalled && (
 <button
@@ -3091,7 +3095,7 @@ alert('Erro ao iniciar ticket. Tente novamente.');
 >
 Iniciar
 </button>
-                      )}
+)}
                     </div>
                   </div>
                 );})}
