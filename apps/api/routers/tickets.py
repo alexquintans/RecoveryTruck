@@ -1102,11 +1102,8 @@ async def call_ticket_service(
     progress.equipment_id = request.equipment_id
     progress.operator_notes = f"Iniciado pelo operador {current_operator.name}"
 
-    # Atualizar status global apenas para 'called' se ainda estava na fila
-    if ticket.status == TicketStatus.IN_QUEUE.value:
-        ticket.status = TicketStatus.CALLED.value
-        ticket.called_at = datetime.now(timezone.utc)
-        ticket.assigned_operator_id = current_operator.id
+    # Não alterar o status global do ticket aqui.
+    # Outros serviços deste mesmo ticket devem continuar na(s) fila(s) correspondente(s).
 
     # Marcar equipamento como indisponível
     equipment.status = EquipmentStatus.offline
@@ -1148,28 +1145,45 @@ async def call_ticket_service(
     except Exception as e:
         logger.error(f"Erro ao enviar broadcast_service_started: {e}")
     
-    # Broadcast de atualização da fila
+    # Broadcast de atualização da fila apenas do serviço afetado
     try:
         queue_manager = get_queue_manager(db)
-        queue_data = queue_manager.get_queue_tickets(str(current_operator.tenant_id))
-        # Evitar objetos não serializáveis
-        safe_queue = []
-        for t in queue_data or []:
-            try:
-                safe_queue.append({
-                    "id": str(getattr(t, 'id', '')),
-                    "ticket_number": getattr(t, 'ticket_number', None),
-                    "status": getattr(t, 'status', None),
-                })
-            except Exception:
-                continue
-        await websocket_manager.broadcast_queue_update(str(current_operator.tenant_id), {"items": safe_queue})
+        updated_queue = queue_manager.get_queue_tickets(
+            tenant_id=str(current_operator.tenant_id),
+            sort_order=QueueSortOrder.FIFO,
+            service_id=str(request.service_id),
+            include_called=False,
+            include_in_progress=False,
+        )
+        # Enviar somente IDs/infos simples (serializável)
+        safe_queue = [
+            {
+                "id": str(getattr(t, 'id', '')),
+                "ticket_number": getattr(t, 'ticket_number', None),
+                "status": getattr(t, 'status', None),
+            }
+            for t in (updated_queue or [])
+        ]
+        await websocket_manager.broadcast_queue_update(str(current_operator.tenant_id), {
+            "service_id": str(request.service_id),
+            "items": safe_queue
+        })
     except Exception as e:
-        logger.error(f"Erro ao enviar broadcast_queue_update: {e}")
+        logger.error(f"Erro ao enviar broadcast_queue_update (service scoped): {e}")
     
-    # ✅ NOVA LÓGICA: Broadcast de atualização dos tickets do operador
+    # ✅ NOVA LÓGICA: Broadcast de atualização dos tickets do operador (apenas este serviço)
     try:
-        await websocket_manager.broadcast_my_tickets_update(str(current_operator.tenant_id), str(current_operator.id))
+        await websocket_manager.broadcast_my_tickets_update(
+            str(current_operator.tenant_id),
+            str(current_operator.id),
+            {
+                "ticket_id": str(ticket.id),
+                "service_id": str(request.service_id),
+                "progress_status": progress.status,
+                "started_at": (progress.started_at.isoformat() if progress.started_at else None),
+                "equipment_id": str(request.equipment_id)
+            }
+        )
     except Exception as e:
         logger.error(f"Erro ao enviar broadcast_my_tickets_update: {e}")
    
