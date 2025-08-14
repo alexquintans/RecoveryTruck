@@ -79,18 +79,42 @@ async def get_my_tickets(
     logger.info(f"🔍 DEBUG - Tenant ID: {current_operator.tenant_id}")
     logger.info(f"🔍 DEBUG - Operador nome: {current_operator.name}")
     
-    # ✅ CORREÇÃO: Voltar para lógica original mas melhorada
-    # Buscar tickets atribuídos ao operador com status 'called' ou 'in_progress'
-    tickets = db.query(Ticket).options(
+    # ✅ CORREÇÃO: Buscar tickets que têm serviços em andamento OU tickets atribuídos ao operador
+    # Primeiro, buscar tickets que têm serviços em andamento
+    tickets_with_progress = db.query(Ticket).join(TicketService).join(TicketServiceProgress).options(
+        joinedload(Ticket.services).joinedload(TicketService.service),
+        joinedload(Ticket.extras).joinedload(TicketExtra.extra)
+    ).filter(
+        Ticket.tenant_id == current_operator.tenant_id,
+        TicketServiceProgress.status == "in_progress"
+    ).distinct().all()
+    
+    # Depois, buscar tickets atribuídos ao operador com status 'called' ou 'in_progress'
+    tickets_assigned = db.query(Ticket).options(
         joinedload(Ticket.services).joinedload(TicketService.service),
         joinedload(Ticket.extras).joinedload(TicketExtra.extra)
     ).filter(
         Ticket.tenant_id == current_operator.tenant_id,
         Ticket.assigned_operator_id == current_operator.id,
         Ticket.status.in_(['called', 'in_progress'])
-    ).order_by(Ticket.called_at.desc()).all()
+    ).all()
+    
+    # Combinar os dois conjuntos, removendo duplicatas
+    all_ticket_ids = set()
+    tickets = []
+    
+    for ticket in tickets_with_progress + tickets_assigned:
+        if ticket.id not in all_ticket_ids:
+            all_ticket_ids.add(ticket.id)
+            tickets.append(ticket)
+    
+    # Ordenar por called_at (mais recentes primeiro)
+    tickets.sort(key=lambda t: t.called_at or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
     
     logger.info(f"🔍 DEBUG - Tickets encontrados: {len(tickets)}")
+    logger.info(f"🔍 DEBUG - Tickets com progresso: {len(tickets_with_progress)}")
+    logger.info(f"🔍 DEBUG - Tickets atribuídos: {len(tickets_assigned)}")
+    logger.info(f"🔍 DEBUG - Total único: {len(tickets)}")
     
     # ✅ NOVO: Log detalhado de cada ticket encontrado
     for ticket in tickets:
@@ -113,13 +137,15 @@ async def get_my_tickets(
         ticket_services = db.query(TicketService).filter(TicketService.ticket_id == ticket.id).all()
         services_with_progress = []
         
+        logger.info(f"🔍 DEBUG - Ticket {ticket.id} tem {len(ticket_services)} serviços")
+        
         for ts in ticket_services:
             progress = db.query(TicketServiceProgress).filter(
                 TicketServiceProgress.ticket_service_id == ts.id
             ).first()
             
             if progress:
-                logger.info(f"🔍 DEBUG - Serviço {ts.service.name}: status {progress.status}")
+                logger.info(f"🔍 DEBUG - Serviço {ts.service.name}: status {progress.status}, equipment_id: {progress.equipment_id}")
                 services_with_progress.append({
                     'service': ts.service,
                     'progress': progress,
@@ -129,6 +155,10 @@ async def get_my_tickets(
                 logger.info(f"🔍 DEBUG - Serviço {ts.service.name}: sem progresso")
         
         logger.info(f"🔍 DEBUG - Ticket {ticket.id} tem {len(services_with_progress)} serviços com progresso")
+        
+        # ✅ NOVO: Verificar se o ticket tem serviços em andamento
+        services_in_progress = [s for s in services_with_progress if s['progress'].status == 'in_progress']
+        logger.info(f"🔍 DEBUG - Ticket {ticket.id} tem {len(services_in_progress)} serviços em andamento")
         
         # ✅ NOVO: Log detalhado do ticket
         logger.info(f"🔍 DEBUG - Ticket {ticket.id} detalhes:", {
@@ -2443,6 +2473,7 @@ async def call_ticket_intelligent(
 @router.get("/{ticket_id}/check-conflicts")
 async def check_ticket_conflicts(
     ticket_id: str,
+    service_id: str = Query(..., description="ID do serviço específico a ser verificado"),
     db: Session = Depends(get_db),
     current_operator = Depends(get_current_operator)
 ):
@@ -2462,25 +2493,25 @@ async def check_ticket_conflicts(
         "message": None
     }
     
-    # ✅ CORREÇÃO: Verificar se o cliente já está sendo atendido no MESMO SERVIÇO em outro ticket
-    # Buscar outros tickets do mesmo cliente que têm serviços em andamento
-    customer_services_in_progress = db.query(TicketServiceProgress).join(TicketService).join(Ticket).filter(
+    # ✅ CORREÇÃO: Verificar se o cliente já está sendo atendido no MESMO SERVIÇO específico em outro ticket
+    # Buscar outros tickets do mesmo cliente que têm o MESMO SERVIÇO em andamento
+    customer_same_service_in_progress = db.query(TicketServiceProgress).join(TicketService).join(Ticket).filter(
         Ticket.tenant_id == current_operator.tenant_id,
         Ticket.customer_name == ticket.customer_name,
         Ticket.id != ticket_id,  # Excluir o ticket atual
+        TicketService.service_id == service_id,  # ✅ MESMO SERVIÇO específico
         TicketServiceProgress.status == "in_progress"
     ).all()
     
-    if customer_services_in_progress:
+    if customer_same_service_in_progress:
         conflicts["has_conflicts"] = True
         conflicts["conflict_type"] = "customer_already_being_served"
         conflicts["can_proceed"] = False
         
-        # Buscar detalhes dos conflitos (evitando duplicatas)
+        # Buscar detalhes dos conflitos
         conflicting_tickets = []
-        seen_services = set()  # Para evitar duplicatas
         
-        for conflicting_progress in customer_services_in_progress:
+        for conflicting_progress in customer_same_service_in_progress:
             conflicting_ticket_service = db.query(TicketService).filter(
                 TicketService.id == conflicting_progress.ticket_service_id
             ).first()
@@ -2493,27 +2524,30 @@ async def check_ticket_conflicts(
                 service = db.query(Service).filter(Service.id == conflicting_ticket_service.service_id).first()
                 
                 if conflicting_ticket and service:
-                    # ✅ CORREÇÃO: Criar chave única para evitar duplicatas
-                    service_key = f"{conflicting_ticket.ticket_number}-{service.id}"
-                    
-                    if service_key not in seen_services:
-                        seen_services.add(service_key)
-                        conflicting_tickets.append({
-                            "ticket_number": conflicting_ticket.ticket_number,
-                            "service_name": service.name,
-                            "service_id": str(conflicting_ticket_service.service_id),
-                            "status": conflicting_progress.status,
-                            "assigned_operator": conflicting_ticket.assigned_operator.name if conflicting_ticket.assigned_operator else "Não atribuído"
-                        })
+                    conflicting_tickets.append({
+                        "ticket_number": conflicting_ticket.ticket_number,
+                        "service_name": service.name,
+                        "service_id": str(conflicting_ticket_service.service_id),
+                        "status": conflicting_progress.status,
+                        "assigned_operator": conflicting_ticket.assigned_operator.name if conflicting_ticket.assigned_operator else "Não atribuído"
+                    })
         
         conflicts["conflict_details"] = {
             "customer_name": ticket.customer_name,
             "conflicting_tickets": conflicting_tickets
         }
-        conflicts["message"] = f"O cliente {ticket.customer_name} já está sendo atendido em outros serviços"
+        # Buscar nome do serviço para a mensagem
+        service_name = "específico"
+        service_obj = db.query(Service).filter(Service.id == service_id).first()
+        if service_obj:
+            service_name = service_obj.name
+        
+        conflicts["message"] = f"O cliente {ticket.customer_name} já está sendo atendido no serviço {service_name}"
+    else:
+        logger.info(f"🔍 DEBUG - Cliente {ticket.customer_name} não está sendo atendido no serviço {service_id}")
     
     # ✅ VERIFICAÇÃO 2: Ticket já sendo atendido por outro operador
-    elif ticket.assigned_operator_id and ticket.assigned_operator_id != current_operator.id and ticket.status in ['called', 'in_progress']:
+    if not conflicts["has_conflicts"] and ticket.assigned_operator_id and ticket.assigned_operator_id != current_operator.id and ticket.status in ['called', 'in_progress']:
         other_operator = db.query(Operator).filter(Operator.id == ticket.assigned_operator_id).first()
         operator_name = other_operator.name if other_operator else "Operador desconhecido"
         
@@ -2527,14 +2561,14 @@ async def check_ticket_conflicts(
         conflicts["message"] = f"Este ticket já está sendo atendido por {operator_name}"
     
     # ✅ VERIFICAÇÃO 3: Ticket já sendo atendido pelo operador atual
-    elif ticket.assigned_operator_id == current_operator.id and ticket.status in ['called', 'in_progress']:
+    elif not conflicts["has_conflicts"] and ticket.assigned_operator_id == current_operator.id and ticket.status in ['called', 'in_progress']:
         conflicts["has_conflicts"] = False
         conflicts["conflict_type"] = "already_being_served_by_current_operator"
         conflicts["can_proceed"] = True
         conflicts["message"] = "Ticket já está sendo atendido por você"
     
     # ✅ VERIFICAÇÃO 4: Status do ticket não permite chamada
-    elif ticket.status not in ['in_queue', 'called']:
+    elif not conflicts["has_conflicts"] and ticket.status not in ['in_queue', 'called']:
         conflicts["has_conflicts"] = True
         conflicts["conflict_type"] = "invalid_ticket_status"
         conflicts["can_proceed"] = False
@@ -2546,7 +2580,7 @@ async def check_ticket_conflicts(
     
     # ✅ VERIFICAÇÃO 5: Serviços do ticket
     ticket_services = db.query(TicketService).filter(TicketService.ticket_id == ticket_id).all()
-    if not ticket_services:
+    if not conflicts["has_conflicts"] and not ticket_services:
         conflicts["has_conflicts"] = True
         conflicts["conflict_type"] = "no_services_found"
         conflicts["can_proceed"] = False

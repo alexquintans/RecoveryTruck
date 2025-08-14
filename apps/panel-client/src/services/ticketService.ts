@@ -81,13 +81,16 @@ export const ticketService = {
   },
 
   // ✅ NOVO: Verificar conflitos antes de chamar ticket
-  async checkConflicts(ticketId: string) {
+  async checkConflicts(ticketId: string, serviceId: string) {
     console.log('🔍 DEBUG - ticketService.checkConflicts:', {
       ticketId,
+      serviceId,
       url: `/tickets/${ticketId}/check-conflicts`
     });
     
-    const response = await api.get(`/tickets/${ticketId}/check-conflicts`, { params: withTenant() });
+    const response = await api.get(`/tickets/${ticketId}/check-conflicts`, { 
+      params: { ...withTenant(), service_id: serviceId }
+    });
     return response.data;
   },
 

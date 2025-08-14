@@ -44,13 +44,14 @@ export function useOperatorActions() {
 
   // ✅ NOVO: Mutation para verificar conflitos
   const checkConflictsMutation = useMutation({
-    mutationFn: ({ ticketId }: { ticketId: string }) => {
+    mutationFn: ({ ticketId, serviceId }: { ticketId: string; serviceId: string }) => {
       console.log('🔍 DEBUG - checkConflictsMutation.mutationFn:', {
         ticketId,
+        serviceId,
         ticketIdType: typeof ticketId
       });
       
-      return ticketService.checkConflicts(ticketId);
+      return ticketService.checkConflicts(ticketId, serviceId);
     },
     onError: (error) => {
       console.error('❌ ERRO ao verificar conflitos:', error);

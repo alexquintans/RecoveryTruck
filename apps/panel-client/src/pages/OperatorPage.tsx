@@ -2370,7 +2370,7 @@ return;
 try {
 // ✅ PASSO 1: Verificar conflitos antes de chamar
 console.log('🔍 DEBUG - Verificando conflitos para ticket:', ticket.id);
-const conflictsResult = await checkConflicts({ ticketId: ticket.id });
+const conflictsResult = await checkConflicts({ ticketId: ticket.id, serviceId });
 
 console.log('🔍 DEBUG - Resultado da verificação de conflitos:', conflictsResult);
 
