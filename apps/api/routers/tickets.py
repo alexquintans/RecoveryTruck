@@ -983,7 +983,7 @@ async def call_ticket(
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     try:
-        await websocket_manager.broadcast_equipment_update(str(current_operator.tenant_id), equipment_update_data)
+    await websocket_manager.broadcast_equipment_update(str(current_operator.tenant_id), equipment_update_data)
     except Exception as exc:
         logger.error(f"Erro ao enviar broadcast_equipment_update: {exc}")
     
@@ -1179,7 +1179,7 @@ async def call_ticket_service(
     
     # Broadcast de atualização da fila apenas do serviço afetado
     try:
-        queue_manager = get_queue_manager(db)
+    queue_manager = get_queue_manager(db)
         updated_queue = queue_manager.get_queue_tickets(
             tenant_id=str(current_operator.tenant_id),
             sort_order=QueueSortOrder.FIFO,
@@ -1503,7 +1503,7 @@ async def complete_ticket(
     result = await update_ticket_status(ticket_id, status_update, db, current_operator)
     
     # ✅ NOVO: Commit das alterações
-    db.commit()
+        db.commit()
         
     # ✅ NOVO: Broadcast de atualização para todos os equipamentos liberados
     for equipment in liberated_equipments:
@@ -1587,7 +1587,7 @@ async def cancel_ticket(
     result = await update_ticket_status(ticket_id, status_update, db, current_operator)
     
     # ✅ NOVO: Commit das alterações
-    db.commit()
+        db.commit()
         
     # ✅ NOVO: Broadcast de atualização para todos os equipamentos liberados
     for equipment in liberated_equipments:

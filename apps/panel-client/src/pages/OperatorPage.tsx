@@ -2934,13 +2934,17 @@ return (
 
               {/* Lista de Tickets do Cliente */}
               <div className="space-y-3">
-                {sortedTickets.map((ticket, index) => (
+                {sortedTickets.map((ticket, index) => {
+                  const sp = Array.isArray(ticket.serviceProgress) ? ticket.serviceProgress : [];
+                  const hasInProgress = sp.some((p: any) => p?.status === 'in_progress');
+                  const hasCalled = sp.some((p: any) => p?.status === 'called');
+                  return (
                   <div
                     key={ticket.id}
                     className={`p-3 rounded-lg border-l-4 ${
-                      ticket.status === 'in_progress' 
+                      hasInProgress 
                         ? 'bg-green-50 border-green-400' 
-                        : ticket.status === 'called'
+                        : hasCalled
                         ? 'bg-yellow-50 border-yellow-400'
                         : 'bg-gray-50 border-gray-300'
                     }`}
@@ -2949,15 +2953,15 @@ return (
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <span className={`text-lg font-bold flex items-center gap-1
-                          ${ticket.status === 'in_progress' ? 'text-green-700' : 'text-yellow-600'}`}
+                          ${hasInProgress ? 'text-green-700' : hasCalled ? 'text-yellow-600' : 'text-gray-600'}`}
                         >
                           <MdConfirmationNumber className="inline text-xl" />
                           {ticket.number || ticket.ticket_number || 'N/A'}
                         </span>
                         <span className={`text-xs font-bold px-2 py-1 rounded-full
-                          ${ticket.status === 'in_progress' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}
+                          ${hasInProgress ? 'bg-green-200 text-green-800' : hasCalled ? 'bg-yellow-200 text-yellow-800' : 'bg-gray-200 text-gray-800'}`}
                         >
-                          {ticket.status === 'in_progress' ? 'Em andamento' : 'Aguardando'}
+                          {hasInProgress ? 'Em andamento' : hasCalled ? 'Chamado' : 'Aguardando'}
                         </span>
                         {index === 0 && (
                           <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
@@ -2968,8 +2972,8 @@ return (
 
                       <div className="text-xs text-gray-400">
                         {ticket.called_at ? formatDistanceToNow(new Date(ticket.called_at), { addSuffix: true, locale: ptBR }) : ""}
-                      </div>
-                    </div>
+</div>
+</div>
 
                                         {/* Serviços do Ticket - status por serviço */}
                     <div className="space-y-2">
@@ -2996,7 +3000,7 @@ return (
                           status === 'cancelled'   ? 'bg-red-100 text-red-700'    :
                                                      'bg-yellow-100 text-yellow-700';
 
-                        return (
+return (
                           <div key={s?.id || idx} className="flex items-center justify-between rounded-md border px-3 py-2 bg-white">
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium">{s?.service?.name || s?.name || 'Serviço'}</span>
@@ -3008,10 +3012,10 @@ return (
                                 <span className="text-xs font-mono text-gray-700">{remainingTime}</span>
                               )}
                             </div>
-                          </div>
-                        );
+</div>
+);
                       })}
-                    </div>
+</div>
 
                     {/* Extras */}
                       {ticket.extras && ticket.extras.length > 0 && (
@@ -3025,21 +3029,21 @@ return (
                                 {extra.price && ` R$ ${extra.price.toFixed(2).replace('.', ',')}`}
                               </span>
                             ))}
-                          </div>
-                        </div>
-                      )}
+</div>
+</div>
+)}
                     </div>
 
                     {/* ✅ NOVO: Botões individuais para cada ticket */}
                     <div className="flex gap-2 mt-3 pt-2 border-t border-gray-200">
-                      {ticket.status === 'in_progress' && (
+                      {hasInProgress && (
                         <>
-                          <button
+<button
                             className="flex-1 px-3 py-1 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700 focus:ring-2 focus:ring-green-400 focus:outline-none transition-all"
-                            onClick={async () => {
-                              try {
+onClick={async () => {
+try {
                                 console.log('🔄 Concluindo ticket individual:', ticket.id);
-                                await completeService({ ticketId: ticket.id });
+await completeService({ ticketId: ticket.id });
 await refetch();
 } catch (error) {
 console.error('❌ Erro ao concluir ticket:', error);
@@ -3069,9 +3073,9 @@ alert('Erro ao cancelar ticket. Tente novamente.');
                             Cancelar
 </button>
                         </>
-)}
+                      )}
                       
-{ticket.status === 'called' && (
+                      {hasCalled && (
 <button
                           className="flex-1 px-3 py-1 bg-yellow-500 text-white rounded text-xs font-medium hover:bg-yellow-600 focus:ring-2 focus:ring-yellow-400 focus:outline-none transition-all"
 onClick={async () => {
@@ -3087,10 +3091,10 @@ alert('Erro ao iniciar ticket. Tente novamente.');
 >
 Iniciar
 </button>
-)}
+                      )}
                     </div>
                   </div>
-                ))}
+                );})}
               </div>
 </div>
 );
