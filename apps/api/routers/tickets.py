@@ -599,32 +599,77 @@ async def get_next_ticket(
             "message": "Nenhum ticket disponível na fila",
             "ticket": None
         }
-    # Atualizar status do ticket para 'called'
-    old_status = next_ticket.status
-    next_ticket.status = TicketStatus.CALLED.value
-    next_ticket.called_at = datetime.now(timezone.utc)
+    
+    # ✅ CORREÇÃO: Não marcar o ticket como CALLED globalmente
+    # Em vez disso, apenas atribuir ao operador e manter status IN_QUEUE
+    # O status CALLED será definido apenas quando um serviço específico for iniciado
+    next_ticket.assigned_operator_id = current_operator.id
     next_ticket.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(next_ticket)
+    
     # Buscar informações do equipamento se houver
     equipment_name = None
     if next_ticket.equipment_id:
         equipment = db.query(Equipment).filter(Equipment.id == next_ticket.equipment_id).first()
         if equipment:
             equipment_name = equipment.identifier
-    # Broadcast de ticket chamado
-    await websocket_manager.broadcast_ticket_called(
-        tenant_id=str(current_operator.tenant_id),
-        ticket=next_ticket,
-        operator_name=current_operator.name,
-        equipment_name=equipment_name
-    )
+    
+    # ✅ CORREÇÃO: Não enviar broadcast de ticket chamado aqui
+    # O broadcast será enviado apenas quando um serviço específico for iniciado
+    
     # Broadcast de atualização da fila para todos os operadores
     queue_manager = get_queue_manager(db)
     queue_data = queue_manager.get_queue_tickets(str(current_operator.tenant_id))
     await websocket_manager.broadcast_queue_update(str(current_operator.tenant_id), queue_data)
+    
     return {
-        "message": f"Próximo ticket chamado: #{next_ticket.ticket_number}",
+        "message": f"Próximo ticket atribuído: #{next_ticket.ticket_number}",
+        "ticket": next_ticket
+    }
+
+@router.get("/queue/next-service/{service_id}")
+async def get_next_ticket_for_service(
+    service_id: str,
+    db: Session = Depends(get_db),
+    current_operator = Depends(get_current_operator)
+):
+    """Chama o próximo ticket de um serviço específico da fila para o operador atual"""
+    logger.info(f"🔍 DEBUG - Buscando próximo ticket para serviço {service_id}")
+    
+    # Buscar tickets na fila que têm o serviço específico
+    tickets_with_service = db.query(Ticket).join(TicketService).filter(
+        Ticket.tenant_id == current_operator.tenant_id,
+        Ticket.status == TicketStatus.IN_QUEUE.value,
+        Ticket.assigned_operator_id.is_(None),
+        TicketService.service_id == service_id
+    ).order_by(
+        Ticket.priority.asc(),
+        Ticket.queued_at.asc()
+    ).all()
+    
+    if not tickets_with_service:
+        return {
+            "message": f"Nenhum ticket disponível na fila para o serviço {service_id}",
+            "ticket": None
+        }
+    
+    next_ticket = tickets_with_service[0]
+    logger.info(f"🔍 DEBUG - Próximo ticket encontrado: {next_ticket.ticket_number}")
+    
+    # Atribuir o ticket ao operador
+    next_ticket.assigned_operator_id = current_operator.id
+    next_ticket.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(next_ticket)
+    
+    # Broadcast de atualização da fila
+    queue_manager = get_queue_manager(db)
+    queue_data = queue_manager.get_queue_tickets(str(current_operator.tenant_id))
+    await websocket_manager.broadcast_queue_update(str(current_operator.tenant_id), queue_data)
+    
+    return {
+        "message": f"Próximo ticket do serviço atribuído: #{next_ticket.ticket_number}",
         "ticket": next_ticket
     }
 
@@ -1247,6 +1292,18 @@ async def call_ticket_service(
         "duration_minutes": progress.duration_minutes
     }
     await websocket_manager.broadcast_service_started(str(current_operator.tenant_id), service_started_data)
+    
+    # ✅ NOVA LÓGICA: Broadcast de ticket chamado para o serviço específico
+    ticket_called_data = {
+        "ticket_id": str(ticket_id),
+        "ticket_number": ticket.ticket_number,
+        "service_id": str(request.service_id),
+        "service_name": service_name,
+        "equipment_name": equipment.identifier,
+        "operator_name": current_operator.name,
+        "called_at": datetime.now(timezone.utc).isoformat()
+    }
+    await websocket_manager.broadcast_ticket_called_for_service(str(current_operator.tenant_id), ticket_called_data)
     
     # Broadcast de atualização da fila
     queue_manager = get_queue_manager(db)
@@ -2423,16 +2480,28 @@ async def call_ticket_intelligent(
     current_operator = Depends(get_current_operator)
 ):
     """Chama um ticket de forma inteligente, verificando conflitos de cliente"""
-    logger.info(f"🔍 DEBUG - Chamada inteligente para ticket {ticket_id}, serviço {request.service_id}")
-    logger.info(f"🔍 DEBUG - Request data: {request}")
-    logger.info(f"🔍 DEBUG - Current operator: {current_operator.id}")
-    logger.info(f"🔍 DEBUG - Tenant ID: {current_operator.tenant_id}")
-    
-    # ✅ NOVA PROTEÇÃO: Verificar se o serviço já está em andamento
-    ticket_service = db.query(TicketService).filter(
-        TicketService.ticket_id == ticket_id,
-        TicketService.service_id == request.service_id
-    ).first()
+    try:
+        logger.info(f"🔍 DEBUG - Chamada inteligente para ticket {ticket_id}, serviço {request.service_id}")
+        logger.info(f"🔍 DEBUG - Request data: {request}")
+        logger.info(f"🔍 DEBUG - Current operator: {current_operator.id}")
+        logger.info(f"🔍 DEBUG - Tenant ID: {current_operator.tenant_id}")
+        
+        # ✅ NOVO: Validação inicial dos parâmetros
+        if not request.service_id:
+            logger.error(f"❌ ERRO - service_id não fornecido")
+            raise HTTPException(status_code=400, detail="service_id é obrigatório")
+        
+        if not request.equipment_id:
+            logger.error(f"❌ ERRO - equipment_id não fornecido")
+            raise HTTPException(status_code=400, detail="equipment_id é obrigatório")
+        
+        logger.info(f"🔍 DEBUG - Parâmetros validados com sucesso")
+        
+        # ✅ NOVA PROTEÇÃO: Verificar se o serviço já está em andamento
+        ticket_service = db.query(TicketService).filter(
+            TicketService.ticket_id == ticket_id,
+            TicketService.service_id == request.service_id
+        ).first()
     
     if ticket_service:
         progress = db.query(TicketServiceProgress).filter(
@@ -2536,6 +2605,13 @@ async def call_ticket_intelligent(
     
     # Chamar a função existente
     return await call_ticket_service(ticket_id, call_request, db, current_operator)
+    except Exception as e:
+        logger.error(f"❌ ERRO na chamada inteligente: {e}")
+        logger.error(f"❌ ERRO - Tipo: {type(e).__name__}")
+        logger.error(f"❌ ERRO - Args: {e.args}")
+        import traceback
+        logger.error(f"❌ ERRO - Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Erro interno na chamada inteligente: {str(e)}")
 
 @router.get("/{ticket_id}/check-conflicts")
 async def check_ticket_conflicts(
