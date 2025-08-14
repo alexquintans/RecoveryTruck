@@ -950,7 +950,10 @@ async def call_ticket(
         "assigned_operator_id": str(current_operator.id),
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
-    await websocket_manager.broadcast_equipment_update(str(current_operator.tenant_id), equipment_update_data)
+    try:
+        await websocket_manager.broadcast_equipment_update(str(current_operator.tenant_id), equipment_update_data)
+    except Exception as e:
+        logger.error(f"Erro ao enviar broadcast_equipment_update: {e}")
     
     # Buscar informações do equipamento
     equipment_name = None
@@ -1140,15 +1143,35 @@ async def call_ticket_service(
         "started_at": (progress.started_at.isoformat() if progress.started_at else datetime.now(timezone.utc).isoformat()),
         "duration_minutes": progress.duration_minutes
     }
-    await websocket_manager.broadcast_service_started(str(current_operator.tenant_id), service_started_data)
+    try:
+        await websocket_manager.broadcast_service_started(str(current_operator.tenant_id), service_started_data)
+    except Exception as e:
+        logger.error(f"Erro ao enviar broadcast_service_started: {e}")
     
     # Broadcast de atualização da fila
-    queue_manager = get_queue_manager(db)
-    queue_data = queue_manager.get_queue_tickets(str(current_operator.tenant_id))
-    await websocket_manager.broadcast_queue_update(str(current_operator.tenant_id), queue_data)
+    try:
+        queue_manager = get_queue_manager(db)
+        queue_data = queue_manager.get_queue_tickets(str(current_operator.tenant_id))
+        # Evitar objetos não serializáveis
+        safe_queue = []
+        for t in queue_data or []:
+            try:
+                safe_queue.append({
+                    "id": str(getattr(t, 'id', '')),
+                    "ticket_number": getattr(t, 'ticket_number', None),
+                    "status": getattr(t, 'status', None),
+                })
+            except Exception:
+                continue
+        await websocket_manager.broadcast_queue_update(str(current_operator.tenant_id), {"items": safe_queue})
+    except Exception as e:
+        logger.error(f"Erro ao enviar broadcast_queue_update: {e}")
     
     # ✅ NOVA LÓGICA: Broadcast de atualização dos tickets do operador
-    await websocket_manager.broadcast_my_tickets_update(str(current_operator.tenant_id), str(current_operator.id))
+    try:
+        await websocket_manager.broadcast_my_tickets_update(str(current_operator.tenant_id), str(current_operator.id))
+    except Exception as e:
+        logger.error(f"Erro ao enviar broadcast_my_tickets_update: {e}")
    
     
     return {
