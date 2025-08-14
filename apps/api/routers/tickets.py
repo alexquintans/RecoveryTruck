@@ -111,6 +111,7 @@ async def get_my_tickets(
     
     # ✅ NOVO: Log detalhado de cada ticket encontrado
     for ticket in tickets:
+        pass
     
     result = []
     for ticket in tickets:
@@ -132,7 +133,7 @@ async def get_my_tickets(
                     'ticket_service': ts
                 })
             else:
-        
+                pass
         
         # ✅ NOVO: Verificar se o ticket tem serviços em andamento
         services_in_progress = [s for s in services_with_progress if s['progress'].status == 'in_progress']
@@ -287,6 +288,7 @@ async def get_ticket_queue(
     for ticket in tickets:
         if ticket.services:
             for ts in ticket.services:
+                pass
     
     # Converter para TicketInQueue com informações adicionais
     queue_tickets = []
@@ -380,6 +382,7 @@ async def get_ticket_queue(
     
     # ✅ CORREÇÃO: Logs para debug do resultado final
     for service_name, tickets in by_service.items():
+        pass
     
     return TicketQueue(
         items=queue_tickets,
@@ -410,7 +413,7 @@ async def get_public_queue(
     )
 
     if not tickets:
-        return {
+         return {
             "items": [], "total": 0, "by_service": {}, "by_status": {}, 
             "by_priority": {}, "queue_stats": {}, "estimated_total_time": 0
         }
@@ -552,7 +555,7 @@ async def get_next_ticket(
         operator_id=str(current_operator.id)
     )
     if not next_ticket:
-        return {
+         return {
             "message": "Nenhum ticket disponível na fila",
             "ticket": None
         }
@@ -606,7 +609,8 @@ async def assign_ticket(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Ticket não encontrado"
         )
-    
+   
+
     return {
         "message": f"Ticket atribuído ao operador {target_operator_id}",
         "ticket_id": ticket_id,
@@ -625,7 +629,8 @@ async def auto_expire_tickets(
     expired_count = queue_manager.auto_expire_old_tickets(
         tenant_id=str(current_operator.tenant_id)
     )
-    
+   
+
     return {
         "message": f"{expired_count} tickets expirados automaticamente",
         "expired_count": expired_count
@@ -784,6 +789,8 @@ async def update_ticket_status(
     """Atualiza o status de um ticket com validação de transições"""
     
     # Buscar ticket
+
+    
     ticket = db.query(Ticket).filter(
         Ticket.id == ticket_id,
         Ticket.tenant_id == current_operator.tenant_id
@@ -926,6 +933,9 @@ async def call_ticket(
     
     
     # Marcar equipamento como indisponível
+
+    
+    
     equipment.status = EquipmentStatus.offline
     db.commit()
     db.refresh(ticket)
@@ -1072,66 +1082,26 @@ async def call_ticket_service(
             detail=f"Equipamento {equipment.identifier} está sendo usado por outro serviço"
         )
     else:
+        pass
         # ✅ CORREÇÃO: Se o equipamento não está sendo usado, permitir uso independente do status
     
     # ✅ NOVA LÓGICA: Verificar compatibilidade do equipamento com o serviço - MELHORADA
     
     # ✅ CORREÇÃO: Só verificar compatibilidade se o equipamento tiver service_id definido
     if equipment.service_id:
-        if str(equipment.service_id) != request.service_id:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Equipamento {equipment.identifier} não é compatível com o serviço {request.service_id}"
-            )
+        pass
+
+        pass
+
     else:
-    
-    # ✅ CORREÇÃO: Permitir múltiplos serviços simultâneos - cada serviço é independente
-    # Buscar outros serviços do mesmo ticket que estão em andamento apenas para log
-    other_services_in_progress = db.query(TicketServiceProgress).join(TicketService).filter(
-        TicketService.ticket_id == ticket_id,
-        TicketServiceProgress.status == "in_progress",
-        TicketServiceProgress.ticket_service_id != ticket_service.id
-    ).all()
-    
-    if other_services_in_progress:
-        service_names = []
-        for other_progress in other_services_in_progress:
-            other_ticket_service = db.query(TicketService).filter(
-                TicketService.id == other_progress.ticket_service_id
-            ).first()
-            if other_ticket_service:
-                service = db.query(Service).filter(Service.id == other_ticket_service.service_id).first()
-                if service:
-                    service_names.append(service.name)
-        
-        # ✅ NÃO bloquear - permitir múltiplos serviços simultâneos
-    
-    # ✅ NOVA LÓGICA: Iniciar o serviço específico SEM afetar o status global do ticket
-    
-    # Atualizar progresso do serviço
-    progress.status = "in_progress"
-    progress.started_at = datetime.now(timezone.utc)
-    progress.equipment_id = request.equipment_id
-    progress.operator_notes = f"Iniciado pelo operador {current_operator.name}"
-    
-    # ✅ CORREÇÃO: NÃO atualizar status global do ticket - cada serviço é independente
-    # Verificar se há outros serviços em andamento apenas para log
-    services_in_progress_count = db.query(TicketServiceProgress).join(TicketService).filter(
-        TicketService.ticket_id == ticket_id,
-        TicketServiceProgress.status == "in_progress"
-    ).count()
-    
-    
-    # ✅ NOVA LÓGICA: Atualizar status global do ticket apenas para "called" se ainda não foi chamado
-    if ticket.status == "in_queue":
-        ticket.status = TicketStatus.CALLED.value
-        ticket.called_at = datetime.now(timezone.utc)
-        ticket.assigned_operator_id = current_operator.id
-    else:
-    
+        pass
+
+        pass
     # ✅ NÃO atualizar para "in_progress" global - cada serviço tem seu próprio progresso
     
     # Marcar equipamento como indisponível
+
+    
     equipment.status = EquipmentStatus.offline
     equipment.assigned_operator_id = current_operator.id
     
@@ -1175,7 +1145,8 @@ async def call_ticket_service(
     
     # ✅ NOVA LÓGICA: Broadcast de atualização dos tickets do operador
     await websocket_manager.broadcast_my_tickets_update(str(current_operator.tenant_id), str(current_operator.id))
-    
+   
+
     return {
         "success": True,
         "message": f"Serviço {service_name} iniciado com sucesso",
@@ -1224,6 +1195,8 @@ async def get_equipment_status(
                 "assigned_operator_id": str(equipment.assigned_operator_id) if equipment.assigned_operator_id else None
             })
         
+       
+
         
         return {
             "equipments": equipment_status,
@@ -1249,6 +1222,8 @@ async def force_equipment_cleanup(
         
         total_actions = corrected_count + liberated_count
         
+       
+
         
         return {
             "success": True,
@@ -1308,7 +1283,8 @@ async def force_equipment_online(
         db.commit()
         
         logger.info(f"🚨 EMERGÊNCIA - Forçou {forced_count} equipamentos para online e limpou {cleared_progress_count} registros de progresso")
-        
+       
+
         return {
             "success": True,
             "message": f"Forçou {forced_count} equipamentos offline para online no tenant {current_operator.tenant_id}",
@@ -1371,7 +1347,8 @@ async def emergency_cleanup_inconsistent_states(
         db.commit()
         
         logger.info(f"🚨 EMERGÊNCIA - Limpeza concluída: {corrected_count} progressos corrigidos, {forced_count} equipamentos forçados online")
-        
+       
+
         return {
             "success": True,
             "message": "Limpeza de emergência concluída",
@@ -1459,7 +1436,7 @@ async def complete_ticket(
     result = await update_ticket_status(ticket_id, status_update, db, current_operator)
     
     # ✅ NOVO: Commit das alterações
-        db.commit()
+    db.commit()
         
     # ✅ NOVO: Broadcast de atualização para todos os equipamentos liberados
     for equipment in liberated_equipments:
@@ -1543,7 +1520,7 @@ async def cancel_ticket(
     result = await update_ticket_status(ticket_id, status_update, db, current_operator)
     
     # ✅ NOVO: Commit das alterações
-        db.commit()
+    db.commit()
         
     # ✅ NOVO: Broadcast de atualização para todos os equipamentos liberados
     for equipment in liberated_equipments:
@@ -1598,7 +1575,8 @@ async def reprint_ticket(
         db.commit()
         
         logger.info(f"🖨️ Ticket #{ticket.ticket_number} queued for reprint (attempt #{ticket.print_attempts})")
-        
+       
+
         return {
             "status": "success",
             "message": f"Ticket #{ticket.ticket_number} enviado para reimpressão",
@@ -1620,7 +1598,8 @@ async def get_status_info():
     status_info = {}
     for ticket_status in TicketStatus:
         status_info[ticket_status.value] = get_status_info_func(ticket_status)
-    
+   
+
     return {
         "statuses": status_info,
         "categories": TICKET_STATE_CATEGORIES,
@@ -1684,7 +1663,8 @@ async def get_dashboard_stats(
         
         if service_times:
             avg_service_time = sum(service_times) / len(service_times)
-    
+   
+
     return {
         "summary": {
             "total_tickets": len(tickets),
@@ -1824,6 +1804,7 @@ async def create_ticket(
             old_stock = extra_model.stock
             extra_model.stock = max(0, extra_model.stock - extra_item.quantity)
         else:
+            pass
             logger.warning(f"⚠️ WARNING - Extra não encontrado na tabela extras: {extra_item.extra_id}")
         
         # Decrementar estoque na tabela operation_config_extras
@@ -1834,6 +1815,7 @@ async def create_ticket(
             old_config_stock = operation_config_extra.stock
             operation_config_extra.stock = max(0, operation_config_extra.stock - extra_item.quantity)
         else:
+            pass
             logger.warning(f"⚠️ WARNING - Extra não encontrado na tabela operation_config_extras: {extra_item.extra_id}")
     
     db.commit()
@@ -2040,7 +2022,7 @@ async def confirm_payment(
 
     # Já confirmado?
     if ticket.payment_confirmed:
-        return {"status": "already_confirmed"}
+         return {"status": "already_confirmed"}
 
     # Confirmar pagamento e mover para fila
     ticket.payment_confirmed = True
@@ -2130,7 +2112,8 @@ async def move_ticket_to_queue(
     db.commit()
     
     logger.info(f"🎯 Ticket #{ticket.ticket_number} movido para fila (paid -> in_queue)")
-    
+   
+
     return {
         "status": "success",
         "message": f"Ticket #{ticket.ticket_number} movido para fila",
@@ -2187,6 +2170,7 @@ def cleanup_stuck_equipment(db: Session, tenant_id: str = None):
                 Equipment.tenant_id == tenant_id
             ).all()
         else:
+            pass
             offline_equipment = db.query(Equipment).filter(
                 Equipment.status == EquipmentStatus.offline
             ).all()
@@ -2207,8 +2191,11 @@ def cleanup_stuck_equipment(db: Session, tenant_id: str = None):
                 equipment.assigned_operator_id = None
                 liberated_count += 1
             else:
+                pass
                 
         # ✅ NOVO: Limpeza adicional - forçar liberação de equipamentos com progresso "stuck"
+
+                
         stuck_progress = db.query(TicketServiceProgress).filter(
             TicketServiceProgress.equipment_id.isnot(None),
             TicketServiceProgress.status == "in_progress"
@@ -2241,6 +2228,7 @@ def verify_equipment_state(db: Session, tenant_id: str = None):
         if tenant_id:
             equipments = db.query(Equipment).filter(Equipment.tenant_id == tenant_id).all()
         else:
+            pass
             equipments = db.query(Equipment).all()
         
         
@@ -2318,7 +2306,7 @@ async def call_ticket_intelligent(
         
         # ✅ CORREÇÃO: Permitir chamar ticket mesmo se estiver em andamento, mas verificar se o serviço específico já está em andamento
         if ticket.status == "in_progress":
-            # A verificação do serviço específico já foi feita acima
+            pass  # A verificação do serviço específico já foi feita acima
         
         # ✅ CORREÇÃO: Verificar se o cliente já está sendo atendido no MESMO SERVIÇO em outro ticket
         if request.check_customer_conflicts:
@@ -2363,6 +2351,7 @@ async def call_ticket_intelligent(
                     }
                 )
             else:
+                pass
         
         # ✅ CORREÇÃO: Verificar se o SERVIÇO específico já está sendo atendido pelo operador atual
         if ticket_service:
@@ -2371,7 +2360,7 @@ async def call_ticket_intelligent(
             ).first()
             
             if progress and progress.status == "in_progress":
-                return {
+                 return {
                     "success": True,
                     "message": f"Serviço já está sendo atendido por você",
                     "ticket_id": str(ticket_id),
@@ -2428,6 +2417,7 @@ async def check_ticket_conflicts(
             progress.equipment_id = None  # Liberar equipamento
         db.commit()
     else:
+        pass
     
     # Buscar ticket
     ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
@@ -2493,8 +2483,11 @@ async def check_ticket_conflicts(
         
         conflicts["message"] = f"O cliente {ticket.customer_name} já está sendo atendido no serviço {service_name}"
     else:
+        pass
     
     # ✅ VERIFICAÇÃO 2: Ticket já sendo atendido por outro operador
+
+    
     if not conflicts["has_conflicts"] and ticket.assigned_operator_id and ticket.assigned_operator_id != current_operator.id and ticket.status in ['called', 'in_progress']:
         other_operator = db.query(Operator).filter(Operator.id == ticket.assigned_operator_id).first()
         operator_name = other_operator.name if other_operator else "Operador desconhecido"
@@ -2549,12 +2542,11 @@ async def check_ticket_conflicts(
                 "started_at": progress.started_at.isoformat() if progress.started_at else None
             })
     
-    # ✅ NÃO bloquear por serviços em andamento - permitir múltiplos serviços simultâneos
+        # ✅ NÃO bloquear por serviços em andamento - permitir múltiplos serviços simultâneos
     if services_in_progress:
-        # ✅ NÃO definir conflito - apenas informar
+        pass  # ✅ NÃO definir conflito - apenas informar
     
-    
-    return {
+        return {
         "ticket_id": str(ticket_id),
         "ticket_number": ticket.ticket_number,
         "customer_name": ticket.customer_name,
