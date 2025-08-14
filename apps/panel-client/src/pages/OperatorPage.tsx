@@ -20,7 +20,7 @@ import { MdConfirmationNumber } from 'react-icons/md';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ServiceCountdown } from '../components/ServiceCountdown';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, UseQueryClient } from '@tanstack/react-query';
 
 // Ícones SVG
 const EditIcon = () => (
@@ -409,7 +409,7 @@ return (
 </div>
 <span className="bg-blue-100 text-blue-700 rounded-full px-3 py-1 text-xs font-medium shadow-sm border border-blue-200">
 {/* ✅ CORREÇÃO: Mostrar nome do serviço atual corretamente */}
-{currentServiceData?.name || (currentServiceData?.service && (typeof currentServiceData.service === 'string' ? `Serviço ${currentServiceData.service}` : `Serviço ${currentServiceData.service.id || currentServiceData.service.name || 'Desconhecido'}`))}
+{currentServiceData?.name || (currentServiceData?.service?.name ||  'Desconhecido')}
 {currentServiceData?.duration && (
 <span className="ml-1 text-blue-600">({currentServiceData.duration}min)</span>
 )}
@@ -430,10 +430,10 @@ return (
 <span className="text-xs font-semibold text-gray-600">TAMBÉM AGUARDA:</span>
 </div>
 <div className="flex flex-wrap gap-2">
-{ticketServices.filter(s => s && (s.id !== currentService && s.service !== currentService && s.service_id !== currentService)).map((service, idx) => (
+{ticketServices.filter(s => s && (s.id !== currentService && s?.service?.id !== currentService && s.service_id !== currentService)).map((service, idx) => (
 <span key={service?.id || service?.service || idx} className="bg-gray-100 text-gray-700 rounded-full px-3 py-1 text-xs font-medium shadow-sm border border-gray-200">
 {/* ✅ CORREÇÃO: Mostrar nome do serviço corretamente */}
-{service?.name || (service?.service && (typeof service.service === 'string' ? `Serviço ${service.service}` : `Serviço ${service.service.id || service.service.name || 'Desconhecido'}`))}
+{service?.name || (service?.service?.name || 'Desconhecido')}
 {service?.duration && (
 <span className="ml-1 text-gray-600">({service.duration}min)</span>
 )}
@@ -750,10 +750,10 @@ const GlobalAlert = ({
   );
 };
 
-const OperatorPage: React.FC = () => {
+const OperatorPage: React.FC<{}> = (): JSX.Element => {
 const navigate = useNavigate();
 const { user, logout } = useAuth();
-const queryClient = useQueryClient();
+const queryClient: UseQueryClient = useQueryClient();
 
 // Proteção adicional para evitar erros quando dados estão carregando
 const {
@@ -814,10 +814,10 @@ operationConfig || { isOperating: false, serviceDuration: 10 },
 );
 
 // Obter tenantId do usuário
-const tenantId = user?.tenant_id || '';
+const tenantId: string = user?.tenant_id || '';
 
 // Obter operatorId do usuário
-const operatorId = user?.id || '';
+const operatorId: string = user?.id || '';
 
 // TODOS OS HOOKS DEVEM SER CHAMADOS NO TOPO
 const [currentStep, setCurrentStep] = useState<string | null>(() => {
@@ -831,10 +831,10 @@ const { config: operatorConfig, saveConfig, clearConfig, updateConfigField } = u
 const { preferences, updatePreference, updateMultiplePreferences, clearPreferences } = useOperatorPreferences();
 
 // Estados com persistência melhorada
-const [operatorName, setOperatorName] = useState(() => {
+const [operatorName, setOperatorName] = useState<string>(() => {
 return operatorConfig?.operatorName || '';
 });
-const [isSavingConfig, setIsSavingConfig] = useState(false);
+const [isSavingConfig, setIsSavingConfig] = useState<boolean>(false);
 const [activeTab, setActiveTab] = useState(() => {
 return preferences.activeTab;
 });
@@ -1073,7 +1073,7 @@ callIntelligentLoading
 } = useOperatorActions();
 
 // CORRIGIDO: Funções para persistir mudanças de estado - agora usando useCallback
-const setCurrentStepWithPersistence = useCallback((step: string | null) => {
+const setCurrentStepWithPersistence = useCallback((step: string | null): void => {
 setCurrentStep(step);
 if (step) {
 localStorage.setItem('operator_current_step', step);
@@ -1082,42 +1082,42 @@ localStorage.removeItem('operator_current_step');
 }
 }, []);
 
-const setOperatorNameWithPersistence = useCallback((name: string) => {
+const setOperatorNameWithPersistence = useCallback((name: string): void => {
 setOperatorName(name);
 updateConfigField('operatorName', name);
 }, [updateConfigField]);
 
-const setActiveTabWithPersistence = useCallback((tab: string) => {
+const setActiveTabWithPersistence = useCallback((tab: string): void => {
 setActiveTab(tab);
 updatePreference('activeTab', tab);
 }, [updatePreference]);
 
-const setSelectedEquipmentWithPersistence = useCallback((equipmentId: string) => {
+const setSelectedEquipmentWithPersistence = useCallback((equipmentId: string): void => {
 setSelectedEquipment(equipmentId);
 updatePreference('selectedEquipment', equipmentId);
 }, [updatePreference]);
 
-const setActiveServiceTabWithPersistence = useCallback((serviceTab: string) => {
+const setActiveServiceTabWithPersistence = useCallback((serviceTab: string): void => {
 setActiveServiceTab(serviceTab);
 updatePreference('activeServiceTab', serviceTab);
 }, [updatePreference]);
 
-const setServicesWithPersistence = useCallback((newServices: Service[]) => {
+const setServicesWithPersistence = useCallback((newServices: Service[]): void => {
 setServices(newServices);
 updateConfigField('services', newServices);
 }, [updateConfigField]);
 
-const setExtrasWithPersistence = useCallback((newExtras: Extra[]) => {
+const setExtrasWithPersistence = useCallback((newExtras: Extra[]): void => {
 setExtras(newExtras);
 updateConfigField('extras', newExtras);
 }, [updateConfigField]);
 
-const setEquipmentsWithPersistence = useCallback((newEquipments: Equipment[]) => {
+const setEquipmentsWithPersistence = useCallback((newEquipments: Equipment[]): void => {
 setEquipments(newEquipments);
 updateConfigField('equipments', newEquipments);
 }, [updateConfigField]);
 
-const setPaymentModesWithPersistence = useCallback((newPaymentModes: string[]) => {
+const setPaymentModesWithPersistence = useCallback((newPaymentModes: string[]): void => {
 setPaymentModes(newPaymentModes);
 updateConfigField('paymentModes', newPaymentModes);
 }, [updateConfigField]);
@@ -1366,9 +1366,9 @@ stock: extra.stock || 0
 }));
 
 console.log('🔍 DEBUG - Dados mapeados:', {
-services: mappedServices.map(s => ({ id: s.id, name: s.name, isActive: s.isActive, is_active: s.is_active })),
-equipments: mappedEquipments.map(e => ({ id: e.id, name: e.name, isActive: e.isActive })),
-extras: mappedExtras.map(ex => ({ id: ex.id, name: ex.name, isActive: ex.isActive, is_active: ex.is_active }))
+services: mappedServices.map((s: any) => ({ id: s.id, name: s.name, isActive: s.isActive, is_active: s.is_active })), //Explicit any type
+equipments: mappedEquipments.map((e: any) => ({ id: e.id, name: e.name, isActive: e.isActive })), //Explicit any type
+extras: mappedExtras.map((ex: any) => ({ id: ex.id, name: ex.name, isActive: ex.isActive, is_active: ex.is_active })) //Explicit any type
 });
 
 setServices(mappedServices);
@@ -1396,7 +1396,7 @@ setEditingExtra(null);
 const toggleService = async (serviceId: string, currentActive: boolean) => {
 try {
 await apiUpdateService(serviceId, { is_active: !currentActive });
-setServicesWithPersistence(prevServices =>
+setServicesWithPersistence((prevServices: Service[]) =>
 prevServices.map(service =>
 service.id === serviceId
 ? { ...service, isActive: !currentActive }
@@ -1409,7 +1409,7 @@ alert('Erro ao atualizar serviço!');
 };
 
 const updateServiceDuration = (serviceId: string, duration: number) => {
-setServicesWithPersistence(prevServices =>
+setServicesWithPersistence((prevServices: Service[]) =>
 prevServices.map(service =>
 service.id === serviceId
 ? { ...service, duration }
@@ -1423,7 +1423,7 @@ const newService: Service = {
 ...serviceForm,
 id: Date.now().toString()
 };
-setServicesWithPersistence(prev => [...prev, newService]);
+setServicesWithPersistence((prevServices: Service[]) => [...prevServices, newService]);
 setServiceForm({
 name: '',
 description: '',
@@ -1446,7 +1446,7 @@ setActiveModal('service');
 const updateService = async (serviceId: string, data: Partial<Service>) => {
 try {
 const updated = await apiUpdateService(serviceId, data);
-setServicesWithPersistence(prev => prev.map(s => s.id === serviceId ? { ...data, id: s.id } : s));
+setServicesWithPersistence((prevServices: Service[]) => prevServices.map(s => s.id === serviceId ? { ...data, id: s.id } : s));
 setEditingService(null);
 setServiceForm({
 name: '',
@@ -1467,7 +1467,7 @@ alert('Falha ao atualizar serviço');
 const deleteService = async (serviceId: string) => {
 try {
 await apiDeleteService(serviceId);
-setServicesWithPersistence(prev => prev.filter(s => s.id !== serviceId));
+setServicesWithPersistence((prevServices: Service[]) => prevServices.filter(s => s.id !== serviceId));
 } catch(err) {
 alert('Falha ao excluir serviço');
 }
@@ -1475,7 +1475,7 @@ alert('Falha ao excluir serviço');
 
 // Funções para manipular extras
 const toggleExtra = (extraId: string) => {
-setExtrasWithPersistence(prevExtras =>
+setExtrasWithPersistence((prevExtras: Extra[]) =>
 prevExtras.map(extra =>
 extra.id === extraId
 ? { ...extra, isActive: !extra.isActive }
@@ -1485,7 +1485,7 @@ extra.id === extraId
 };
 
 const updateExtraStock = (extraId: string, stock: number) => {
-setExtrasWithPersistence(prevExtras =>
+setExtrasWithPersistence((prevExtras: Extra[]) =>
 prevExtras.map(extra =>
 extra.id === extraId
 ? { ...extra, stock }
@@ -1499,7 +1499,7 @@ const newExtra: Extra = {
 ...extraForm,
 id: Date.now().toString()
 };
-setExtrasWithPersistence(prev => [...prev, newExtra]);
+setExtrasWithPersistence((prevExtras: Extra[]) => [...prevExtras, newExtra]);
 setExtraForm({
 name: '',
 description: '',
@@ -1521,7 +1521,7 @@ const updateExtra = async () => {
 if (!editingExtra) return;
 try {
 await apiUpdateExtra(editingExtra.id, extraForm);
-setExtras(prev => prev.map(e => e.id === editingExtra.id ? { ...extraForm, id: editingExtra.id } : e));
+setExtras((prev: Extra[]) => prev.map(e => e.id === editingExtra.id ? { ...extraForm, id: editingExtra.id } : e));
 setEditingExtra(null);
 setExtraForm({
 name: '',
@@ -1540,7 +1540,7 @@ alert('Falha ao atualizar item extra');
 const deleteExtra = async (extraId: string) => {
 try {
 await apiDeleteExtra(extraId);
-setExtras(prev => prev.filter(e => e.id !== extraId));
+setExtras((prev: Extra[]) => prev.filter(e => e.id !== extraId));
 } catch(err) {
 alert('Falha ao excluir item extra');
 }
@@ -1548,7 +1548,7 @@ alert('Falha ao excluir item extra');
 
 // Funções para equipamentos
 const updateEquipmentCount = (equipmentId: string, count: number) => {
-setEquipmentsWithPersistence(prev =>
+setEquipmentsWithPersistence((prev: Equipment[]) =>
 prev.map(eq =>
 eq.id === equipmentId
 ? { ...eq, count: Math.max(0, count) }
@@ -1558,7 +1558,7 @@ eq.id === equipmentId
 };
 
 const toggleEquipment = (equipmentId: string) => {
-setEquipmentsWithPersistence(prev =>
+setEquipmentsWithPersistence((prev: Equipment[]) =>
 prev.map(eq =>
 eq.id === equipmentId
 ? { ...eq, isActive: !eq.isActive }
@@ -1580,7 +1580,7 @@ setActiveModal(null);
 
 // Função para alternar modos de pagamento
 const togglePaymentMode = (mode: string) => {
-setPaymentModesWithPersistence(prev => {
+setPaymentModesWithPersistence((prev: string[]) => {
 if (prev.includes(mode)) {
 return prev.filter(m => m !== mode);
 } else {
@@ -1591,10 +1591,10 @@ return [...prev, mode];
 
 // Funções para atualizar campos dos serviços e extras
 function updateServiceField(id: string, field: string, value: any) {
-setServicesWithPersistence(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
+setServicesWithPersistence((prev: Service[]) => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
 }
 function updateExtraField(id: string, field: string, value: any) {
-setExtrasWithPersistence(prev => prev.map(x => x.id === id ? { ...x, [field]: value } : x));
+setExtrasWithPersistence((prev: Extra[]) => prev.map(x => x.id === id ? { ...x, [field]: value } : x));
 }
 
 // Renderizar etapa do nome
@@ -1860,7 +1860,7 @@ style={{ boxShadow: equipment.isActive ? '0 4px 20px 0 rgba(59, 130, 246, 0.25)'
 type="checkbox"
 checked={equipment.isActive}
 onChange={() => {
-setEquipments(prev => prev.map(eq => eq.id === equipment.id ? { ...eq, isActive: !eq.isActive } : eq));
+setEquipments((prev: Equipment[]) => prev.map(eq => eq.id === equipment.id ? { ...eq, isActive: !eq.isActive } : eq));
 }}
 className="sr-only"
 />
@@ -2084,7 +2084,7 @@ onSubmit={async (data)=>{
 if(editingService){
 try {
 await updateService(editingService.id, { ...data, equipment_count: data.equipment_count });
-setServices(prev=>prev.map(s=>s.id===editingService.id?{...data,id:editingService.id}:s));
+setServices((prev: Service[]) => prev.map(s => s.id === editingService.id ? { ...data, id: editingService.id } : s));
 setEditingService(null);
 } catch(err){
 console.error('Erro ao atualizar serviço:', err);
@@ -2096,7 +2096,7 @@ if (!tenantId) {
 throw new Error('tenantId não encontrado');
 }
 const created = await createService(data, { tenant_id: tenantId });
-setServices(prev=>[...prev, created]);
+setServices((prev: Service[]) => [...prev, created]);
 // Recarregar equipamentos, pois podem ter sido criados automaticamente
 try {
 const eqData = await fetchEquipments({ tenant_id: tenantId });
@@ -2126,7 +2126,7 @@ onSubmit={async (data)=>{
 if(editingExtra){
 try {
 await updateExtra();
-setExtras(prev=>prev.map(e=>e.id===editingExtra.id?{...data,id:editingExtra.id}:e));
+setExtras((prev: Extra[]) => prev.map(e => e.id === editingExtra.id ? { ...data, id: editingExtra.id } : e));
 setEditingExtra(null);
 } catch(err){
 console.error('Erro ao atualizar extra:', err);
@@ -2138,7 +2138,7 @@ if (!tenantId) {
 throw new Error('tenantId não encontrado');
 }
 const created = await createExtra(data, { tenant_id: tenantId });
-setExtras(prev=>[...prev, created]);
+setExtras((prev: Extra[]) => [...prev, created]);
 } catch(err){
 console.error('Erro ao criar extra:', err);
 alert('Falha ao criar item extra');
@@ -2950,7 +2950,7 @@ return (
 
               {/* Lista de Tickets do Cliente */}
               <div className="space-y-3">
-                {sortedTickets.map((ticket, index) => {
+                {sortedTickets.map((ticket: any, index: number) => {
                   const sp = Array.isArray(ticket.serviceProgress) ? ticket.serviceProgress : [];
                   const hasInProgress = sp.some((p: any) => p?.status === 'in_progress');
                   const hasCalled = sp.some((p: any) => p?.status === 'called');
@@ -3273,275 +3273,273 @@ Voltar para Configurar Serviços e Equipamentos
 );
 };
 
-// ✅ CORREÇÃO: useEffect unificado para gerenciar a etapa inicial e mudanças de status da operação
-// Problema: Dependências estavam causando loops infinitos e React Errors #300/#310
-// Solução: Memoizar valores e usar useRef para evitar recriações
-const isOperating = safeOperationConfig?.isOperating;
+  // ✅ CORREÇÃO: useEffect unificado para gerenciar a etapa inicial e mudanças de status da operação
+  // Problema: Dependências estavam causando loops infinitos e React Errors #300/#310
+  // Solução: Memoizar valores e usar useRef para evitar recriações
+  const isOperating = safeOperationConfig?.isOperating;
 
-// ✅ CORREÇÃO: Usar useRef para rastrear mudanças de estado
-const previousOperatingState = useRef<boolean | null>(null);
-const isInitialized = useRef<boolean>(false);
-// ✅ NOVO: Ref para controlar chamadas duplicadas de tickets
-const ticketLastCallTime = useRef(new Map<string, number>());
+  // ✅ CORREÇÃO: Usar useRef para rastrear mudanças de estado
+  const previousOperatingState = useRef<boolean | null>(null);
+  const isInitialized = useRef<boolean>(false);
+  // ✅ NOVO: Ref para controlar chamadas duplicadas de tickets
+  const ticketLastCallTime = useRef(new Map<string, number>());
 
-useEffect(() => {
-try {
-// ✅ CORREÇÃO: Evitar execução desnecessária no primeiro render
-if (!isInitialized.current) {
-isInitialized.current = true;
+  useEffect(() => {
+    try {
+      // ✅ CORREÇÃO: Evitar execução desnecessária no primeiro render
+      if (!isInitialized.current) {
+        isInitialized.current = true;
 
-// Definir etapa inicial baseado no status da operação
-if (currentStep === null) {
-if (isOperating) {
-console.log('🔍 Operação ativa, indo para operação');
-setCurrentStep('operation');
-localStorage.setItem('operator_current_step', 'operation');
-} else {
-console.log('🔍 Operação não ativa, indo para configuração');
-setCurrentStep('name');
-localStorage.setItem('operator_current_step', 'name');
-}
-}
-return;
-}
+        // Definir etapa inicial baseado no status da operação
+        if (currentStep === null) {
+          if (isOperating) {
+            console.log('🔍 Operação ativa, indo para operação');
+            setCurrentStep('operation');
+            localStorage.setItem('operator_current_step', 'operation');
+          } else {
+            console.log('🔍 Operação não ativa, indo para configuração');
+            setCurrentStep('name');
+            localStorage.setItem('operator_current_step', 'name');
+          }
+        }
+        return;
+      }
 
-// ✅ CORREÇÃO: Não fazer nada se estiver salvando configuração
-if (isSavingConfig) {
-console.log('🔍 Salvando configuração, ignorando mudanças');
-return;
-}
+      // ✅ CORREÇÃO: Não fazer nada se estiver salvando configuração
+      if (isSavingConfig) {
+        console.log('🔍 Salvando configuração, ignorando mudanças');
+        return;
+      }
 
-// ✅ CORREÇÃO: Verificar mudanças reais de estado da operação
-const hasOperatingStateChanged = previousOperatingState.current !== null && 
-previousOperatingState.current !== isOperating;
+      // ✅ CORREÇÃO: Verificar mudanças reais de estado da operação
+      const hasOperatingStateChanged = previousOperatingState.current !== null && 
+        previousOperatingState.current !== isOperating;
 
-if (hasOperatingStateChanged) {
-console.log('🔍 Mudança de estado da operação detectada:', {
-anterior: previousOperatingState.current,
-atual: isOperating
-});
+      if (hasOperatingStateChanged) {
+        console.log('🔍 Mudança de estado da operação detectada:', {
+          anterior: previousOperatingState.current,
+          atual: isOperating
+        });
 
-if (isOperating) {
-// Operação ficou ativa
-console.log('🔍 Operação ativa detectada, redirecionando para operação');
-setCurrentStep('operation');
-localStorage.setItem('operator_current_step', 'operation');
-} else {
-// Operação foi encerrada
-console.log('🔍 Operação encerrada, redirecionando para configuração');
+        if (isOperating) {
+          // Operação ficou ativa
+          console.log('🔍 Operação ativa detectada, redirecionando para operação');
+          setCurrentStep('operation');
+          localStorage.setItem('operator_current_step', 'operation');
+        } else {
+          // Operação foi encerrada
+          console.log('🔍 Operação encerrada, redirecionando para configuração');
 
-// ✅ CORREÇÃO: Usar timeout para evitar conflitos de renderização
-setTimeout(() => {
-try {
-// Limpar localStorage de forma segura
-localStorage.removeItem('operator_current_step');
-localStorage.removeItem('operator_config');
-localStorage.removeItem('operator_name');
-localStorage.removeItem('operator_selected_equipment');
-localStorage.removeItem('operator_active_tab');
-localStorage.removeItem('operator_active_service_tab');
-localStorage.removeItem('operator_preferences');
+          // ✅ CORREÇÃO: Usar timeout para evitar conflitos de renderização
+          setTimeout(() => {
+            try {
+              // Limpar localStorage de forma segura
+              localStorage.removeItem('operator_current_step');
+              localStorage.removeItem('operator_config');
+              localStorage.removeItem('operator_name');
+              localStorage.removeItem('operator_selected_equipment');
+              localStorage.removeItem('operator_active_tab');
+              localStorage.removeItem('operator_active_service_tab');
+              localStorage.removeItem('operator_preferences');
 
-// Atualizar estado React de forma segura
-setCurrentStep('name');
-setOperatorName('');
-setSelectedEquipment('');
-setActiveTab('operation');
-setActiveServiceTab('');
+              // Atualizar estado React de forma segura
+              setCurrentStep('name');
+              setOperatorName('');
+              setSelectedEquipment('');
+              setActiveTab('operation');
+              setActiveServiceTab('');
 
-// Limpar configuração e preferências de forma segura
-if (typeof clearConfig === 'function') {
-try {
-clearConfig();
-} catch (error) {
-console.warn('Erro ao limpar config:', error);
-}
-}
+              // Limpar configuração e preferências de forma segura
+              if (typeof clearConfig === 'function') {
+                try {
+                  clearConfig();
+                } catch (error) {
+                  console.warn('Erro ao limpar config:', error);
+                }
+              }
 
-if (typeof clearPreferences === 'function') {
-try {
-clearPreferences();
-} catch (error) {
-console.warn('Erro ao limpar preferences:', error);
-}
-}
+              if (typeof clearPreferences === 'function') {
+                try {
+                  clearPreferences();
+                } catch (error) {
+                  console.warn('Erro ao limpar preferences:', error);
+                }
+              }
 
-// ✅ CORREÇÃO: NÃO limpar cache aqui para evitar React Error #310
-// O cache será limpo pelo useEffect específico
+              // ✅ CORREÇÃO: NÃO limpar cache aqui para evitar React Error #310
+              // O cache será limpo pelo useEffect específico
 
-localStorage.setItem('operator_current_step', 'name');
-} catch (error) {
-console.error('Erro ao limpar estado da operação:', error);
-// Fallback: apenas definir a etapa
-setCurrentStep('name');
-localStorage.setItem('operator_current_step', 'name');
-}
-}, 100); // ✅ Aumentar delay para evitar conflitos
-}
-}
+              localStorage.setItem('operator_current_step', 'name');
+            } catch (error) {
+              console.error('Erro ao limpar estado da operação:', error);
+              // Fallback: apenas definir a etapa
+              setCurrentStep('name');
+              localStorage.setItem('operator_current_step', 'name');
+            }
+          }, 100); // ✅ Aumentar delay para evitar conflitos
+        }
+      }
 
-// Atualizar referência
-previousOperatingState.current = isOperating;
+      // Atualizar referência
+      previousOperatingState.current = isOperating;
 
-} catch (error) {
-console.error('Erro no useEffect unificado:', error);
-// Fallback: ir para configuração em caso de erro
-setCurrentStep('name');
-localStorage.setItem('operator_current_step', 'name');
-}
-}, [isOperating, currentStep, isSavingConfig, clearConfig, clearPreferences]); // ✅ Remover queryClient das dependências
+    } catch (error) {
+      console.error('Erro no useEffect unificado:', error);
+      // Fallback: ir para configuração em caso de erro
+      setCurrentStep('name');
+      localStorage.setItem('operator_current_step', 'name');
+    }
+  }, [isOperating, currentStep, isSavingConfig, clearConfig, clearPreferences]); // ✅ Remover queryClient das dependências
 
-// ✅ CORREÇÃO: useEffect para carregar dados quando operação estiver ativa
-useEffect(() => {
-try {
-if (safeOperationConfig?.isOperating && tenantId) {
-console.log('🔄 Operação ativa detectada, carregando dados...');
-// ✅ CORREÇÃO: Adicionar delay para evitar problemas de timing
-setTimeout(() => {
-try {
-// ✅ CORREÇÃO: Usar queryClient diretamente ao invés de funções que podem ser recriadas
-if (queryClient) {
-queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
-queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
-queryClient.invalidateQueries({ queryKey: ['equipment'] });
-queryClient.invalidateQueries({ queryKey: ['operation'] });
-}
-} catch (error) {
-console.error('Erro ao refetch dados:', error);
-}
-}, 150); // ✅ Aumentar delay para evitar conflitos
-}
-} catch (error) {
-console.error('Erro no useEffect de carregar dados:', error);
-}
-}, [safeOperationConfig?.isOperating, tenantId, queryClient]); // ✅ Usar safeOperationConfig
+  // ✅ CORREÇÃO: useEffect para carregar dados quando operação estiver ativa
+  useEffect(() => {
+    try {
+      if (safeOperationConfig?.isOperating && tenantId) {
+        console.log('🔄 Operação ativa detectada, carregando dados...');
+        // ✅ CORREÇÃO: Adicionar delay para evitar problemas de timing
+        setTimeout(() => {
+          try {
+            // ✅ CORREÇÃO: Usar queryClient diretamente ao invés de funções que podem ser recriadas
+            if (queryClient) {
+              queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
+              queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
+              queryClient.invalidateQueries({ queryKey: ['equipment'] });
+              queryClient.invalidateQueries({ queryKey: ['operation'] });
+            }
+          } catch (error) {
+            console.error('Erro ao refetch dados:', error);
+          }
+        }, 150); // ✅ Aumentar delay para evitar conflitos
+      }
+    } catch (error) {
+      console.error('Erro no useEffect de carregar dados:', error);
+    }
+  }, [safeOperationConfig?.isOperating, tenantId, queryClient]); // ✅ Usar safeOperationConfig
 
-// ✅ CORREÇÃO: Limpar cache apenas quando necessário para evitar React Error #310/#300
-// Usar o mesmo useRef do useEffect anterior para evitar conflitos
-useEffect(() => {
-const isCurrentlyOperating = safeOperationConfig?.isOperating;
+  // ✅ CORREÇÃO: Limpar cache apenas quando necessário para evitar React Error #310/#300
+  // Usar o mesmo useRef do useEffect anterior para evitar conflitos
+  useEffect(() => {
+    const isCurrentlyOperating = safeOperationConfig?.isOperating;
 
-// ✅ CORREÇÃO: Apenas executar quando há uma mudança REAL de estado (não na inicialização)
-if (previousOperatingState.current !== null && 
-previousOperatingState.current !== isCurrentlyOperating) {
+    // ✅ CORREÇÃO: Apenas executar quando há uma mudança REAL de estado (não na inicialização)
+    if (previousOperatingState.current !== null && 
+        previousOperatingState.current !== isCurrentlyOperating) {
 
-// ✅ CORREÇÃO: Só limpar cache quando operação para de estar ativa (false)
-// NÃO limpar quando operação fica ativa (true) para evitar React Error #310
-if (previousOperatingState.current === true && isCurrentlyOperating === false) {
-console.log('🧹 Operação encerrada, limpando cache...');
+      // ✅ CORREÇÃO: Só limpar cache quando operação para de estar ativa (false)
+      // NÃO limpar quando operação fica ativa (true) para evitar React Error #310
+      if (previousOperatingState.current === true && isCurrentlyOperating === false) {
+        console.log('🧹 Operação encerrada, limpando cache...');
 
-// ✅ CORREÇÃO: Usar timeout para evitar conflitos com outros useEffects
-setTimeout(() => {
-try {
-if (queryClient) {
-queryClient.invalidateQueries({ queryKey: ['tickets'] });
-queryClient.invalidateQueries({ queryKey: ['equipment'] });
-queryClient.invalidateQueries({ queryKey: ['operation'] });
-}
-} catch (error) {
-console.error('Erro ao limpar cache:', error);
-}
-}, 200); // ✅ Aumentar delay para evitar conflitos
-} else if (previousOperatingState.current === false && isCurrentlyOperating === true) {
-console.log('🧹 Operação iniciada, NÃO limpando cache para evitar React Error #310');
-}
-}
+        // ✅ CORREÇÃO: Usar timeout para evitar conflitos com outros useEffects
+        setTimeout(() => {
+          try {
+            if (queryClient) {
+              queryClient.invalidateQueries({ queryKey: ['tickets'] });
+              queryClient.invalidateQueries({ queryKey: ['equipment'] });
+              queryClient.invalidateQueries({ queryKey: ['operation'] });
+            }
+          } catch (error) {
+            console.error('Erro ao limpar cache:', error);
+          }
+        }, 200); // ✅ Aumentar delay para evitar conflitos
+      } else if (previousOperatingState.current === false && isCurrentlyOperating === true) {
+        console.log('🧹 Operação iniciada, NÃO limpando cache para evitar React Error #310');
+      }
+    }
 
-// ✅ CORREÇÃO: NÃO atualizar referência aqui, pois já é atualizada no useEffect anterior
-// previousOperatingState.current = isCurrentlyOperating;
-}, [safeOperationConfig?.isOperating, queryClient]); // ✅ Usar safeOperationConfig
+    // ✅ CORREÇÃO: NÃO atualizar referência aqui, pois já é atualizada no useEffect anterior
+    // previousOperatingState.current = isCurrentlyOperating;
+  }, [safeOperationConfig?.isOperating, queryClient]); // ✅ Usar safeOperationConfig
 
-// NOVO: Verificar se os dados estão carregando - MELHORADO
-const isLoading = !user || !tenantId || !safeOperationConfig || !services || !equipments || !extras || 
-!Array.isArray(services) || !Array.isArray(equipments) || !Array.isArray(extras) ||
-!safeMyTickets || !safeTickets || !safeEquipment;
+  // NOVO: Verificar se os dados estão carregando - MELHORADO
+  const isLoading = !user || !tenantId || !safeOperationConfig || !services || !equipments || !extras || 
+    !Array.isArray(services) || !Array.isArray(equipments) || !Array.isArray(extras) ||
+    !safeMyTickets || !safeTickets || !safeEquipment;
 
-// ✅ CORREÇÃO: Logs para debug dos dados do ResumoVisual
-useEffect(() => {
-console.log('🔍 DEBUG - ResumoVisual dados:', {
-services: services?.length || 0,
-servicesAtivos: services?.filter(s => s && s.isActive).length || 0,
-equipments: equipments?.length || 0,
-equipmentsAtivos: equipments?.filter(e => e && e.isActive).length || 0,
-extras: extras?.length || 0,
-extrasAtivos: extras?.filter(e => e && e.isActive).length || 0,
-tickets: safeMyTickets?.length || 0,
-operationConfig: safeOperationConfig?.isOperating,
-currentStep,
-tenantId
-});
-}, [services, equipments, extras, safeMyTickets, safeOperationConfig?.isOperating, currentStep, tenantId]);
+  // ✅ CORREÇÃO: Logs para debug dos dados do ResumoVisual
+  useEffect(() => {
+    console.log('🔍 DEBUG - ResumoVisual dados:', {
+      services: services?.length || 0,
+      servicesAtivos: services?.filter((s: Service) => s && s.isActive).length || 0,
+      equipments: equipments?.length || 0,
+      equipmentsAtivos: equipments?.filter((e: Equipment) => e && e.isActive).length || 0,
+      extras: extras?.length || 0,
+      extrasAtivos: extras?.filter((e: Extra) => e && e.isActive).length || 0,
+      tickets: safeMyTickets?.length || 0,
+      operationConfig: safeOperationConfig?.isOperating,
+      currentStep,
+      tenantId
+    });
+  }, [services, equipments, extras, safeMyTickets, safeOperationConfig?.isOperating, currentStep, tenantId]);
 
-// Se ainda está carregando, mostrar loading
-if (isLoading) {
-return (
-<div className="min-h-screen flex items-center justify-center bg-gray-50">
-<div className="text-center">
-<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-<p className="text-gray-600">Carregando painel do operador...</p>
-<p className="text-sm text-gray-500 mt-2">
-{!user && 'Aguardando autenticação...'}
-{!tenantId && 'Carregando tenant...'}
-{!safeOperationConfig && 'Carregando configuração...'}
-{!services && 'Carregando serviços...'}
-{!equipments && 'Carregando equipamentos...'}
-{!extras && 'Carregando extras...'}
-{!safeMyTickets && 'Carregando tickets...'}
-{!safeTickets && 'Carregando fila...'}
-{!safeEquipment && 'Carregando equipamentos...'}
-</p>
-</div>
-</div>
-);
-}
+  // Se ainda está carregando, mostrar loading
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando painel do operador...</p>
+          <p className="text-sm text-gray-500 mt-2">
+            {!user && 'Aguardando autenticação...'}
+            {!tenantId && 'Carregando tenant...'}
+            {!safeOperationConfig && 'Carregando configuração...'}
+            {!services && 'Carregando serviços...'}
+            {!equipments && 'Carregando equipamentos...'}
+            {!extras && 'Carregando extras...'}
+            {!safeMyTickets && 'Carregando tickets...'}
+            {!safeTickets && 'Carregando fila...'}
+            {!safeEquipment && 'Carregando equipamentos...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-// Renderizar componente baseado na etapa atual
-if (!currentStep) {
-return (
-<div className="flex items-center justify-center min-h-screen">
-<span className="text-gray-500 text-lg">Carregando...</span>
-</div>
-);
-}
+  // Renderizar componente baseado na etapa atual
+  if (!currentStep) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <span className="text-gray-500 text-lg">Carregando...</span>
+      </div>
+    );
+  }
 
-
-
-switch (currentStep) {
-case 'name':
-return (
-<>
-  <GlobalAlert conflictAlert={conflictAlert} setConflictAlert={setConflictAlert} />
-  {renderNameStep()}
-</>
-);
-case 'config':
-return (
-<>
-  <GlobalAlert conflictAlert={conflictAlert} setConflictAlert={setConflictAlert} />
-  {renderConfigStep()}
-</>
-);
-case 'operation':
-return (
-<>
-  <GlobalAlert conflictAlert={conflictAlert} setConflictAlert={setConflictAlert} />
-  {renderOperationStep()}
-</>
-);
-default:
-return (
-<>
-  <GlobalAlert conflictAlert={conflictAlert} setConflictAlert={setConflictAlert} />
-  {renderNameStep()}
-</>
-);
-}
+  switch (currentStep) {
+    case 'name':
+      return (
+        <>
+          <GlobalAlert conflictAlert={conflictAlert} setConflictAlert={setConflictAlert} />
+          {renderNameStep()}
+        </>
+      );
+    case 'config':
+      return (
+        <>
+          <GlobalAlert conflictAlert={conflictAlert} setConflictAlert={setConflictAlert} />
+          {renderConfigStep()}
+        </>
+      );
+    case 'operation':
+      return (
+        <>
+          <GlobalAlert conflictAlert={conflictAlert} setConflictAlert={setConflictAlert} />
+          {renderOperationStep()}
+        </>
+      );
+    default:
+      return (
+        <>
+          <GlobalAlert conflictAlert={conflictAlert} setConflictAlert={setConflictAlert} />
+          {renderNameStep()}
+        </>
+      );
+  }
 };
 
 
 
 // ✅ SOLUÇÃO: Wrapper com Error Boundary para capturar React Error #310
-const OperatorPageWithErrorBoundary: React.FC = () => {
+const OperatorPageWithErrorBoundary: React.FC = (): JSX.Element => {
 return (
 <WebSocketErrorBoundary>
 <OperatorPage />

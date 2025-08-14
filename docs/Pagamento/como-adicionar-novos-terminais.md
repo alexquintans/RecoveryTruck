@@ -343,7 +343,6 @@ export PAGSEGURO_MERCHANT_ID=123456789
 | **Sicredi** | ✅ Completo | 100% | Débito, Crédito, Contactless, Voucher |
 | **PagSeguro** | 🔄 Exemplo | 50% | Débito, Crédito, PIX |
 | **MercadoPago** | ⏳ Pendente | 0% | - |
-| **SafraPay** | ⏳ Pendente | 0% | - |
 | **PagBank** | ⏳ Pendente | 0% | - |
 
 ## 🎯 **Roadmap de Implementação**
@@ -351,7 +350,6 @@ export PAGSEGURO_MERCHANT_ID=123456789
 ### **Próximos Terminais (Prioridade)**
 1. **PagSeguro** - Finalizar implementação
 2. **MercadoPago** - Implementar do zero
-3. **SafraPay** - Implementar do zero
 4. **PagBank** - Implementar do zero
 
 ### **Tempo Estimado por Terminal**

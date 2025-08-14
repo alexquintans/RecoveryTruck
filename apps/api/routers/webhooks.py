@@ -10,7 +10,7 @@ from datetime import datetime
 from services.webhook_validator import (
     webhook_validator, WebhookProvider, WebhookValidationResult,
     get_sicredi_config, get_stone_config, get_pagseguro_config,
-    get_mercadopago_config, get_safrapay_config, get_pagbank_config
+    get_mercadopago_config, get_pagbank_config
 )
 from services.printer_service import printer_manager, ReceiptData, ReceiptType
 
@@ -29,7 +29,6 @@ async def setup_webhook_validators():
         "stone": "webhook_secret_stone_456", 
         "pagseguro": "webhook_secret_pagseguro_789",
         "mercadopago": "webhook_secret_mercadopago_abc",
-        "safrapay": "webhook_secret_safrapay_def",
         "pagbank": "webhook_secret_pagbank_ghi"
     }
     
@@ -38,7 +37,6 @@ async def setup_webhook_validators():
     webhook_validator.register_provider(get_stone_config(configs["stone"]))
     webhook_validator.register_provider(get_pagseguro_config(configs["pagseguro"]))
     webhook_validator.register_provider(get_mercadopago_config(configs["mercadopago"]))
-    webhook_validator.register_provider(get_safrapay_config(configs["safrapay"]))
     webhook_validator.register_provider(get_pagbank_config(configs["pagbank"]))
     
     logger.info("🔐 Webhook validators configured")
@@ -121,22 +119,6 @@ async def mercadopago_webhook(
     """💰 Webhook do MercadoPago"""
     return await process_webhook(
         provider=WebhookProvider.MERCADOPAGO,
-        request=request,
-        body=body,
-        client_ip=client_ip,
-        background_tasks=background_tasks
-    )
-
-@router.post("/safrapay")
-async def safrapay_webhook(
-    request: Request,
-    background_tasks: BackgroundTasks,
-    client_ip: str = Depends(get_client_ip),
-    body: bytes = Depends(get_request_body)
-):
-    """🏦 Webhook do SafraPay"""
-    return await process_webhook(
-        provider=WebhookProvider.SAFRAPAY,
         request=request,
         body=body,
         client_ip=client_ip,

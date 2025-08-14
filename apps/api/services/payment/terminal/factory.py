@@ -9,7 +9,6 @@ from .stone_terminal import StoneTerminalAdapter
 from .sicredi_terminal import SicrediTerminalAdapter
 from .pagseguro_terminal import PagSeguroTerminalAdapter
 from .mercadopago_terminal import MercadoPagoTerminalAdapter
-from .safrapay_terminal import SafraPayTerminalAdapter
 from .pagbank_terminal import PagBankTerminalAdapter
 
 logger = logging.getLogger(__name__)
@@ -24,7 +23,6 @@ class TerminalFactory:
         "sicredi": SicrediTerminalAdapter,
         "pagseguro": PagSeguroTerminalAdapter,
         "mercadopago": MercadoPagoTerminalAdapter,
-        "safrapay": SafraPayTerminalAdapter,
         "pagbank": PagBankTerminalAdapter
     }
     
@@ -34,7 +32,7 @@ class TerminalFactory:
         Cria uma instância do terminal especificado
         
         Args:
-            terminal_type: Tipo do terminal (mock, stone, sicredi, pagseguro, mercadopago, safrapay, pagbank)
+            terminal_type: Tipo do terminal (mock, stone, sicredi, pagseguro, mercadopago, pagbank)
             config: Configuração do terminal
             
         Returns:
@@ -76,7 +74,6 @@ class TerminalFactory:
             "sicredi": "🏦 Sicredi Terminal - Integração nativa com maquininhas Sicredi + PIX",
             "pagseguro": "💳 PagSeguro Terminal - Suporte completo incluindo PIX",
             "mercadopago": "🏪 MercadoPago Terminal - Point com PIX avançado",
-            "safrapay": "💰 SafraPay Terminal - Especializado em vouchers",
             "pagbank": "🏦 PagBank Terminal - Moderninha com PIX otimizado"
         }
     
@@ -134,14 +131,6 @@ class TerminalFactory:
                 "features": ["advanced_pix", "qr_code_generation", "mercadopago_ecosystem"],
                 "use_cases": ["marketplace", "delivery", "mobile_payments"]
             },
-            "safrapay": {
-                "name": "SafraPay Terminal",
-                "description": "Terminal SafraPay especializado em vouchers",
-                "supported_methods": ["credit_card", "debit_card", "contactless", "voucher"],
-                "connection_types": ["serial", "tcp", "bluetooth"],
-                "features": ["voucher_specialist", "checksum_validation", "safra_protocol"],
-                "use_cases": ["corporate", "voucher_payments", "safra_clients"]
-            },
             "pagbank": {
                 "name": "PagBank Terminal",
                 "description": "PagBank Moderninha com PIX otimizado",
@@ -178,7 +167,6 @@ class TerminalFactory:
             "sicredi": ["sicredi.merchant_id", "sicredi.terminal_id"],
             "pagseguro": ["pagseguro.merchant_id", "pagseguro.terminal_id", "pagseguro.api_key"],
             "mercadopago": ["mercadopago.access_token", "mercadopago.user_id", "mercadopago.pos_id"],
-            "safrapay": ["safrapay.merchant_id", "safrapay.terminal_id", "safrapay.establishment_code"],
             "pagbank": ["pagbank.merchant_id", "pagbank.terminal_id", "pagbank.access_token"]
         }
         
@@ -283,19 +271,6 @@ class TerminalFactory:
                     "store_id": "MERCADOPAGO_STORE_ID"
                 }
             },
-            "safrapay": {
-                "connection_type": "serial",
-                "port": "COM1",
-                "baudrate": 9600,
-                "timeout": 30,
-                "retry_attempts": 3,
-                "safrapay": {
-                    "merchant_id": "SAFRAPAY_MERCHANT_ID",
-                    "terminal_id": "SAFRAPAY_TERMINAL_ID",
-                    "establishment_code": "SAFRAPAY_ESTABLISHMENT_CODE",
-                    "api_key": "SAFRAPAY_API_KEY"
-                }
-            },
             "pagbank": {
                 "connection_type": "usb",
                 "timeout": 30,
@@ -328,7 +303,6 @@ class TerminalFactory:
             "sicredi": ["serial", "tcp", "bluetooth"],
             "pagseguro": ["serial", "tcp", "bluetooth"],
             "mercadopago": ["serial", "tcp", "bluetooth", "usb"],
-            "safrapay": ["serial", "tcp", "bluetooth"],
             "pagbank": ["serial", "tcp", "bluetooth", "usb"]
         }
         
@@ -351,7 +325,6 @@ class TerminalFactory:
             "sicredi": ["credit_card", "debit_card", "contactless", "voucher"],
             "pagseguro": ["credit_card", "debit_card", "pix", "contactless", "voucher"],
             "mercadopago": ["credit_card", "debit_card", "pix", "contactless", "voucher"],
-            "safrapay": ["credit_card", "debit_card", "contactless", "voucher"],
             "pagbank": ["credit_card", "debit_card", "pix", "contactless", "voucher"]
         }
         

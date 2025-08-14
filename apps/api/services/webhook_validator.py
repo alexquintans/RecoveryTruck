@@ -21,7 +21,6 @@ class WebhookProvider(Enum):
     STONE = "stone"
     PAGSEGURO = "pagseguro"
     MERCADOPAGO = "mercadopago"
-    SAFRAPAY = "safrapay"
     PAGBANK = "pagbank"
 
 class SignatureAlgorithm(Enum):
@@ -442,9 +441,6 @@ class WebhookValidator:
         elif config.provider == WebhookProvider.MERCADOPAGO:
             self._validate_mercadopago(payload_data, result)
         
-        elif config.provider == WebhookProvider.SAFRAPAY:
-            self._validate_safrapay(payload_data, result)
-        
         elif config.provider == WebhookProvider.PAGBANK:
             self._validate_pagbank(payload_data, result)
     
@@ -503,13 +499,6 @@ class WebhookValidator:
         # Verifica data_id
         if "data" in payload_data and "id" not in payload_data["data"]:
             result.warnings.append("MercadoPago: Missing data.id")
-    
-    def _validate_safrapay(self, payload_data: Dict[str, Any], result: WebhookValidationResult):
-        """Validações específicas do SafraPay"""
-        
-        # Validações específicas do SafraPay
-        if "payment_id" not in payload_data:
-            result.warnings.append("SafraPay: Missing payment_id")
     
     def _validate_pagbank(self, payload_data: Dict[str, Any], result: WebhookValidationResult):
         """Validações específicas do PagBank"""
@@ -575,21 +564,6 @@ def get_mercadopago_config(secret_key: str) -> WebhookValidationConfig:
         require_timestamp=False,
         allow_replay=False
     )
-
-def get_safrapay_config(secret_key: str) -> WebhookValidationConfig:
-    """Configuração padrão para SafraPay"""
-    return WebhookValidationConfig(
-        provider=WebhookProvider.SAFRAPAY,
-        secret_key=secret_key,
-        algorithm=SignatureAlgorithm.HMAC_SHA256,
-        signature_header="X-SafraPay-Signature",
-        timestamp_header="X-SafraPay-Timestamp",
-        signature_prefix="sha256=",
-        max_timestamp_diff=300,
-        require_timestamp=True,
-        allow_replay=False
-    )
-
 def get_pagbank_config(secret_key: str) -> WebhookValidationConfig:
     """Configuração padrão para PagBank"""
     return WebhookValidationConfig(

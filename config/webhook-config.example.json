@@ -61,19 +61,6 @@
         "allowed_ips": [],
         "description": "Configuração para webhooks do MercadoPago"
       },
-      "safrapay": {
-        "enabled": true,
-        "secret_key": "YOUR_SAFRAPAY_WEBHOOK_SECRET",
-        "algorithm": "hmac_sha256",
-        "signature_header": "X-SafraPay-Signature",
-        "timestamp_header": "X-SafraPay-Timestamp",
-        "signature_prefix": "sha256=",
-        "require_timestamp": true,
-        "max_timestamp_diff": 300,
-        "allow_replay": false,
-        "allowed_ips": [],
-        "description": "Configuração para webhooks do SafraPay"
-      },
       "pagbank": {
         "enabled": true,
         "secret_key": "YOUR_PAGBANK_WEBHOOK_SECRET",
@@ -114,7 +101,6 @@
         "stone": "/webhooks/stone",
         "pagseguro": "/webhooks/pagseguro",
         "mercadopago": "/webhooks/mercadopago",
-        "safrapay": "/webhooks/safrapay",
         "pagbank": "/webhooks/pagbank"
       },
       "test_endpoints": {

@@ -1,6 +1,6 @@
 {
   "// 🏭 CONFIGURAÇÃO COMPLETA DE TERMINAIS": "Todos os terminais implementados com PIX",
-  "// 📋 TERMINAIS DISPONÍVEIS": "mock, stone, sicredi, pagseguro, mercadopago, safrapay, pagbank",
+  "// 📋 TERMINAIS DISPONÍVEIS": "mock, stone, sicredi, pagseguro, mercadopago, pagbank",
   "// 🆕 PIX SUPORTADO": "stone, sicredi, pagseguro, mercadopago, pagbank",
   "// 🔧 MODALIDADES ESPECÍFICAS": "Configurações detalhadas por método de pagamento",
   
@@ -191,22 +191,6 @@
     "description": "🏪 MercadoPago Terminal - Point com PIX avançado"
   },
   
-  "safrapay_terminal": {
-    "type": "safrapay",
-    "connection_type": "serial",
-    "port": "COM1",
-    "baudrate": 9600,
-    "timeout": 30,
-    "retry_attempts": 3,
-    "safrapay": {
-      "merchant_id": "SAFRAPAY_MERCHANT_ID",
-      "terminal_id": "SAFRAPAY_TERMINAL_ID",
-      "establishment_code": "SAFRAPAY_ESTABLISHMENT_CODE",
-      "api_key": "SAFRAPAY_API_KEY"
-    },
-    "description": "💰 SafraPay Terminal - Especializado em vouchers"
-  },
-  
   "pagbank_terminal": {
     "type": "pagbank",
     "connection_type": "usb",
@@ -245,7 +229,6 @@
       "stone": 9600,
       "sicredi": 9600,
       "pagseguro": 115200,
-      "safrapay": 9600,
       "others": "Varia por terminal"
     },
     

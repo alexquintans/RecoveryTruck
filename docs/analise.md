@@ -69,7 +69,7 @@ O sistema implementa uma **arquitetura de adaptadores** que suporta múltiplos p
 
 **Adaptadores Disponíveis:**
 - **Sicredi** (principal)
-- Stone, PagSeguro, MercadoPago, SafraPay, PagBank
+- Stone, PagSeguro, MercadoPago, PagBank
 
 **Modalidades de Pagamento:**
 - **QR Code/Link**: Gera QR code para pagamento via PIX/cartão

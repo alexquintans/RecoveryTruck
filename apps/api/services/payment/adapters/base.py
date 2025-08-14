@@ -219,7 +219,6 @@ class PaymentAdapter(ABC):
             "StoneAdapter": WebhookProvider.STONE,
             "PagSeguroAdapter": WebhookProvider.PAGSEGURO,
             "MercadoPagoAdapter": WebhookProvider.MERCADOPAGO,
-            "SafraPayAdapter": WebhookProvider.SAFRAPAY,
             "PagBankAdapter": WebhookProvider.PAGBANK
         }
         

@@ -4,7 +4,6 @@ from .adapters.sicredi import SicrediAdapter
 from .adapters.stone import StoneAdapter
 from .adapters.pagseguro import PagSeguroAdapter
 from .adapters.mercadopago import MercadoPagoAdapter
-from .adapters.safrapay import SafraPayAdapter
 from .adapters.pagbank import PagBankAdapter
 
 class PaymentAdapterFactory:
@@ -15,7 +14,6 @@ class PaymentAdapterFactory:
         "stone": StoneAdapter,
         "pagseguro": PagSeguroAdapter,
         "mercadopago": MercadoPagoAdapter,
-        "safrapay": SafraPayAdapter,
         "pagbank": PagBankAdapter
     }
     

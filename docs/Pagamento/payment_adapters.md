@@ -24,10 +24,6 @@ Atualmente, os seguintes processadores são suportados:
    - Suporta cartão de crédito, débito, PIX e boleto
    - Integração via API REST
 
-5. **SafraPay**
-   - Suporta cartão de crédito, débito e PIX
-   - Integração via API REST
-
 6. **PagBank**
    - Suporta cartão de crédito, débito, PIX e boleto
    - Integração via API REST
@@ -43,7 +39,6 @@ apps/api/services/payment/
 │   ├── stone.py
 │   ├── pagseguro.py
 │   ├── mercadopago.py
-│   ├── safrapay.py
 │   └── pagbank.py
 ├── factory.py
 └── models.py

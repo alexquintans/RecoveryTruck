@@ -11,7 +11,7 @@ from typing import Dict, Any
 from apps.api.services.webhook_validator import (
     WebhookValidator, WebhookProvider, WebhookValidationConfig,
     SignatureAlgorithm, get_sicredi_config, get_stone_config,
-    get_pagseguro_config, get_mercadopago_config, get_safrapay_config,
+    get_pagseguro_config, get_mercadopago_config,
     get_pagbank_config
 )
 
@@ -25,7 +25,6 @@ class WebhookTester:
             "stone": "test_secret_stone_456",
             "pagseguro": "test_secret_pagseguro_789",
             "mercadopago": "test_secret_mercadopago_abc",
-            "safrapay": "test_secret_safrapay_def",
             "pagbank": "test_secret_pagbank_ghi"
         }
         
@@ -37,7 +36,6 @@ class WebhookTester:
         self.validator.register_provider(get_stone_config(self.test_secrets["stone"]))
         self.validator.register_provider(get_pagseguro_config(self.test_secrets["pagseguro"]))
         self.validator.register_provider(get_mercadopago_config(self.test_secrets["mercadopago"]))
-        self.validator.register_provider(get_safrapay_config(self.test_secrets["safrapay"]))
         self.validator.register_provider(get_pagbank_config(self.test_secrets["pagbank"]))
         
         print("🔐 Test configurations registered")
@@ -100,13 +98,6 @@ class WebhookTester:
                     "id": base_payload["id"]
                 },
                 **base_payload
-            }
-        
-        elif provider == "safrapay":
-            return {
-                **base_payload,
-                "payment_id": base_payload["id"],
-                "merchant_id": "SAFRA_MERCHANT_789"
             }
         
         elif provider == "pagbank":
@@ -341,7 +332,7 @@ class WebhookTester:
         # Setup
         self.setup_test_configs()
         
-        providers = ["sicredi", "stone", "pagseguro", "mercadopago", "safrapay", "pagbank"]
+        providers = ["sicredi", "stone", "pagseguro", "mercadopago", "pagbank"]
         
         total_tests = 0
         passed_tests = 0
