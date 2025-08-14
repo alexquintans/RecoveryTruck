@@ -1409,6 +1409,73 @@ async def force_equipment_online(
         db.rollback()
         raise HTTPException(status_code=500, detail="Erro ao forçar equipamentos online")
 
+@router.post("/emergency/cleanup-inconsistent-states")
+async def emergency_cleanup_inconsistent_states(
+    db: Session = Depends(get_db),
+    current_operator = Depends(get_current_operator)
+):
+    """🚨 EMERGÊNCIA: Força limpeza de todos os estados inconsistentes"""
+    try:
+        logger.info(f"🚨 EMERGÊNCIA - Iniciando limpeza de estados inconsistentes para tenant {current_operator.tenant_id}")
+        
+        # 1. Limpar equipamentos presos
+        cleanup_stuck_equipment(db, current_operator.tenant_id)
+        
+        # 2. Corrigir registros TicketServiceProgress inconsistentes
+        inconsistent_progress = db.query(TicketServiceProgress).join(TicketService).join(Ticket).filter(
+            Ticket.tenant_id == current_operator.tenant_id,
+            TicketServiceProgress.status == "in_progress",
+            Ticket.status.in_(["completed", "cancelled"])
+        ).all()
+        
+        corrected_count = 0
+        for progress in inconsistent_progress:
+            logger.info(f"🚨 EMERGÊNCIA - Corrigindo progresso {progress.id}")
+            progress.status = "completed"
+            progress.equipment_id = None
+            corrected_count += 1
+        
+        # 3. Forçar equipamentos offline para online se não estão sendo usados
+        offline_equipment = db.query(Equipment).filter(
+            Equipment.status == EquipmentStatus.offline,
+            Equipment.tenant_id == current_operator.tenant_id
+        ).all()
+        
+        forced_count = 0
+        for equipment in offline_equipment:
+            in_use = db.query(TicketServiceProgress).filter(
+                TicketServiceProgress.equipment_id == equipment.id,
+                TicketServiceProgress.status == "in_progress"
+            ).first()
+            
+            if not in_use:
+                logger.info(f"🚨 EMERGÊNCIA - Forçando equipamento {equipment.identifier} para online")
+                equipment.status = EquipmentStatus.online
+                equipment.assigned_operator_id = None
+                forced_count += 1
+        
+        db.commit()
+        
+        logger.info(f"🚨 EMERGÊNCIA - Limpeza concluída: {corrected_count} progressos corrigidos, {forced_count} equipamentos forçados online")
+        
+        return {
+            "success": True,
+            "message": "Limpeza de emergência concluída",
+            "details": {
+                "corrected_progress_count": corrected_count,
+                "forced_equipment_count": forced_count,
+                "tenant_id": current_operator.tenant_id
+            }
+        }
+    except Exception as e:
+        logger.error(f"❌ ERRO na limpeza de emergência: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Erro na limpeza de emergência")
+    except Exception as e:
+        logger.error(f"❌ ERRO ao forçar equipamentos online: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Erro ao forçar equipamentos online")
+
 @router.post("/{ticket_id}/start")
 async def start_ticket(
     ticket_id: str,
@@ -2479,6 +2546,31 @@ async def check_ticket_conflicts(
 ):
     """Verifica se há conflitos antes de chamar um ticket"""
     logger.info(f"🔍 DEBUG - Verificando conflitos para ticket {ticket_id}")
+    
+    # ✅ NOVO: Limpar equipamentos presos ANTES de verificar conflitos
+    logger.info(f"🔧 DEBUG - Limpando equipamentos presos antes de verificar conflitos...")
+    cleanup_stuck_equipment(db, current_operator.tenant_id)
+    
+    # ✅ NOVO: Limpar registros TicketServiceProgress inconsistentes
+    logger.info(f"🔧 DEBUG - Verificando inconsistências de TicketServiceProgress...")
+    
+    # Buscar registros TicketServiceProgress que estão in_progress mas o ticket principal foi concluído
+    inconsistent_progress = db.query(TicketServiceProgress).join(TicketService).join(Ticket).filter(
+        Ticket.tenant_id == current_operator.tenant_id,
+        TicketServiceProgress.status == "in_progress",
+        Ticket.status.in_(["completed", "cancelled"])
+    ).all()
+    
+    if inconsistent_progress:
+        logger.info(f"🔧 DEBUG - Encontrados {len(inconsistent_progress)} registros inconsistentes")
+        for progress in inconsistent_progress:
+            logger.info(f"🔧 DEBUG - Corrigindo progresso inconsistente: {progress.id}")
+            progress.status = "completed"  # Marcar como concluído para manter consistência
+            progress.equipment_id = None  # Liberar equipamento
+        db.commit()
+        logger.info(f"🔧 DEBUG - Registros inconsistentes corrigidos")
+    else:
+        logger.info(f"🔧 DEBUG - Nenhum registro inconsistente encontrado")
     
     # Buscar ticket
     ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()

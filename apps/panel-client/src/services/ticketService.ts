@@ -174,4 +174,12 @@ export const ticketService = {
     const response = await api.get('/tickets/status/pending-payment', { params: withTenant() });
     return response.data;
   },
+
+  // ✅ NOVO: Endpoint de emergência para limpar estados inconsistentes
+  emergencyCleanupInconsistentStates: async () => {
+    console.log('🚨 EMERGÊNCIA - Iniciando limpeza de estados inconsistentes...');
+    const response = await api.post('/tickets/emergency/cleanup-inconsistent-states', {}, { params: withTenant() });
+    console.log('🚨 EMERGÊNCIA - Resultado da limpeza:', response.data);
+    return response.data;
+  },
 }; 
