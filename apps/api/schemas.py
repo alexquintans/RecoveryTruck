@@ -236,6 +236,8 @@ class TicketServiceWithDetails(BaseModel):
 class TicketForPanel(Ticket):
     services: List[TicketServiceWithDetails] = []
     extras: List[TicketExtraWithDetails] = []
+    # Novo: progresso por serviço para o painel
+    services_progress: Optional[List[dict]] = None
 
 
 class TicketInQueue(TicketForPanel):

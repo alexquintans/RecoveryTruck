@@ -549,7 +549,17 @@ export function useTicketQueue() {
         assigned_operator_id: t.assigned_operator_id,
         called_at: t.called_at,
         created_at: t.created_at,
-        payment_confirmed: t.payment_confirmed
+        payment_confirmed: t.payment_confirmed,
+        // Novo: normalizar progresso por serviço vindo do backend
+        serviceProgress: Array.isArray(t.services_progress)
+          ? t.services_progress.map((p: any) => ({
+              service_id: p.service_id,
+              status: p.status,
+              started_at: p.started_at,
+              duration_minutes: p.duration_minutes,
+              equipment_id: p.equipment_id,
+            }))
+          : (t.serviceProgress || [])
       }));
       
       console.log('🔍 DEBUG - myTickets useMemo - DADOS PROCESSADOS:', {

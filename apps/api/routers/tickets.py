@@ -119,6 +119,7 @@ async def get_my_tickets(
         # ✅ NOVO: Verificar progresso dos serviços para este ticket
         ticket_services = db.query(TicketService).filter(TicketService.ticket_id == ticket.id).all()
         services_with_progress = []
+        services_progress_payload = []
         
         
         for ts in ticket_services:
@@ -134,6 +135,19 @@ async def get_my_tickets(
                 })
             else:
                 pass
+
+            # Montar payload simples de progresso por serviço
+            if ts:
+                progress_for_ts = db.query(TicketServiceProgress).filter(
+                    TicketServiceProgress.ticket_service_id == ts.id
+                ).first()
+                services_progress_payload.append({
+                    "service_id": str(ts.service_id),
+                    "status": progress_for_ts.status if progress_for_ts else "pending",
+                    "started_at": progress_for_ts.started_at if progress_for_ts else None,
+                    "duration_minutes": progress_for_ts.duration_minutes if progress_for_ts else None,
+                    "equipment_id": str(progress_for_ts.equipment_id) if progress_for_ts and progress_for_ts.equipment_id else None
+                })
         
         # ✅ NOVO: Verificar se o ticket tem serviços em andamento
         services_in_progress = [s for s in services_with_progress if s['progress'].status == 'in_progress']
@@ -210,7 +224,8 @@ async def get_my_tickets(
             reactivation_count=ticket.reactivation_count,
             payment_confirmed=ticket.payment_confirmed,
             services=services_with_details,
-            extras=extras_with_details
+            extras=extras_with_details,
+            services_progress=services_progress_payload
         )
         
         result.append(ticket_for_panel)
@@ -290,9 +305,26 @@ async def get_ticket_queue(
             for ts in ticket.services:
                 pass
     
+    # Remover da fila do serviço itens cujo serviço já esteja em andamento (progress in_progress)
+    filtered_tickets = []
+    for ticket in tickets:
+        if service_id:
+            ts = db.query(TicketService).filter(
+                TicketService.ticket_id == ticket.id,
+                TicketService.service_id == service_id
+            ).first()
+            if ts:
+                prog = db.query(TicketServiceProgress).filter(
+                    TicketServiceProgress.ticket_service_id == ts.id
+                ).first()
+                if prog and prog.status == "in_progress":
+                    # já em atendimento neste serviço → não deve aparecer na fila deste serviço
+                    continue
+        filtered_tickets.append(ticket)
+    
     # Converter para TicketInQueue com informações adicionais
     queue_tickets = []
-    for ticket in tickets:
+    for ticket in filtered_tickets:
         # Calcular tempo de espera
         waiting_minutes = 0
         if ticket.queued_at:
@@ -951,7 +983,7 @@ async def call_ticket(
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     try:
-        await websocket_manager.broadcast_equipment_update(str(current_operator.tenant_id), equipment_update_data)
+    await websocket_manager.broadcast_equipment_update(str(current_operator.tenant_id), equipment_update_data)
     except Exception as exc:
         logger.error(f"Erro ao enviar broadcast_equipment_update: {exc}")
     
@@ -1147,7 +1179,7 @@ async def call_ticket_service(
     
     # Broadcast de atualização da fila apenas do serviço afetado
     try:
-        queue_manager = get_queue_manager(db)
+    queue_manager = get_queue_manager(db)
         updated_queue = queue_manager.get_queue_tickets(
             tenant_id=str(current_operator.tenant_id),
             sort_order=QueueSortOrder.FIFO,
@@ -1471,7 +1503,7 @@ async def complete_ticket(
     result = await update_ticket_status(ticket_id, status_update, db, current_operator)
     
     # ✅ NOVO: Commit das alterações
-    db.commit()
+        db.commit()
         
     # ✅ NOVO: Broadcast de atualização para todos os equipamentos liberados
     for equipment in liberated_equipments:
@@ -1555,7 +1587,7 @@ async def cancel_ticket(
     result = await update_ticket_status(ticket_id, status_update, db, current_operator)
     
     # ✅ NOVO: Commit das alterações
-    db.commit()
+        db.commit()
         
     # ✅ NOVO: Broadcast de atualização para todos os equipamentos liberados
     for equipment in liberated_equipments:

@@ -304,7 +304,7 @@ const priority = getTicketPriority(ticket, currentService);
 // ✅ CORREÇÃO CRÍTICA: Usar estrutura normalizada de serviços
 const ticketServices = ticket.services || [];
 const currentServiceData = ticketServices.find(s => 
-s && (s.id === currentService || s.service_id === currentService)
+  s && (s.id === currentService)
 );
 
 // ✅ CORREÇÃO CRÍTICA: Log simplificado para debug
@@ -329,7 +329,7 @@ const waitingMinutes = created ? Math.floor((now.getTime() - created.getTime()) 
 // Mas permitir que apareça na fila do serviço atual se ainda não foi chamado para este serviço específico
 const isCalledInOtherQueues = ticket.status === 'called' || ticket.status === 'in_progress';
 const isCalledForThisService = ticket.serviceProgress?.some(p => 
-p.service_name === currentService && p.status === 'in_progress'
+  (p.service_id === currentService || p.service_name === currentService) && p.status === 'in_progress'
 );
 
 return (
@@ -2971,137 +2971,49 @@ return (
                       </div>
                     </div>
 
-                    {/* Serviços do Ticket */}
+                                        {/* Serviços do Ticket - status por serviço */}
                     <div className="space-y-2">
-                      {/* ✅ NOVO: Serviço Atual (se estiver em andamento) */}
-                      {ticket.status === 'in_progress' && ticket.services && ticket.services.length > 0 && (
-                        <div>
-                          <div className="text-xs font-semibold text-gray-600 mb-1">SERVIÇO ATUAL:</div>
-                          <div className="flex flex-wrap gap-1">
-                            {ticket.services.map((s, idx) => (
-                              <span key={s?.id || idx} className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">
-                                {s?.service?.name || s?.name || 'Serviço'}
-                                {s?.price && ` R$ ${s.price.toFixed(2).replace('.', ',')}`}
-</span>
-                            ))}
-</div>
-                          
-                                                     {/* ✅ NOVO: Countdown Regressivo do Serviço - Design Compacto */}
-                           {(ticket.started_at || ticket.startedAt) && (
-                             <div className="mt-2 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-{(() => {
-                                 const countdownData = getServiceCountdown(ticket);
-                                 if (!countdownData) return null;
-                                 
-                                 const { remainingTime, remainingMinutes, remainingSeconds, serviceDuration, isOverdue, progress } = countdownData;
-                                 
-return (
-                                   <>
-                                     {/* Header Compacto */}
-                                     <div className="flex items-center justify-between mb-2">
-                                       <div className="flex items-center gap-1">
-                                         <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
-                                         <span className="text-xs font-medium text-gray-700">Tempo Restante</span>
-</div>
-                                       <span className="text-xs text-gray-500">{serviceDuration}min</span>
-                                     </div>
-                                     
-                                     {/* Timer Compacto */}
-                                     <div className="text-center mb-2">
-                                       <div className={`text-lg font-bold font-mono tracking-wide ${
-                                         isOverdue 
-                                           ? 'text-red-600' 
-                                           : remainingMinutes <= 2 
-                                             ? 'text-orange-600' 
-                                             : 'text-blue-600'
-                                       }`}>
-                                         {remainingTime}
-</div>
-                                     </div>
-                                     
-                                     {/* Barra de Progresso Compacta */}
-                                     <div className="mb-2">
-                                       <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                                         <div 
-                                           className={`h-full rounded-full transition-all duration-300 ${
-                                             isOverdue 
-                                               ? 'bg-red-500' 
-                                               : progress > 80 
-                                                 ? 'bg-orange-500' 
-                                                 : 'bg-blue-500'
-                                           }`}
-                                           style={{ width: `${progress}%` }}
-                                         />
-</div>
-                                     </div>
-                                     
-                                     {/* Alertas Compactos */}
-                                     {isOverdue && (
-                                       <div className="text-xs text-red-600 font-medium flex items-center gap-1">
-                                         <span>⚠️</span>
-                                         <span>Excedido {Math.abs(remainingMinutes)}:{Math.abs(remainingSeconds).toString().padStart(2, '0')}</span>
-                                       </div>
-                                     )}
-                                     {!isOverdue && remainingMinutes <= 2 && remainingMinutes > 0 && (
-                                       <div className="text-xs text-orange-600 font-medium flex items-center gap-1">
-                                         <span>⏰</span>
-                                         <span>Terminando</span>
-                                       </div>
-                                     )}
-                                     {!isOverdue && remainingMinutes === 0 && remainingSeconds <= 30 && (
-                                       <div className="text-xs text-red-600 font-medium flex items-center gap-1 animate-pulse">
-                                         <span>🚨</span>
-                                         <span>Últimos segundos!</span>
-                                       </div>
-                                     )}
-                                   </>
-);
-})()}
-</div>
-                           )}
-                          
-                          {/* ✅ NOVO: Aviso se não há horário de início */}
-                          {!(ticket.started_at || ticket.startedAt) && (
-                            <div className="mt-2 p-2 bg-red-50 rounded-lg border border-red-200">
-                              <div className="text-xs text-red-700 font-semibold">
-                                ⚠️ Horário de início não registrado
-</div>
-                              <div className="text-xs text-red-600 mt-1">
-                                Clique em "Iniciar" para começar o cronômetro
-                              </div>
-</div>
-)}
-                        </div>
-                      )}
+                      {Array.isArray(ticket.services) && ticket.services.map((s: any, idx: number) => {
+                        const progressList = Array.isArray(ticket.serviceProgress) ? ticket.serviceProgress : [];
+                        const p = progressList.find((pp: any) => pp?.service_id === s?.id || pp?.service_name === s?.name);
+                        const status = p?.status || 'pending';
+                        const startedAt = p?.started_at ? new Date(p.started_at) : null;
+                        const duration = p?.duration_minutes || s?.duration || 10;
 
-                      {/* ✅ NOVO: Serviços Aguardando */}
-                      {ticket.status === 'called' && ticket.services && ticket.services.length > 0 && (
-                        <div>
-                          <div className="text-xs font-semibold text-gray-600 mb-1">TAMBÉM AGUARDA:</div>
-                          <div className="flex flex-wrap gap-1">
-                            {ticket.services.map((s, idx) => (
-                              <span key={s?.id || idx} className="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs font-medium">
-                                {s?.service?.name || s?.name || 'Serviço'}
-                                {s?.price && ` R$ ${s.price.toFixed(2).replace('.', ',')}`}
-                              </span>
-                            ))}
+                        let remainingTime = '';
+                        if (status === 'in_progress' && startedAt) {
+                          const end = new Date(startedAt.getTime() + duration * 60000);
+                          const ms = end.getTime() - Date.now();
+                          const mm = Math.max(0, Math.floor(ms / 60000));
+                          const ss = Math.max(0, Math.floor((ms % 60000) / 1000));
+                          remainingTime = `${mm.toString().padStart(2, '0')}:${ss.toString().padStart(2, '0')}`;
+                        }
+
+                        const badgeColor =
+                          status === 'in_progress' ? 'bg-green-100 text-green-700' :
+                          status === 'called'      ? 'bg-blue-100 text-blue-700'  :
+                          status === 'completed'   ? 'bg-gray-200 text-gray-700'  :
+                          status === 'cancelled'   ? 'bg-red-100 text-red-700'    :
+                                                     'bg-yellow-100 text-yellow-700';
+
+                        return (
+                          <div key={s?.id || idx} className="flex items-center justify-between rounded-md border px-3 py-2 bg-white">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium">{s?.service?.name || s?.name || 'Serviço'}</span>
+                              {s?.duration && <span className="text-xs text-gray-500">({s.duration} min)</span>}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${badgeColor}`}>{String(status).replace('_',' ')}</span>
+                              {status === 'in_progress' && remainingTime && (
+                                <span className="text-xs font-mono text-gray-700">{remainingTime}</span>
+                              )}
+                            </div>
                           </div>
-                          
-                                                     {/* ✅ NOVO: Tempo de espera para tickets aguardando */}
-                           {ticket.called_at && (
-                             <div className="mt-2 p-2 bg-yellow-50 rounded-lg">
-                               <div className="flex items-center justify-between">
-                                 <div className="text-xs font-semibold text-yellow-800">Tempo de Espera:</div>
-                                 <div className="text-xs text-yellow-600 font-mono">
-                                   {getElapsedTime(ticket.called_at)}
-                                 </div>
-                               </div>
-                             </div>
-                           )}
-                        </div>
-                      )}
+                        );
+                      })}
+                    </div>
 
-                      {/* Extras */}
+                    {/* Extras */}
                       {ticket.extras && ticket.extras.length > 0 && (
                         <div>
                           <div className="text-xs font-semibold text-gray-600 mb-1">EXTRAS:</div>
