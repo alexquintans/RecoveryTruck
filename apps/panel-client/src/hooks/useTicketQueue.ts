@@ -319,17 +319,6 @@ export function useTicketQueue() {
           console.error('Erro ao invalidar tickets via WebSocket:', error);
         }
       }
-      
-      if (type === 'ticket_called_for_service') {
-        console.log('🔄 Ticket chamado para serviço específico via WebSocket:', data);
-        try {
-          // Invalidar queries quando um ticket é chamado para um serviço específico
-          queryClient.invalidateQueries({ queryKey: ['tickets', 'queue'] });
-          queryClient.invalidateQueries({ queryKey: ['tickets', 'my-tickets'] });
-        } catch (error) {
-          console.error('Erro ao invalidar tickets via WebSocket:', error);
-        }
-      }
       if (type === 'payment_update') {
         console.log('🔄 Atualização de pagamento via WebSocket:', data);
         try {

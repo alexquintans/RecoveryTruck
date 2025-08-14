@@ -469,33 +469,6 @@ class ConnectionManager:
                 except Exception as e:
                     print(f"Error sending my_tickets_update to operator: {e}")
 
-    async def broadcast_ticket_called_for_service(self, tenant_id: str, ticket_data: dict):
-        """Transmite notificação de ticket chamado para serviço específico"""
-        message = {
-            "type": "ticket_called_for_service",
-            "data": ticket_data
-        }
-        
-        # Envia para operadores
-        if tenant_id in self.operator_connections:
-            for connection in list(self.operator_connections[tenant_id]):
-                try:
-                    await connection.send_json(message)
-                except WebSocketDisconnect:
-                    self.disconnect(connection, tenant_id, "operator")
-                except Exception as e:
-                    print(f"Error sending ticket_called_for_service to operator: {e}")
-
-        # Envia para displays
-        if tenant_id in self.display_connections:
-            for connection in list(self.display_connections[tenant_id]):
-                try:
-                    await connection.send_json(message)
-                except WebSocketDisconnect:
-                    self.disconnect(connection, tenant_id, "display")
-                except Exception as e:
-                    print(f"Error sending ticket_called_for_service to display: {e}")
-
 # Instância global do gerenciador
 manager = ConnectionManager()
 # Alias para compatibilidade (routers/tickets.py espera websocket_manager)
