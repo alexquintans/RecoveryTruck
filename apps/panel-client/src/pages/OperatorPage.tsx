@@ -1060,6 +1060,7 @@ confirmLoading,
 moveToQueue,
 moveToQueueLoading,
 callService,
+callServiceLoading,
 // ✅ NOVAS FUNÇÕES: Verificação de conflitos e chamada inteligente
 checkConflicts,
 checkConflictsLoading,
@@ -2270,15 +2271,14 @@ const queue = serviceQueues.find(q => q.serviceId === serviceId);
 return queue?.tickets || [];
 };
 
-// ✅ NOVA LÓGICA: Função inteligente para chamar tickets com verificação de conflitos
+// ✅ SIMPLIFICADO: Função direta para chamar tickets sem verificação de conflitos
 const handleCallTicket = async (ticket: Ticket, serviceId: string) => {
-console.log('🔍 DEBUG - Chamando ticket com verificação inteligente:', {
+console.log('🔍 DEBUG - Chamando ticket diretamente:', {
 ticketId: ticket.id,
 ticketNumber: ticket.number,
 status: ticket.status,
 equipment: selectedEquipment,
-serviceId: serviceId,
-ticketComplete: ticket
+serviceId: serviceId
 });
 
 // ✅ VERIFICAÇÕES BÁSICAS
@@ -2300,138 +2300,38 @@ showConflictAlert('Erro: ID do serviço não encontrado!', 'error');
 return;
 }
 
-// ✅ VERIFICAR SE EQUIPAMENTO ESTÁ DISPONÍVEL - MELHORADA
-const equipment = safeEquipment.find(e => e.id === selectedEquipment);
-console.log('🔍 DEBUG - Verificando equipamento:', {
-  selectedEquipment,
-  equipment,
-  equipmentStatus: equipment?.status,
-  allEquipment: safeEquipment.map(e => ({ id: e.id, name: e.name, status: e.status }))
-});
-
-if (!equipment) {
-  console.error('❌ ERRO: Equipamento não encontrado!', { selectedEquipment, availableEquipment: safeEquipment });
-  showConflictAlert('Erro: Equipamento não encontrado!', 'error');
-return;
-}
-
-// ✅ CORREÇÃO: Permitir equipamentos com status diferente de 'available'
-if (equipment.status === 'maintenance') {
-  console.error('❌ ERRO: Equipamento em manutenção!', { equipment });
-  showConflictAlert('Erro: Equipamento está em manutenção!', 'error');
-  return;
-}
-
-console.log('🔍 DEBUG - Equipamento verificado com sucesso:', {
-  equipmentId: equipment.id,
-  equipmentName: equipment.name,
-  equipmentStatus: equipment.status
-});
-
-
-
-// ✅ PROTEÇÃO CONTRA CHAMADAS DUPLICADAS - MELHORADA
+// ✅ PROTEÇÃO CONTRA CHAMADAS DUPLICADAS
 const serviceCallKey = `${ticket.id}-${serviceId}`;
 const lastServiceCallTime = ticketLastCallTime.current.get(serviceCallKey) || 0;
 const timeSinceLastServiceCall = Date.now() - lastServiceCallTime;
 
-console.log('🔍 DEBUG - Verificação de proteção contra chamadas duplicadas:', {
-ticketId: ticket.id,
-serviceId,
-  serviceCallKey,
-  lastServiceCallTime,
-timeSinceLastServiceCall,
-  isProtected: timeSinceLastServiceCall < 5000 // Aumentado para 5 segundos
-});
-
-if (timeSinceLastServiceCall < 5000) { // 5 segundos de proteção (aumentado)
-  console.log('🔍 DEBUG - Serviço chamado recentemente, aguardando...', {
-    ticketId: ticket.id,
-    serviceId,
-    timeSinceLastServiceCall,
-    remainingTime: 5000 - timeSinceLastServiceCall
-  });
+if (timeSinceLastServiceCall < 3000) { // 3 segundos de proteção
   showConflictAlert('Este serviço foi chamado recentemente. Aguarde alguns segundos.', 'warning');
 return;
 }
 
-// ✅ NOVA PROTEÇÃO: Verificar se já existe uma chamada em andamento para este serviço específico
-if (callIntelligentLoading || checkConflictsLoading) {
-  console.log('🔍 DEBUG - Já existe uma verificação/chamada em andamento para este serviço:', {
-    ticketId: ticket.id,
-    serviceId,
-    callIntelligentLoading,
-    checkConflictsLoading
-  });
-  showConflictAlert('Já existe uma verificação em andamento. Aguarde a conclusão.', 'warning');
+// ✅ VERIFICAR SE JÁ ESTÁ CARREGANDO
+if (callServiceLoading) {
+  showConflictAlert('Já existe uma chamada em andamento. Aguarde a conclusão.', 'warning');
 return;
 }
 
 try {
-// ✅ PASSO 1: Verificar conflitos antes de chamar
-console.log('🔍 DEBUG - Verificando conflitos para ticket:', ticket.id);
-const conflictsResult = await checkConflicts({ ticketId: ticket.id, serviceId });
-
-console.log('🔍 DEBUG - Resultado da verificação de conflitos:', conflictsResult);
-
-if (conflictsResult.conflicts.has_conflicts) {
-// ✅ CONFLITO DETECTADO: Mostrar detalhes específicos
-const conflictType = conflictsResult.conflicts.conflict_type;
-const conflictMessage = conflictsResult.conflicts.message;
-
-console.log('🔍 DEBUG - Conflito detectado:', {
-type: conflictType,
-message: conflictMessage,
-details: conflictsResult.conflicts.conflict_details
-});
-
-// ✅ MOSTRAR ALERTA ESPECÍFICO BASEADO NO TIPO DE CONFLITO
-switch (conflictType) {
-case 'customer_already_being_served':
-const conflictingTickets = conflictsResult.conflicts.conflict_details?.conflicting_tickets || [];
-const serviceNames = conflictingTickets.map((t: any) => t.service_name).join(', ');
-showConflictAlert(
-`O cliente ${conflictsResult.customer_name} já está sendo atendido nos serviços: ${serviceNames}`,
-'warning'
-);
-break;
-
-case 'ticket_assigned_to_other_operator':
-const operatorName = conflictsResult.conflicts.conflict_details?.assigned_operator || 'outro operador';
-showConflictAlert(
-`Este ticket já está sendo atendido por ${operatorName}`,
-'warning'
-);
-break;
-
-// ✅ REMOVIDO: services_already_in_progress - não bloqueamos mais múltiplos serviços simultâneos
-
-default:
-showConflictAlert(conflictMessage || 'Conflito detectado. Tente novamente.', 'warning');
-}
-
-return;
-}
-
-// ✅ PASSO 2: Se não há conflitos, fazer a chamada inteligente
-console.log('🔍 DEBUG - Nenhum conflito detectado, fazendo chamada inteligente...');
-
 // ✅ Marcar tempo da chamada
 ticketLastCallTime.current.set(serviceCallKey, Date.now());
 
-// ✅ Fazer chamada inteligente
-const callResult = await callIntelligent({
+// ✅ Fazer chamada direta do serviço
+console.log('🔍 DEBUG - Fazendo chamada direta do serviço...');
+const callResult = await callService({
 ticketId: ticket.id,
 serviceId: serviceId,
-equipmentId: selectedEquipment,
-checkConflicts: true // Verificação adicional na API
+equipmentId: selectedEquipment
 });
 
-console.log('🔍 DEBUG - Resultado da chamada inteligente:', callResult);
+console.log('🔍 DEBUG - Resultado da chamada:', callResult);
 
 // ✅ MOSTRAR SUCESSO
-const serviceName = conflictsResult.available_services?.find((s: any) => s.service_id === serviceId)?.service_name || 'Serviço';
-showConflictAlert(`Ticket #${ticket.number} chamado para ${serviceName} com sucesso!`, 'info');
+showConflictAlert(`Ticket #${ticket.number} chamado com sucesso!`, 'info');
 
 } catch (error: any) {
 console.error('❌ ERRO ao chamar ticket:', error);
@@ -2439,19 +2339,12 @@ console.error('❌ ERRO ao chamar ticket:', error);
 // ✅ Remover marcação de tempo em caso de erro
 ticketLastCallTime.current.delete(serviceCallKey);
 
-// ✅ TRATAR ERROS ESPECÍFICOS
-if (error?.response?.status === 409) {
-// Conflito detectado pela API
-const conflictDetails = error.response.data;
-showConflictAlert(
-`Conflito: ${conflictDetails?.message || 'Cliente já está sendo atendido'}`,
-'warning'
-);
-} else if (error?.message?.includes('Conflito:')) {
-// Erro de conflito já tratado
-showConflictAlert(error.message, 'warning');
+// ✅ TRATAR ERROS
+if (error?.response?.status === 400) {
+showConflictAlert(error.response.data?.detail || 'Erro ao chamar ticket. Verifique o equipamento.', 'error');
+} else if (error?.response?.status === 409) {
+showConflictAlert('Conflito: Este serviço já está sendo atendido.', 'warning');
 } else {
-// Erro genérico
 showConflictAlert('Erro ao chamar ticket. Tente novamente.', 'error');
 }
 }
@@ -2868,7 +2761,7 @@ ticket={ticket}
 currentService={activeServiceTab}
 onCall={handleCallTicket}
 selectedEquipment={selectedEquipment}
-callLoading={callIntelligentLoading || checkConflictsLoading}
+callLoading={callServiceLoading}
 />
 ))}
 </div>
